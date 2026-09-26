@@ -16,7 +16,21 @@ L'accès depuis une application restant dans Docker à des D1/R2 Cloudflare deme
 
 Le code métier, les modèles, les modules et les contrats restent communs. Les adaptateurs encapsulent les différences d'hébergement. Les clés et identités du compte de développement ne sont pas intégrées au code livré à chaque fork.
 
-Les profils de build Sites et Cloudflare direct partagent une source et un lockfile, mais possèdent leurs propres conventions de packaging, authentification, ressources et déclencheurs. La présence de D1/R2 sur les deux plateformes ne prouve pas l'équivalence de ces capacités. Qualifier une tranche fonctionnelle sur chaque cible avant de développer toutes les interfaces.
+Les profils de build Sites et Cloudflare direct partagent une source, un lockfile et l'authentification native Creezio. Leurs conventions de packaging, portes d'accès d'hébergement, ressources et déclencheurs restent distinctes. La présence de D1/R2 sur les deux plateformes ne prouve pas l'équivalence de ces capacités. Qualifier une tranche fonctionnelle sur chaque cible avant de développer toutes les interfaces ; consulter [Qualification Sites](QUALIFICATION-SITES.md) pour les preuves et limites hébergées.
+
+## Authentification native et porte d'accès Sites
+
+Creezio fournit ses propres comptes et sessions pour le front et l'administration, avec droits distincts. La politique d'audience de Sites constitue une couche préalable indépendante :
+
+- **Site privé :** l'utilisateur franchit la porte ChatGPT de l'hébergement, atteint le front, puis se connecte à son compte Creezio pour les fonctions protégées.
+- **Site public :** l'utilisateur atteint directement le front, puis utilise la même connexion native Creezio.
+- **Docker local et Cloudflare direct :** la connexion native Creezio protège les fonctions applicatives ; aucune identité ChatGPT n'est requise par le produit.
+
+Une identité ChatGPT ou ses headers ne créent jamais automatiquement un compte, une session ni des permissions Creezio. Le Site peut rester privé ; il n'est pas nécessaire de le rendre public pour implémenter des comptes applicatifs. Pour les clients machine, qualifier séparément l'accès à l'hébergement et l'autorisation API/MCP ou la signature de webhook, sans distribuer un accès technique global au navigateur.
+
+## SQL central de création et d'évolution
+
+Décision acquise : l'outillage central génère et inspecte le SQL de création et d'évolution à partir des modèles déclarés, le versionne avec la source et suit son application. Sur Sites, ces artefacts sont ceux du parcours Drizzle documenté, appliqués avant le code. Ils ne sont pas des scripts confiés aux modules. L'installation neuve et les mises à jour sont testées séparément ; aucune republication ne réinitialise les données. Une évolution incompatible ou destructive non résolue bloque la livraison. Revenir au code précédent ne réécrit pas l'historique SQL appliqué.
 
 Les services tiers connectés par plugins, notamment n8n/Hermes/Meili, ne font pas partie des ressources à déployer. Creezio ne gère ni leur hébergement ni leur maintenance ; le compte utilisateur fournit les accès à un service existant.
 
@@ -41,7 +55,7 @@ Le back-office local propose un parcours guidé, traité par un exécuteur local
 4. **Construire l'application.** Produire le Worker et les ressources du front/back-office depuis une révision précise et vérifier le build. Docker et les outils locaux ne sont pas envoyés comme runtime de production.
 5. **Transférer D1.** Exporter les modèles et données de l'installation locale Creezio, puis les importer dans une base cible neuve prévue pour cette publication. Les commandes D1 officielles permettent l'export local et l'exécution/import distant. Vérifier relations, volumes et contenu ; adapter le découpage aux limites documentées.
 6. **Transférer R2.** Lire les objets via les interfaces de stockage, envoyer les fichiers dans le bucket cible et conserver clés, métadonnées et références D1. Vérifier tailles et empreintes. Ne pas copier directement le répertoire interne Miniflare en supposant qu'il constitue un bucket Cloudflare.
-7. **Configurer et publier.** Raccorder les bindings D1/R2 et les secrets de production, configurer l'authentification hors Sites, publier le Worker et ses assets. Démarrer sur une URL workers.dev, puis un domaine personnalisé si demandé.
+7. **Configurer et publier.** Raccorder les bindings D1/R2 et les secrets de production, configurer les comptes et sessions natifs Creezio pour la destination, publier le Worker et ses assets. Démarrer sur une URL workers.dev, puis un domaine personnalisé si demandé.
 8. **Vérifier la production.** Connexion, droits, onglets, chat, modules, lecture/écriture D1 et accès R2. Présenter l'URL, la version et le résultat. Arrêter le runtime local de test pour prouver l'indépendance de la production.
 
 L'application reste protégée pendant la préparation ; le compte rendu ne déclare pas une publication réussie tant que les vérifications finales ne passent pas. Un échec conserve les données locales et l'état du transfert pour reprendre sans dupliquer les ressources ni effacer la destination.
@@ -50,7 +64,7 @@ L'application reste protégée pendant la préparation ; le compte rendu ne déc
 
 Le manifeste de publication distingue données applicatives, fichiers, paramètres et états transitoires. Préserver les identifiants internes et les relations ; exclure sessions actives, codes OAuth, consentements/jetons liés à un environnement, travaux de démonstration et exécutions en cours non transférables. Une copie SQL brute de toutes les tables n'est pas une politique suffisante. La recette vérifie chaque catégorie exclue ou transférée.
 
-Les utilisateurs gardent leur identité interne ; le raccordement au fournisseur d'authentification de production est explicite. Ne pas rattacher automatiquement des comptes par adresse email ni accepter en production des en-têtes d'identité de développement. L'administrateur de production utilise un parcours d'activation contrôlé ; aucune identité de démonstration ne devient propriétaire par défaut.
+Les utilisateurs gardent leur identité interne Creezio ; les paramètres de session de production sont propres à la destination. Ne pas rattacher automatiquement des comptes par adresse email ou identité ChatGPT ni accepter en production des en-têtes d'identité de développement. L'administrateur de production utilise un parcours d'activation contrôlé ; aucune identité de démonstration ne devient propriétaire par défaut.
 
 Le coffre peut contenir des secrets chiffrés avec une clé locale : copier seulement ses lignes ne suffit pas. Prévoir sélection des connexions à transférer et rechiffrement avec une clé propre à la destination, ou saisie guidée des accès de production. Ne pas copier indistinctement les accès de test. Les clés de chiffrement restent hors du dump applicatif. Les accès Cloudflare permettant de publier restent dans l'exécuteur local et ne deviennent pas des secrets utilisables par le Worker de l'application.
 
@@ -88,17 +102,18 @@ Sources : [D1 depuis une application externe](https://developers.cloudflare.com/
 - Indépendance : production fonctionnelle après arrêt de Docker local.
 - Mise à jour : créer aussi des données directement en production, publier une évolution du code, vérifier qu'elles sont conservées ainsi que les personnalisations du fork.
 - Sécurité fonctionnelle : clés invalides, permissions insuffisantes, ressources déjà existantes, URLs de fichiers privées et absence de fuite interapplications.
-- Identités/secrets : connexion après publication avec le fournisseur de production, sessions locales inutilisables, coffre lisible avec la clé de destination et absence d'accès de publication dans le Worker.
+- Identités/secrets : connexion native Creezio après publication, sessions locales inutilisables, coffre lisible avec la clé de destination et absence d'accès de publication dans le Worker. Sur Sites privé, l'accès GPT seul ne vaut jamais session Creezio ; ne pas modifier l'audience pour réaliser ce test.
 
 ## Capacités Sites restant à qualifier
 
 - Plusieurs D1/R2 physiquement distincts pour un même Site, au-delà du couple natif fourni au démarrage.
 - Accès machine aux webhooks et endpoints MCP d'un Site privé, sans session ChatGPT dans le navigateur.
 - Déclencheurs durables disponibles pour tâches, indexation et boîte d'envoi lorsque l'utilisateur ferme son navigateur.
-- Authentification des utilisateurs du front, distincte de l'administration et compatible avec les règles d'accès de Sites.
-- Matérialisation et évolution des modèles : le workflow Sites documenté attend du SQL généré et enregistré avec la source. L'acceptation de ces artefacts centralisés doit être tranchée avant l'implémentation ; aucun script SQL de transformation n'est confié aux modules.
+- Transport des comptes/sessions natifs Creezio à travers le dispatcher Sites : cookies, bearer applicatif et révocation qualifiés sur la sonde machine privée ; parcours navigateur, comptes complets, cache et expiration restent à éprouver. La porte GPT et la session applicative restent distinctes ; le choix d'une authentification native est acquis.
+- Matérialisation et évolution des modèles : ajout SQL généré conservant les données D1/R2 qualifié sur la sonde ; chaîne du produit, mises à jour de modules et reprise après échec restent à éprouver. La chaîne SQL centrale est acceptée ; aucun script SQL de transformation n'est confié aux modules.
+- Progression du chat : événements SSE reçus groupés sur le chemin machine privé testé, y compris avec un second client. Qualifier le parcours navigateur et le transport retenu sans déduire une parité de la simple réception du contenu complet.
 
-Ces inconnues donnent lieu à des prototypes et résultats mesurés, pas à des fonctionnalités présumées disponibles. Les identifiants de déploiement ne sont jamais codés dans le starter générique.
+Les résultats et limites sont détaillés dans [Qualification Sites](QUALIFICATION-SITES.md). Les points restants donnent lieu à des prototypes et résultats mesurés, pas à des fonctionnalités présumées disponibles. Les identifiants de déploiement ne sont jamais codés dans le starter générique.
 
 ## Sources de transfert et publication
 

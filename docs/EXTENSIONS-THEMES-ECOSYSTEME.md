@@ -1,6 +1,6 @@
 # Extensions, thèmes et écosystème Creezio
 
-Proposition d'architecture du 26 septembre 2026, avant implémentation. Les dépôts, paquets, domaines et catalogues supplémentaires décrits ici ne sont pas encore créés ou publiés. La visibilité publique et la licence restent à décider.
+Proposition d'architecture du 26 septembre 2026, avant implémentation. Les dépôts, paquets, domaines et catalogues supplémentaires décrits ici ne sont pas encore créés ou publiés. L'ouverture publique et open source du cœur, du SDK et du starter d'extension est décidée ; la licence reste à choisir.
 
 ## Responsabilités
 
@@ -31,7 +31,9 @@ Le manifeste d'une extension contient son identifiant qualifié par éditeur, sa
 
 Chaque composant a une source effective unique : workspace local ou paquet résolu. Il n'existe pas simultanément une copie source supposée active et une autre version npm exécutée implicitement. La composition et le lockfile fixent les versions et l'intégrité utilisées. Une plage de compatibilité n'autorise pas une résolution différente à chaque démarrage.
 
-Les applications clientes et leurs extensions peuvent rester privées, indépendamment de l'ouverture du SDK, du cœur ou du catalogue. Les secrets et données des applications n'entrent jamais dans un paquet.
+Un véritable fork GitHub d'un dépôt public reste public. La première application de test utilise cette filiation publique vérifiable. Pour garder le code d'une application ou d'une extension confidentiel, utiliser un dépôt indépendant privé, avec les versions et l'origine Creezio explicites ; ce dépôt n'est pas présenté comme un fork GitHub privé du socle public. Les mises à jour des composants communs restent possibles par les paquets et contrats versionnés.
+
+La visibilité des sources, l'audience du Site et les droits applicatifs sont distincts : du code public peut servir un Site privé, et des sources privées une application publique. Les secrets et données des applications n'entrent jamais dans un paquet ni dans les sources publiées.
 
 Sources : [métadonnées de plugins WordPress](https://developer.wordpress.org/plugins/plugin-basics/header-requirements/), [scopes npm](https://docs.npmjs.com/about-scopes/), [visibilité npm](https://docs.npmjs.com/package-scope-access-level-and-visibility/), [lockfile](https://docs.npmjs.com/cli/v11/configuring-npm/package-lock-json/).
 
@@ -54,7 +56,7 @@ docs/            Démarrage, configuration, publication et contribution
 scripts/         Validation, packaging et publication de la démo
 ```
 
-L'exemple propose un objet simple avec pièce jointe, lecture et mutation autorisées. API, MCP, écran et widget appellent les mêmes opérations. Les modèles déclarent les structures actuelles ; l'auteur ne programme pas de chaîne SQL de transformation dans son module. Le mécanisme central de matérialisation des modèles reste soumis à la décision identifiée dans le plan principal.
+L'exemple propose un objet simple avec pièce jointe, lecture et mutation autorisées. API, MCP, écran et widget appellent les mêmes opérations. Les modèles déclarent les structures actuelles ; l'auteur ne programme pas de chaîne SQL de transformation dans son module. La génération SQL centrale à partir de ces modèles est acceptée. Les artefacts SQL et leurs métadonnées sont inspectés avant publication et restent immuables après application. Aucun script SQL de transformation entre versions n'est distribué par le module.
 
 Le SDK et les commandes génèrent les points d'enregistrement : installer le paquet et l'inclure dans la composition ne demande pas de réécrire les routes, le chat ou les gardes d'accès de l'application. Les zones à personnaliser et celles fournies par le SDK sont explicitement documentées.
 
@@ -64,7 +66,7 @@ Les ressources Cloudflare, accès administrateur et secrets de démonstration ap
 
 L'archive distribuée contient uniquement l'extension et les éléments nécessaires à son fonctionnement, avec dépendances déclarées. Elle exclut `demo/`, les données de démonstration, les identifiants/configurations d'hébergement et toute copie embarquée du socle Creezio. Les contrats partagés sont des dépendances compatibles, pas un second runtime. La recette installe l'archive effectivement produite dans Creezio Lab, sans résolution implicite vers le workspace de développement.
 
-Construire et publier la démo depuis la racine du starter : aucune dépendance à une copie voisine non fournie du CMS. Le bouton [Deploy to Cloudflare](https://developers.cloudflare.com/workers/platform/deploy-buttons/) pourra compléter ce parcours pour un dépôt public ; il ne remplace ni la distribution du paquet ni la preuve du vrai fork GitHub. Tant que le dépôt reste privé, prévoir le parcours Wrangler authentifié. Le bouton n'est pas une autorisation de rendre le dépôt public.
+Construire et publier la démo depuis la racine du starter : aucune dépendance à une copie voisine non fournie du CMS. Le bouton [Deploy to Cloudflare](https://developers.cloudflare.com/workers/platform/deploy-buttons/) pourra compléter le parcours du starter public ; il ne remplace ni la distribution du paquet ni la preuve du vrai fork GitHub. Le parcours Wrangler authentifié reste disponible, notamment pour les extensions maintenues dans des dépôts privés indépendants.
 
 ## Installation et cycle de vie
 
@@ -84,13 +86,13 @@ Le socle, les extensions et les thèmes possèdent des versions distinctes. Les 
 1. Identifier précisément l'éditeur, le paquet, l'origine et la version cible.
 2. Présenter les changements, dépendances nécessaires, droits supplémentaires, configuration et compatibilité des données.
 3. Résoudre le graphe sans mettre à jour silencieusement le cœur ou les modules non concernés. Une dépendance transitive indispensable est indiquée.
-4. Fixer la résolution, vérifier les contrats et construire une livraison complète de l'application avec ses modules sélectionnés.
-5. Publier selon l'hébergement, puis vérifier l'opération API/MCP/widget concernée, les autres versions et la conservation des données et personnalisations.
-6. Conserver la référence du code précédent compatible. Revenir au code précédent ne restaure pas des données modifiées depuis.
+4. Fixer la résolution, vérifier les contrats et inspecter le SQL généré centralement et ses métadonnées avant de construire une livraison complète de l'application avec ses modules sélectionnés. Ne jamais réécrire un artefact SQL déjà appliqué.
+5. Publier selon l'hébergement, puis vérifier l'opération API/MCP/widget concernée, les autres versions et la conservation des données et personnalisations. Sur Sites, le SQL est appliqué avant l'envoi du Worker ; un échec ultérieur peut laisser ce SQL appliqué. Vérifier la compatibilité avec le code encore publié et la reprise de la livraison.
+6. Conserver la référence du code précédent compatible. Revenir au code précédent n'annule pas le SQL déjà appliqué et ne restaure pas les données modifiées depuis.
 
 Une mise à jour individuelle est donc un changement ciblé des versions, suivi d'une republication du Worker complet. Elle ne nécessite pas un téléchargement de JavaScript exécuté à chaud. Une incompatibilité de contrat ou de données bloque la livraison automatique.
 
-Ce parcours s'inspire des [mises à jour ciblées WordPress](https://developer.wordpress.org/cli/commands/plugin/update/) en respectant le runtime serverless. Les modèles de données actuels sont conservés ; la gestion technique des évolutions SQL reste un point de conception à trancher avant implémentation.
+Ce parcours s'inspire des [mises à jour ciblées WordPress](https://developer.wordpress.org/cli/commands/plugin/update/) en respectant le runtime serverless. Les modules déclarent leurs modèles actuels ; le mécanisme central génère et suit les artefacts SQL nécessaires à leur matérialisation. Il ne délègue pas aux modules des scripts de transformation de bases entre versions.
 
 ## Thèmes, personnalisation et front headless
 
@@ -98,15 +100,17 @@ Fournir un thème standard, un thème ChatGPT-like et des points de remplacement
 
 Le SDK front fournit sessions, clients d'opérations, gestion des conversations, fichiers, événements, widgets et erreurs. Un développeur peut conserver tout le thème, remplacer seulement des composants ou construire son propre front avec ce SDK. Une prévisualisation de brouillons ou données privées exige toujours une autorisation explicite.
 
+La connexion native de l'application reste identique quel que soit le mode d'accès Sites. Sur un Site privé, le contrôle GPT précède l'accès au front, puis l'utilisateur se connecte avec son compte Creezio. Sur un Site public, le front est accessible directement sans compte GPT, puis la connexion native ouvre les fonctions autorisées de l'application. L'identité GPT ne crée aucune session, aucun compte ni aucun droit Creezio implicitement. Le SDK et les thèmes utilisent les sessions applicatives ; ils ne remplacent pas les permissions serveur par un en-tête d'identité GPT. Voir [Qualification Sites](QUALIFICATION-SITES.md) pour les contraintes de plateforme et les recettes distinctes des appels machine.
+
 Le front livré et l'administration restent publiables avec le backend dans une seule application. Un front headless hébergé séparément est une option de composition ; il utilise les mêmes API et un parcours d'identité/CORS explicitement configuré. Cela n'implique aucun backend distinct par utilisateur ou client.
 
 ## Développeurs et confiance
 
-Livrer documentation publique ou accessible aux partenaires selon le choix d'ouverture, SDK versionné, starter, exemple installé, tests de conformité, procédure de contribution, changelog et politique de compatibilité. Le catalogue distingue officiel, tiers et privé, ainsi que l'état de maintenance.
+Livrer une documentation publique, un SDK versionné, le starter public, un exemple installé, des tests de conformité, une procédure de contribution, un changelog et une politique de compatibilité. Le catalogue distingue officiel, tiers et privé, ainsi que l'état de maintenance. Les dépôts et paquets privés conservent leurs contrôles d'accès.
 
 Le paquet est vérifié avec ses dépendances transitives pour Workers et Sites. Les extensions incluses dans le Worker restent du code de confiance ; le manifeste de permissions n'isole pas du code malveillant. L'intégrité et, lorsque disponible, la [provenance npm](https://docs.npmjs.com/trusted-publishers/) complètent la revue sans la remplacer. Aucun mécanisme d'exécution arbitraire de code non approuvé n'est implicite.
 
-L'ouverture publique, les composants concernés et leur licence nécessitent une décision préalable. Le présent plan n'autorise ni publication d'un dépôt privé, ni création de comptes, ni changement d'offre commerciale.
+L'ouverture publique et open source du cœur, du SDK et du starter est actée. Choisir leur licence avant de les distribuer comme tels ; ce choix reste à trancher. Cette ouverture ne rend publics ni les applications privées indépendantes, ni leurs extensions, secrets ou données, et n'implique aucun changement d'offre commerciale.
 
 ## Preuves de réussite
 
@@ -117,3 +121,4 @@ L'ouverture publique, les composants concernés et leur licence nécessitent une
 5. Une extension incompatible ou d'origine inattendue est refusée avant publication.
 6. Changer ou mettre à jour un thème préserve les personnalisations, conversations et opérations ; l'administration reste Creezio.
 7. Le SDK permet à un front distinct d'exercer une opération et un widget avec les droits de son utilisateur, sans importer l'administration.
+8. Sur Site privé, l'accès GPT seul ne donne aucun droit applicatif ; la connexion native est encore nécessaire. Sur Site public, le front et cette connexion fonctionnent sans compte GPT. Les mêmes droits Creezio sont appliqués dans les deux cas.

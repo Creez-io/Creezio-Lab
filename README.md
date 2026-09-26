@@ -10,7 +10,7 @@ Chaque application rassemble son administration et son front dans un seul projet
 
 ## Exigences acquises
 
-- Trois modes natifs : GPT Sites avec ses D1/R2 fournis, Docker autonome avec stockage D1/R2 local persistant, Docker utilisant les D1/R2 du compte Cloudflare de l'utilisateur. Voir [stockage et hébergement](docs/STOCKAGE-ET-HEBERGEMENT.md) pour les projets GitHub vérifiés et les critères de qualification.
+- GPT Sites avec ses D1/R2 natifs ; développement local Docker avec Miniflare/D1/R2 persistants ; publication de l'application complète sur le compte Cloudflare de l'utilisateur : Workers, front/back-office, D1 et R2. La production ne dépend plus du local. L'accès depuis Docker aux données Cloudflare reste aussi possible. Voir [stockage et hébergement](docs/STOCKAGE-ET-HEBERGEMENT.md).
 
 - Fournir les capacités du produit dans le socle ou dans des modules complets, selon leur rôle et leurs besoins d'exécution.
 - Concevoir le stockage pour D1 et R2. Meilisearch, Hermes, n8n et les services incompatibles avec le serverless deviennent des extensions optionnelles connectées à des services externes.
@@ -23,6 +23,7 @@ Chaque application rassemble son administration et son front dans un seul projet
 - Livrer des thèmes de front, dont un thème ChatGPT-like, sans modifier le back-office standardisé.
 - Sur GPT Sites, effectuer les mises à jour sur demande de l'utilisateur ou d'une tâche GPT planifiée, puis les vérifier. La publication n'est pas déclenchée depuis le back-office.
 - Sur Docker, permettre les mises à jour depuis le back-office via un module de livraison adapté à l'hébergement. Le socle serverless reste indépendant de Docker.
+- Depuis le développement local, fournir l'action Publier sur Cloudflare : configurer les accès, envoyer application/données/fichiers, vérifier la production. Les mises à jour suivantes conservent les données de production.
 - Garder le socle générique ; les règles de restaurants, points de vente ou autres métiers relèvent des extensions.
 
 ## Ordre de travail demandé

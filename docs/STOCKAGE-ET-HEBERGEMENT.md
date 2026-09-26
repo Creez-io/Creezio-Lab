@@ -1,81 +1,84 @@
-# Hébergement et stockage natifs Creezio
+# Développement local et publication de Creezio
 
-Vérification documentaire du 26 septembre 2026. Les trois modes ci-dessous sont des exigences du produit, pas des intégrations laissées à développer par chaque application. Aucun mode n'est encore validé par une exécution de Creezio-D1R2.
+Vérification documentaire du 26 septembre 2026. Ces parcours font partie du produit. La faisabilité des composants est documentée ; leur intégration dans Creezio reste à réaliser et tester.
 
-## Trois modes obligatoires
+## Parcours d'hébergement
 
-| Mode | Exécution | Données structurées | Fichiers | Configuration utilisateur |
-|---|---|---|---|---|
-| GPT Sites | Runtime du Site | Binding D1 fourni nativement par Sites | Binding R2 fourni nativement par Sites | Ressources rattachées au Site du compte Sites ; aucune clé Cloudflare personnelle nécessaire pour ce mode. |
-| Docker local | Runtime compatible dans le déploiement Docker | Implémentation locale compatible D1 | Implémentation locale compatible R2 | Installation autonome avec volumes persistants ; aucun compte ou accès Cloudflare nécessaire. |
-| Docker + Cloudflare | Application toujours dans Docker | D1 du compte Cloudflare de l'utilisateur | R2 du compte Cloudflare de l'utilisateur | Connexion Cloudflare guidée, accès serveur vérifiés, sélection des ressources et contrôle de compatibilité. |
+| Parcours | Application | Données et fichiers | Accès |
+|---|---|---|---|
+| GPT Sites | Runtime du Site, backend/back-office/front | D1 et R2 fournis nativement au Site | Compte Sites ; aucune clé Cloudflare personnelle nécessaire. |
+| Développement local Docker | Worker exécuté localement avec Miniflare/workerd | D1/R2 locaux persistants dans des volumes | Aucun compte Cloudflare nécessaire. Ce parcours sert au développement et aux tests. |
+| Production Cloudflare | Backend, API, back-office et front sur Workers avec Static Assets | D1 et R2 dans le compte Cloudflare choisi | Connexion Cloudflare guidée, jeton avec droits nécessaires et identifiant de compte. |
 
-Les modules, le chat, l'administration et le front conservent les mêmes contrats métier. Les différences de transport et de stockage sont encapsulées dans les adaptateurs natifs du produit. Le connecteur Cloudflare est fourni avec Creezio ; ce choix fondamental ne dépend pas de l'installation d'un module métier supplémentaire.
+Le parcours principal depuis Docker est **développer et tester localement, puis publier l'application entière avec ses données et ses fichiers sur Cloudflare**. La production ainsi publiée ne dépend plus du Docker local ; son arrêt ne doit pas interrompre le service.
 
-L'emplacement de l'application et celui des données sont indépendants. Passer d'une configuration à une autre n'est pas une promesse de copie automatique des données. Sélectionner une destination ne doit ni effacer les ressources de départ ni produire une synchronisation implicite. Le produit affiche clairement la destination active.
+L'accès depuis une application restant dans Docker à des D1/R2 Cloudflare demeure une possibilité distincte. Il ne constitue pas à lui seul le passage en production complet demandé et ne doit pas remplacer ce dernier dans la recette.
 
-## Projets GitHub vérifiés
+Le code métier, les modèles, les modules et les contrats restent communs. Les adaptateurs encapsulent les différences d'hébergement. Les clés et identités du compte de développement ne sont pas intégrées au code livré à chaque fork.
 
-### Cloudflare Workers SDK / Miniflare
+## Projets officiels et capacités vérifiées
 
-- Dépôt : [cloudflare/workers-sdk](https://github.com/cloudflare/workers-sdk).
-- Package actif : [packages/miniflare](https://github.com/cloudflare/workers-sdk/tree/main/packages/miniflare).
-- [Documentation du package](https://github.com/cloudflare/workers-sdk/blob/main/packages/miniflare/README.md).
+- [Miniflare dans cloudflare/workers-sdk](https://github.com/cloudflare/workers-sdk/tree/main/packages/miniflare) : exécution locale avec implémentations D1/R2 et persistance. Son rôle dans Creezio est le développement/test, conformément à la présentation officielle.
+- [cloudflare/workerd](https://github.com/cloudflare/workerd) : runtime JavaScript/Wasm des Workers utilisé notamment par Miniflare.
+- [Wrangler dans cloudflare/workers-sdk](https://github.com/cloudflare/workers-sdk/tree/main/packages/wrangler) : publication du Worker et gestion des ressources Cloudflare.
+- [cloudflare/vinext](https://github.com/cloudflare/vinext) : prise en charge des applications React avec API Next.js et intégration Workers ; [adaptateur Cloudflare](https://github.com/cloudflare/vinext/tree/main/packages/cloudflare).
 
-Miniflare exécute des Workers via workerd et fournit des implémentations locales des ressources D1/R2. Il permet de configurer les bindings et leur persistance. C'est le candidat officiel à qualifier pour fournir les interfaces de stockage locales de Creezio. Les ressources locales conservent réellement leurs données sur disque quand la persistance est configurée.
+Cloudflare documente l'hébergement d'applications full-stack : code serveur Worker et ressources statiques du front sont publiés ensemble. D1/R2 sont raccordés au Worker par bindings natifs. Une production entièrement sur Cloudflare n'a donc pas besoin d'une passerelle HTTP supplémentaire simplement pour accéder à ses propres D1/R2.
 
-Cloudflare le présente comme un simulateur destiné au développement et aux tests. Cela ne constitue pas une certification de notre futur usage durable dans Docker. Il faut vérifier l'assemblage, les versions et les comportements de stockage effectivement utilisés par Creezio.
+Sources : [Workers Static Assets](https://developers.cloudflare.com/workers/static-assets/), [applications full-stack](https://developers.cloudflare.com/workers/static-assets/routing/full-stack-application/), [Vinext](https://github.com/cloudflare/vinext).
 
-### Cloudflare workerd
+## Action « Publier sur Cloudflare » depuis l'environnement local
 
-- Dépôt : [cloudflare/workerd](https://github.com/cloudflare/workerd).
-- [README et exécution en production](https://github.com/cloudflare/workerd/blob/main/README.md).
+Le back-office local propose un parcours guidé, traité par un exécuteur local de livraison. Il ne demande pas au développeur de recoder le déploiement dans chaque fork.
 
-Runtime JavaScript/Wasm open source des Workers, documenté notamment pour l'auto-hébergement. Il peut exécuter le code Worker de l'application. Il ne suffit pas à lui seul à reproduire toute la plateforme D1/R2 gérée par Cloudflare : il faut aussi fournir les bindings de stockage et leur persistance.
+1. **Connecter le compte.** Renseigner un jeton Cloudflare adapté et choisir le compte cible. Vérifier les droits nécessaires à Workers, D1 et R2 ; ajouter ceux du domaine seulement si cette option est choisie. Les droits utiles à la création de ressources ne sont pas déduits de la seule présence d'une clé.
+2. **Préparer la destination.** Définir l'identité de l'application et ses ressources propres ; afficher la destination et ce qui sera créé/utilisé. Un fork reçoit ses propres identifiants. Ne pas écraser une installation existante en réutilisant silencieusement un nom.
+3. **Préparer une copie cohérente.** Stabiliser les écritures locales pendant la capture des données et fichiers. Inventorier les ressources, objets, tailles et empreintes ; conserver une trace de progression pour reprendre un transfert interrompu.
+4. **Construire l'application.** Produire le Worker et les ressources du front/back-office depuis une révision précise et vérifier le build. Docker et les outils locaux ne sont pas envoyés comme runtime de production.
+5. **Transférer D1.** Exporter les modèles et données de l'installation locale Creezio, puis les importer dans une base cible neuve prévue pour cette publication. Les commandes D1 officielles permettent l'export local et l'exécution/import distant. Vérifier relations, volumes et contenu ; adapter le découpage aux limites documentées.
+6. **Transférer R2.** Lire les objets via les interfaces de stockage, envoyer les fichiers dans le bucket cible et conserver clés, métadonnées et références D1. Vérifier tailles et empreintes. Ne pas copier directement le répertoire interne Miniflare en supposant qu'il constitue un bucket Cloudflare.
+7. **Configurer et publier.** Raccorder les bindings D1/R2 et les secrets de production, configurer l'authentification hors Sites, publier le Worker et ses assets. Démarrer sur une URL workers.dev, puis un domaine personnalisé si demandé.
+8. **Vérifier la production.** Connexion, droits, onglets, chat, modules, lecture/écriture D1 et accès R2. Présenter l'URL, la version et le résultat. Arrêter le runtime local de test pour prouver l'indépendance de la production.
 
-### Conclusion de choix
+L'application reste protégée pendant la préparation ; le compte rendu ne déclare pas une publication réussie tant que les vérifications finales ne passent pas. Un échec conserve les données locales et l'état du transfert pour reprendre sans dupliquer les ressources ni effacer la destination.
 
-Piste prioritaire : application Worker avec workerd et implémentations locales officielles issues de Miniflare, intégrées dans une distribution Docker maîtrisée. Aucune bifurcation des modèles métier et aucun service Cloudflare obligatoire en mode local. Le choix d'assemblage définitif sera fixé après qualification ; ne pas remplacer ce jalon par le seul constat que `wrangler dev` démarre.
+Ce mécanisme copie une installation Creezio vers son hébergement de production. Il ne transforme pas un autre modèle de données et n'ajoute aucun script de transformation entre versions dans les modules.
 
-Les garanties du service Cloudflare géré, comme la réplication de son infrastructure, ne sont pas implicitement disponibles sur un disque Docker local.
+## Première publication et mises à jour
 
-## Connexion Docker au Cloudflare de l'utilisateur
+La première publication comprend explicitement application, données et fichiers de cette installation. Une publication de code seule ne copie pas automatiquement le contenu D1/R2 : le parcours Creezio doit orchestrer ces opérations séparées.
 
-Le parcours produit est : choisir Cloudflare, fournir les accès nécessaires, sélectionner ou créer les ressources autorisées, vérifier la connexion, puis utiliser les mêmes fonctions Creezio. Aucun ajout de routes ou de SDK dans le code de l'application cliente.
+Une fois la production utilisée, elle devient la référence pour ses données. Une mise à jour de code conserve les données de production et ne réimporte pas aveuglément le jeu local de développement. Les personnalisations du fork, la configuration et les accès restent propres à l'application. Toute incompatibilité détectée bloque la mise à jour automatique.
 
-Le formulaire doit guider l'utilisateur selon les accès réellement requis, sans promettre qu'une clé quelconque suffit : compte et droits Cloudflare, base D1, bucket R2 et authentification des accès aux données. Les secrets restent côté serveur et les accès peuvent être limités aux ressources choisies.
+Les commandes de déploiement s'exécutent dans l'environnement local ou un exécuteur explicitement configuré. Le Worker hébergé ne reçoit pas une chaîne de compilation ni un droit général d'auto-publication. Aucun pont de publication depuis le back-office GPT Sites n'est requis : Sites conserve le parcours demande utilisateur/tâche GPT, publication puis vérification.
 
-### D1 distant depuis Docker
+Si l'application est conservée dans un hébergement Docker, le déclenchement de sa mise à jour depuis le back-office reste pris en charge par l'exécuteur de cet hébergement. Miniflare local n'est pas présenté comme sa distribution de production.
 
-L'API REST D1 existe, mais Cloudflare la recommande surtout pour l'administration à cause de sa limite d'appels globale. Pour les opérations applicatives, sa documentation propose une API Worker authentifiée devant D1. Le connecteur natif Creezio devra fournir et configurer ce chemin d'accès, avec les autorisations nécessaires, ou démontrer une autre solution durable adaptée. Une telle passerelle transporte l'accès aux données ; elle ne déplace pas le front ou le back-office hors de Docker et ne crée pas une application par client.
+## Connexion à des données Cloudflare depuis Docker
 
-L'utilisateur doit connaître les ressources qui seront créées dans son compte. La configuration est gérée par Creezio, pas par un développement spécifique demandé au client. La gestion initiale des ressources et le trafic applicatif restent séparés ; ne pas conserver un jeton d'administration globale pour chaque requête métier si un accès limité suffit.
+Cette variante utilise les mêmes modèles et opérations, mais un transport différent des bindings Worker natifs :
 
-Source : [Accéder à D1 depuis une application externe](https://developers.cloudflare.com/d1/tutorials/build-an-api-to-access-d1/).
+- **D1** : la documentation recommande une API Worker authentifiée pour un trafic applicatif externe ; l'API REST Cloudflare convient surtout à l'administration. Le connecteur Creezio prend en charge le raccordement, sans intégration métier à refaire.
+- **R2** : API compatible S3, endpoint du compte et identifiants adaptés ; configuration guidée et secrets côté serveur.
 
-### R2 distant depuis Docker
+Sources : [D1 depuis une application externe](https://developers.cloudflare.com/d1/tutorials/build-an-api-to-access-d1/), [API R2](https://developers.cloudflare.com/r2/api/), [authentification R2](https://developers.cloudflare.com/r2/api/tokens/).
 
-R2 propose une API compatible S3 utilisable depuis une application externe. Le connecteur prend en charge l'endpoint, le bucket, les accès et la correspondance des opérations prises en charge par Creezio. L'authentification S3 emploie un Access Key ID et un Secret Access Key ; ces paramètres doivent être obtenus ou configurés selon les droits disponibles. Ne pas confondre automatiquement ces identifiants avec n'importe quel jeton de l'API Cloudflare.
+## Recette requise
 
-Sources : [API R2](https://developers.cloudflare.com/r2/api/), [authentification R2](https://developers.cloudflare.com/r2/api/tokens/).
+- GPT Sites original et véritable fork : démarrage, D1/R2 natifs, interfaces et mise à jour via GPT toujours requis.
+- Local : démarrage sans clé Cloudflare, données persistantes après redémarrage du conteneur et fonctions métier identiques.
+- Cloudflare direct : application originale puis fork publiables avec identités propres ; backend, back-office et front réellement servis par Workers.
+- Passage local → Cloudflare : données, relations, fichiers et métadonnées vérifiés, accès de production configurés ; interruption/reprise contrôlée et aucune altération de l'installation locale.
+- Indépendance : production fonctionnelle après arrêt de Docker local.
+- Mise à jour : créer aussi des données directement en production, publier une évolution du code, vérifier qu'elles sont conservées ainsi que les personnalisations du fork.
+- Sécurité fonctionnelle : clés invalides, permissions insuffisantes, ressources déjà existantes, URLs de fichiers privées et absence de fuite interapplications.
 
-## Qualification requise avant généralisation du socle
+## Sources de transfert et publication
 
-1. Une même version des modèles et opérations crée puis relit données et fichiers sur les trois modes.
-2. Docker local démarre sans identifiants Cloudflare ; une fois l'image disponible, ses fonctions de stockage local ne nécessitent pas de réseau. Les modules de fournisseurs externes conservent naturellement leurs propres besoins réseau.
-3. Redémarrer et recréer le conteneur sans supprimer ses volumes conserve D1, R2 et leurs liens. Les données ne sont jamais stockées uniquement dans la couche éphémère de l'image.
-4. Vérifier écritures concurrentes, limites de requêtes, batch, relations, pagination, métadonnées et opérations fichiers utilisées par Creezio. Ne pas annoncer une équivalence complète sur des fonctions non testées.
-5. Vérifier arrêt brutal, intégrité au redémarrage, sauvegarde cohérente des métadonnées/fichiers et restauration sur un volume de test.
-6. Tester la connexion au Cloudflare d'un compte autorisé : accès valide, accès révoqué, droits insuffisants, ressource indisponible et absence de repli silencieux vers une autre base.
-7. Les mêmes droits, contextes et refus doivent fonctionner sur Sites, Docker local et Docker distant.
-8. Une mise à jour conserve le stockage configuré et les données. Elle est demandée dans GPT sur Sites, et déclenchable dans le back-office pour Docker.
+- [Déploiement full-stack](https://developers.cloudflare.com/workers/static-assets/get-started/) : code Worker, assets et URL de publication.
+- [Commandes D1](https://developers.cloudflare.com/d1/wrangler-commands/) : export local, import/exécution distant et destination de persistance locale.
+- [Import/export D1](https://developers.cloudflare.com/d1/best-practices/import-export-data/) : modalités et limites de copie des données.
+- [Commandes R2](https://developers.cloudflare.com/r2/reference/wrangler-commands/) : lecture/écriture des objets locaux et distants.
+- [Données locales](https://developers.cloudflare.com/workers/local-development/local-data/) : persistance des ressources de développement.
 
-Les modèles décrivent directement les données actuelles. L'initialisation d'une nouvelle installation ne constitue pas une conversion de bases. Les modules ne contiennent pas de scripts de transformation entre versions de bases.
-
-## Autres sources de vérification
-
-- [Développement local D1](https://developers.cloudflare.com/d1/best-practices/local-development/) : prise en charge locale par l'outillage officiel.
-- [Ressources locales et persistance](https://developers.cloudflare.com/workers/local-development/local-data/) : ressources D1/R2 locales et stockage sur disque.
-- [Runtime et bindings locaux/distants](https://developers.cloudflare.com/workers/local-development/) : distinguer lieu d'exécution et lieu de stockage. Les bindings distants de développement ne sont pas, à eux seuls, la preuve d'un connecteur Docker de production.
-
-Cette vérification porte sur les sources et les capacités documentées. Elle ne remplace pas les tests de la distribution Docker, du compte Cloudflare et des deux Sites exigés pour la recette du produit.
+État : vérification documentaire uniquement. Aucun déploiement, transfert de données ou accès Cloudflare créé au titre de ce document.

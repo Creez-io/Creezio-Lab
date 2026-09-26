@@ -13,6 +13,8 @@ La preuve finale comprend deux nouveaux GPT Sites réellement utilisables :
 
 Un seul déploiement applicatif par application, quel que soit le nombre de ses utilisateurs ou espaces de données. Les extensions déterminent les règles métier. La démonstration précède la construction d'applications métier supplémentaires.
 
+Le produit doit également permettre de **développer en Docker avec Miniflare, puis publier Creezio ou son fork entièrement sur le compte Cloudflare de l'utilisateur** : backend/API/back-office/front sur Workers avec Static Assets, bases D1 et fichiers R2 distants. Le local est un environnement de développement/test ; la production Cloudflare ne dépend plus de lui. Ce parcours complète la validation obligatoire sur deux GPT Sites.
+
 **Invariants d'interface :** préserver toutes les fonctionnalités et interactions de l'administration Creezio, notamment son workspace à onglets et son chat standard. Les applications clientes ne recodent pas leur chat métier dans l'administration. Leur liberté de design et les thèmes concernent le front applicatif.
 
 ## 2. Frontière entre socle et extensions
@@ -78,6 +80,7 @@ application/extensions/    Extensions propres à l'application
 application/config/        Choix, branding du front, composition de l'application
 adapters/sites/            Auth, bindings D1/R2 et conventions GPT Sites
 adapters/docker/           Runtime autonome et cycle de vie du déploiement
+adapters/cloudflare/       Worker, assets, bindings et publication directe
 adapters/storage/          Sites natif, D1/R2 locaux, compte Cloudflare distant
 data/                      Modèles actuels, initialisation et accès D1/R2
 scripts/                   Setup, validation, build, publication et mise à jour
@@ -102,13 +105,15 @@ Les nouveaux Sites commencent privés. L'accès public, un domaine ou l'ajout d'
 
 ### D1/R2 natifs
 
-Trois modes de base sont obligatoires : **GPT Sites avec les bindings D1/R2 du Site**, **Docker autonome avec D1/R2 locaux persistants**, et **Docker connecté aux D1/R2 du compte Cloudflare de l'utilisateur**. Le choix est configuré dans Creezio ; les modules ne réimplémentent pas ces transports. Le [dossier de stockage et hébergement](STOCKAGE-ET-HEBERGEMENT.md) présente les projets officiels Miniflare/workerd, les accès distants et la qualification nécessaire. Leur fonctionnement local est documenté ; la distribution Docker Creezio reste à tester avant de la déclarer opérationnelle.
+Les parcours de base sont **GPT Sites avec ses D1/R2 natifs**, **développement local Docker avec Miniflare et D1/R2 locaux persistants**, puis **publication de l'application complète avec ses données/fichiers sur Cloudflare**. L'application restant dans Docker peut également se connecter aux ressources Cloudflare ; cette variante ne remplace pas la publication complète. Les modules ne réimplémentent pas ces transports. Le [dossier de stockage et hébergement](STOCKAGE-ET-HEBERGEMENT.md) détaille Miniflare, workerd, Wrangler, Vinext et les étapes de transfert/publication. Miniflare sert au développement/test ; aucune certification de son usage en production n'est recherchée.
 
 Concevoir les modèles pour D1 dès l'origine : tables, relations, contraintes, index SQL, pagination, requêtes préparées et mutations bornées. Utiliser JSON pour les champs réellement structurés, sans convertir toute l'application en documents opaques. R2 conserve les fichiers ; D1 conserve leurs métadonnées, propriétaires et autorisations.
 
 Chaque opération reçoit un contexte serveur obligatoire : utilisateur, permissions, application et espace de données résolu. Aucun identifiant fourni par le front ne suffit à choisir une base ou à obtenir un droit. Aucun binding mutable global ne doit laisser passer une requête dans l'espace d'une autre.
 
 Sur GPT Sites, le cas de départ utilise les bindings D1/R2 fournis nativement au Site ; aucune clé Cloudflare personnelle n'est nécessaire. Sur Docker, le stockage local doit être disponible sans compte Cloudflare, avec volumes persistants ; l'utilisateur peut choisir ses ressources Cloudflare via la connexion native fournie. Le contrat permet également des espaces physiquement distincts. La capacité de GPT Sites à exposer plusieurs ressources devra être vérifiée séparément. Si un accès distant requiert une API HTTPS dédiée, l'adaptateur natif s'en charge ; aucun développement spécifique n'est demandé à l'application cliente. Un simple filtre `tenant_id` ne vaut pas preuve d'isolation physique. Aucun de ces choix ne multiplie les déploiements applicatifs par client.
+
+En production entièrement sur Cloudflare, l'application Worker utilise directement ses bindings D1/R2. La première publication copie de façon contrôlée les données et fichiers locaux de cette installation vers ses ressources de production. Les publications suivantes conservent les données de production ; elles ne réimportent pas automatiquement le jeu de développement. Cette copie à modèles identiques est une opération de livraison, pas un script de transformation de base dans un module.
 
 Le projet définit directement ses modèles actuels et initialise une base neuve. Un module décrit les entités et relations dont il a besoin ; il ne fournit pas de chaîne de transformations entre versions de bases. L'installation prépare les structures nécessaires sans effacer les données présentes. La mise à jour vérifie la compatibilité du code avec les données : elle ne réinitialise pas une base existante et bloque une évolution incompatible plutôt que d'altérer silencieusement les données. Le traitement d'une future évolution incompatible devra être conçu explicitement si ce besoin apparaît.
 
@@ -196,6 +201,8 @@ Le back-office affiche la version et les informations utiles. Il ne déclenche p
 
 ### Docker : déclenchement depuis le back-office
 
+Le back-office local doit proposer **Publier sur Cloudflare** : connecter le compte avec les droits nécessaires, préparer les ressources de l'application, construire Worker/assets, transférer D1/R2, raccorder bindings/secrets et auth, publier puis vérifier. L'exécuteur local orchestre ces opérations ; un simple `wrangler deploy` ne copie pas le contenu local des bases et buckets. Tester interruption/reprise et production fonctionnelle après arrêt du local. Le parcours détaillé et les sources officielles sont dans le [dossier d'hébergement](STOCKAGE-ET-HEBERGEMENT.md).
+
 Un module de livraison permet à l'administrateur de demander la mise à jour. Un exécuteur d'hébergement limité à cette application prépare et teste la version, construit ou récupère l'image, contrôle les personnalisations, remplace le déploiement et vérifie son état. Le back-office suit l'opération et son résultat ; le runtime applicatif ne reçoit pas un accès Docker général.
 
 Tester la reprise après échec et le retour à une image compatible. Les secrets et les ressources D1/R2 restent séparés de l'image. Le retour au code précédent ne doit pas être présenté comme une restauration des données. Les sauvegardes et leur restauration sont vérifiées séparément.
@@ -204,13 +211,13 @@ Tester la reprise après échec et le retour à une image compatible. Les secret
 
 | Lot | Travail | Preuve nécessaire avant la suite |
 |---|---|---|
-| 0 — Spécification et contraintes | Détailler les capacités en comportements, routes, modèles et tests ; définir les interactions onglets/chat/panneaux/états ; qualifier les trois modes de stockage, Miniflare/workerd pour Docker local, accès Cloudflare distant, runtime/auth Sites, ressources multiples, déclencheurs et destination du fork privé. | Spécification et grille fonctionnelle complètes. Preuve technique initiale de persistance dans chaque mode avant généralisation du socle. Les points bloquants ont une solution vérifiée ou sont signalés comme non résolus. |
+| 0 — Spécification et contraintes | Détailler capacités et interactions ; vérifier Miniflare pour le développement local, builds Sites/Workers, bindings et transfert D1/R2, auth par hébergement, ressources multiples et destination du fork privé. | Spécification et grille complètes. Preuve initiale de démarrage/persistance sur les cibles ; chemin local → Cloudflare vérifié avant généralisation. Les points non résolus restent explicites. |
 | 1 — Socle démarrable | Structure du dépôt, runtime serverless, build, configuration, assistant initial, D1/R2 et premier back-office. | Premier Site A : démarrage depuis le dépôt, donnée créée puis relue après nouvelle session, fichier R2 relu avec droits. Aucune dépendance Meili/Hermes/n8n/Docker. Réutiliser ensuite ce Site. |
 | 2 — Sécurité et opérations | Identités, rôles, contextes de données, modèles et initialisation, registre d'opérations, audit, API et MCP. | Même opération et mêmes permissions depuis les différents canaux ; refus prouvés, absence de fuite entre contextes, installation sur base neuve et conservation des données après republication. |
 | 3 — Contrats d'extensions | Manifestes, validation, SDK, cycle de vie, événements, projections, configuration et diagnostics. | Extension minimale installée, versionnée et désactivée sans perte de données ; incompatibilité bloquée ; code optionnel absent du socle minimal. |
 | 4 — Interfaces et chat | Construire le back-office Creezio et son workspace/chat complets ; front remplaçable, thèmes standard et ChatGPT-like, composants réutilisables, conversations, fournisseur IA et widgets. | Toutes les interactions administratives spécifiées vérifiées ; thème du front interchangeable sans modification de l'admin ; utilisateur applicatif exclu de l'administration ; widget réel lisant/modifiant un objet avec trace serveur ; conversation persistante et réouverture cohérente. |
 | 5 — Capacités et extensions communes | Construire les fonctions par groupes : données/configuration ; productivité/chat ; connecteurs/agents ; exploitation/développement externe. Construire n8n et Stripe comme deux modules de référence prêts à configurer, puis Meili et les autres modules selon la matrice. | Installation + accès fournisseur suffisent pour obtenir les API, MCP, événements et widgets prévus, sans intégration spécifique dans l'app. Chaque ligne de la matrice dispose d'une preuve ou d'une dépendance externe précisément identifiée. Aucun composant incompatible ne rentre dans le bundle du socle. Les fonctions annoncées opérationnelles sont testées réellement. |
-| 6 — Distribution et mises à jour | Manifeste de release, protection du front/extensions/données. Parcours GPT pour Sites ; adaptateur Docker et module de livraison déclenchable depuis le back-office. | Mise à jour sur Site A demandée dans GPT puis vérifiée. Recette Docker distincte : déclenchement admin, état final, échec récupérable et retour à une image compatible. Conflits bloqués sans écrasement et restauration testée. |
+| 6 — Distribution et mises à jour | Manifeste de release et protection front/extensions/données. Parcours GPT pour Sites. Depuis Docker local : publication Workers + assets + D1/R2, puis mise à jour du code conservant les données de production. Livraison de l'hébergement Docker si utilisé. | Site A mis à jour dans GPT. Recette Cloudflare direct : données/fichiers copiés, application indépendante du local, interruption/reprise et données créées en production conservées après mise à jour. Recette Docker distincte pour son propre déploiement. |
 | 7 — Release et véritable fork | Stabiliser l'original, publier une release, créer le fork Creezio Lab et enregistrer Site B ; personnaliser le front et développer l'extension « demandes ». | Deux URLs actives, filiation GitHub vérifiée, persistance et identités de déploiement indépendantes ; démarrage du fork par le parcours standard. |
 | 8 — Recette comparative | Nouvelle release sur A, demande de mise à jour de B dans GPT, publication et vérifications ci-dessous. | Socle de B actualisé ; front, extension, modèles propres et données préservés ; compte rendu avec versions et preuves. |
 | 9 — Validation utilisateur | Présenter les deux Sites et la démonstration reproductible, ainsi que la recette du parcours Docker. | Validation avant la construction d'autres applications métier. |
@@ -236,6 +243,7 @@ Cette application prouve simultanément : ajout d'une extension cliente, réutil
 | Thèmes et chats | Passer du thème standard au thème ChatGPT-like, conserver conversations et droits ; les personnalisations du chat client ne modifient pas le chat Creezio de l'administration. |
 | Persistance | Données et fichiers demeurent après rafraîchissement, nouvelle session et nouvelle publication ; sauvegarde/restauration éprouvée sur données de test. |
 | Docker local autonome | Sans compte Cloudflare : initialisation, lecture/écriture, fichiers, arrêt/redémarrage et recréation du conteneur conservant ses volumes ; intégrité et restauration testées. |
+| Production Cloudflare complète | Depuis le local, publier original et fork avec identités propres : Worker, front/back-office, D1 et R2. Vérifier contenu transféré, droits, URL de production, indépendance du local et conservation des données de production lors de la mise à jour suivante. |
 | Docker avec Cloudflare | Connexion guidée, sélection des ressources, mêmes opérations et droits ; données réellement dans le compte choisi ; erreur explicite si accès révoqué, sans repli sur une autre base. |
 | Isolation entre A et B | Ressources de données, accès, secrets et fichiers indépendants ; mêmes identifiants d'objets dans les deux Sites sans fuite. |
 | Espaces isolés dans une application | Une extension utilise deux ressources réellement distinctes si cette capacité est déclarée validée ; les deux Sites seuls ne prouvent pas ce scénario. Aucune substitution par simple partition logique. |
@@ -257,7 +265,7 @@ Pour chaque preuve : URL, versions, SHA, date, acteur, données de test, résult
 - Identité administrateur et, pour la recette de séparation des rôles hébergée, seconde identité de test autorisée.
 - Secrets de test pour les extensions effectivement démontrées : IA, Meili ou autres fournisseurs. Ne pas réutiliser implicitement des secrets de production.
 - Possibilité d'accès à plusieurs ressources D1/R2 ; environnement Docker de test pour son parcours de mise à jour. Une limitation reste visible tant qu'elle n'est pas résolue.
-- Compte Cloudflare et accès de test autorisés pour la recette Docker distant ; Docker local doit fonctionner sans ces accès. Qualification des versions de Miniflare/workerd et des volumes persistants avant usage durable.
+- Compte Cloudflare et accès de test autorisés pour publier Workers/assets et ressources D1/R2, vérifier le transfert et l'indépendance de la production. Docker local avec Miniflare doit fonctionner pour le développement sans ces accès.
 
 Ces points ne demandent pas de redéfinir le métier des applications. L'absence d'un secret d'extension ne bloque pas le développement du socle ; elle empêche de déclarer cette intégration validée en conditions réelles.
 

@@ -8,6 +8,7 @@ Spécification du produit, proposée avant implémentation. Chaque capacité doi
 |---|---|---|
 | Installation | Configuration initiale, identité administrateur, modèles actuels et initialisation D1/R2. | Démarrage sur une base neuve depuis le dépôt ; republication sans perte de données. |
 | Modes de stockage natifs | Sites : bindings fournis. Docker : D1/R2 locaux persistants sans compte Cloudflare, ou connexion au compte Cloudflare de l'utilisateur. | Même logique métier dans les trois modes ; volumes locaux résistant aux redémarrages et accès distants vérifiés. Voir [stockage et hébergement](STOCKAGE-ET-HEBERGEMENT.md). |
+| Production Cloudflare | Depuis le local dev/test Miniflare, publier backend/API/back-office/front sur Workers avec assets, données sur D1 et fichiers sur R2. | Original et fork publiables avec identités propres, copie du contenu vérifiée, production fonctionnelle après arrêt du local ; mises à jour conservant les données de production. |
 | Identités et accès | Sessions, comptes, rôles, permissions, séparation administration/application. | Refus cohérents depuis UI, API, MCP et widgets ; identité administrateur explicitement autorisée. |
 | Opérations | Entrées/sorties typées, validation, autorisations, idempotence, erreurs et audit. | Une même opération est utilisée par les différents canaux sans duplication métier. |
 | Données | Entités, relations, index, vues, CRUD autorisé, export et contexte de données obligatoire. | Isolation des espaces, validation serveur, pagination et absence de contournement via l'administration des données. |
@@ -79,6 +80,7 @@ Les modèles décrivent les données actuelles du produit. L'installation initia
 |---|---|---|
 | GPT Sites | Demande de l'utilisateur dans GPT, ou tâche GPT explicitement planifiée. Préparation, publication puis vérification dans ce parcours. | Deux Sites : original puis véritable fork ; mise à jour du fork préservant son front, ses modules et ses données. Aucun bouton de publication Sites dans Creezio. |
 | Docker | Demande dans le back-office, traitée par le module de livraison et un exécuteur limité à l'application. | Déploiement effectif, contrôle de santé, conservation des personnalisations et procédure de reprise vérifiée. |
+| Cloudflare direct | Demande depuis le back-office local, exécution de la publication complète par l'outillage local et vérification de l'URL distante. | Worker/assets, D1/R2 transférés, accès vérifiés, production indépendante de Miniflare ; reprise après interruption. |
 
 Aucune tâche GPT n'est créée par cette spécification. Les versions, accès et identités de déploiement restent propres à chaque application.
 

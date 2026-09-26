@@ -16,6 +16,10 @@ L'accès depuis une application restant dans Docker à des D1/R2 Cloudflare deme
 
 Le code métier, les modèles, les modules et les contrats restent communs. Les adaptateurs encapsulent les différences d'hébergement. Les clés et identités du compte de développement ne sont pas intégrées au code livré à chaque fork.
 
+Les profils de build Sites et Cloudflare direct partagent une source et un lockfile, mais possèdent leurs propres conventions de packaging, authentification, ressources et déclencheurs. La présence de D1/R2 sur les deux plateformes ne prouve pas l'équivalence de ces capacités. Qualifier une tranche fonctionnelle sur chaque cible avant de développer toutes les interfaces.
+
+Les services tiers connectés par plugins, notamment n8n/Hermes/Meili, ne font pas partie des ressources à déployer. Creezio ne gère ni leur hébergement ni leur maintenance ; le compte utilisateur fournit les accès à un service existant.
+
 ## Projets officiels et capacités vérifiées
 
 - [Miniflare dans cloudflare/workers-sdk](https://github.com/cloudflare/workers-sdk/tree/main/packages/miniflare) : exécution locale avec implémentations D1/R2 et persistance. Son rôle dans Creezio est le développement/test, conformément à la présentation officielle.
@@ -42,6 +46,16 @@ Le back-office local propose un parcours guidé, traité par un exécuteur local
 
 L'application reste protégée pendant la préparation ; le compte rendu ne déclare pas une publication réussie tant que les vérifications finales ne passent pas. Un échec conserve les données locales et l'état du transfert pour reprendre sans dupliquer les ressources ni effacer la destination.
 
+### Données, identités et secrets à transférer
+
+Le manifeste de publication distingue données applicatives, fichiers, paramètres et états transitoires. Préserver les identifiants internes et les relations ; exclure sessions actives, codes OAuth, consentements/jetons liés à un environnement, travaux de démonstration et exécutions en cours non transférables. Une copie SQL brute de toutes les tables n'est pas une politique suffisante. La recette vérifie chaque catégorie exclue ou transférée.
+
+Les utilisateurs gardent leur identité interne ; le raccordement au fournisseur d'authentification de production est explicite. Ne pas rattacher automatiquement des comptes par adresse email ni accepter en production des en-têtes d'identité de développement. L'administrateur de production utilise un parcours d'activation contrôlé ; aucune identité de démonstration ne devient propriétaire par défaut.
+
+Le coffre peut contenir des secrets chiffrés avec une clé locale : copier seulement ses lignes ne suffit pas. Prévoir sélection des connexions à transférer et rechiffrement avec une clé propre à la destination, ou saisie guidée des accès de production. Ne pas copier indistinctement les accès de test. Les clés de chiffrement restent hors du dump applicatif. Les accès Cloudflare permettant de publier restent dans l'exécuteur local et ne deviennent pas des secrets utilisables par le Worker de l'application.
+
+Le transfert R2 vérifie clé, taille, empreinte du contenu et métadonnées ; un ETag n'est pas supposé être universellement une empreinte du contenu. Le journal de reprise identifie source, destination et capture cohérente. Une ressource cible non vide inattendue provoque un arrêt explicite ; reprendre n'autorise pas à remplacer ses données. La gestion des échecs entre D1, R2, secrets et code n'est pas une transaction unique.
+
 Ce mécanisme copie une installation Creezio vers son hébergement de production. Il ne transforme pas un autre modèle de données et n'ajoute aucun script de transformation entre versions dans les modules.
 
 ## Première publication et mises à jour
@@ -49,6 +63,8 @@ Ce mécanisme copie une installation Creezio vers son hébergement de production
 La première publication comprend explicitement application, données et fichiers de cette installation. Une publication de code seule ne copie pas automatiquement le contenu D1/R2 : le parcours Creezio doit orchestrer ces opérations séparées.
 
 Une fois la production utilisée, elle devient la référence pour ses données. Une mise à jour de code conserve les données de production et ne réimporte pas aveuglément le jeu local de développement. Les personnalisations du fork, la configuration et les accès restent propres à l'application. Toute incompatibilité détectée bloque la mise à jour automatique.
+
+Mettre à jour une seule extension change sa résolution et ses dépendances nécessaires, puis republie l'application complète. Cela ne remet pas les données à zéro et ne met pas à jour les services tiers. Le starter d'extension suit le même parcours pour sa démo ; le paquet distribuable reste distinct de cette installation.
 
 Les commandes de déploiement s'exécutent dans l'environnement local ou un exécuteur explicitement configuré. Le Worker hébergé ne reçoit pas une chaîne de compilation ni un droit général d'auto-publication. Aucun pont de publication depuis le back-office GPT Sites n'est requis : Sites conserve le parcours demande utilisateur/tâche GPT, publication puis vérification.
 
@@ -72,6 +88,17 @@ Sources : [D1 depuis une application externe](https://developers.cloudflare.com/
 - Indépendance : production fonctionnelle après arrêt de Docker local.
 - Mise à jour : créer aussi des données directement en production, publier une évolution du code, vérifier qu'elles sont conservées ainsi que les personnalisations du fork.
 - Sécurité fonctionnelle : clés invalides, permissions insuffisantes, ressources déjà existantes, URLs de fichiers privées et absence de fuite interapplications.
+- Identités/secrets : connexion après publication avec le fournisseur de production, sessions locales inutilisables, coffre lisible avec la clé de destination et absence d'accès de publication dans le Worker.
+
+## Capacités Sites restant à qualifier
+
+- Plusieurs D1/R2 physiquement distincts pour un même Site, au-delà du couple natif fourni au démarrage.
+- Accès machine aux webhooks et endpoints MCP d'un Site privé, sans session ChatGPT dans le navigateur.
+- Déclencheurs durables disponibles pour tâches, indexation et boîte d'envoi lorsque l'utilisateur ferme son navigateur.
+- Authentification des utilisateurs du front, distincte de l'administration et compatible avec les règles d'accès de Sites.
+- Matérialisation et évolution des modèles : le workflow Sites documenté attend du SQL généré et enregistré avec la source. L'acceptation de ces artefacts centralisés doit être tranchée avant l'implémentation ; aucun script SQL de transformation n'est confié aux modules.
+
+Ces inconnues donnent lieu à des prototypes et résultats mesurés, pas à des fonctionnalités présumées disponibles. Les identifiants de déploiement ne sont jamais codés dans le starter générique.
 
 ## Sources de transfert et publication
 

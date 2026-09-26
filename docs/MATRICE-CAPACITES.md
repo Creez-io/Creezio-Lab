@@ -85,7 +85,7 @@ Ces capacités sont fournies d'origine et peuvent être organisées en modules n
 
 Chaque extension fournit les modèles utiles, ses opérations, API/MCP, droits, événements, écrans, widgets et diagnostics selon son périmètre. Les accès sont configurés côté serveur. Le service externe reste indépendant du runtime Creezio. Les fonctions natives décrites plus haut restent présentes même si un fournisseur n'est pas configuré.
 
-Les services tiers sont obtenus et administrés hors de Creezio. Les plugins n8n/Hermes/Meili ne fournissent aucun hébergement, installateur, mise à jour ou gestion de sauvegarde de ces applications : ils reçoivent les accès d'un service existant. Leur propre mise à jour concerne uniquement l'intégration Creezio.
+Les services tiers sont obtenus et administrés hors de Creezio. Les modules n8n/Hermes/Meili ne fournissent aucun hébergement, installateur, mise à jour ou gestion de sauvegarde de ces applications : ils reçoivent les accès d'un service existant. Leur propre mise à jour concerne uniquement l'intégration Creezio.
 
 | Module | Fonctions livrées | Validation réelle |
 |---|---|---|
@@ -108,6 +108,8 @@ Les services tiers sont obtenus et administrés hors de Creezio. Les plugins n8n
 
 ## Communauté et développement d'extensions
 
+Chaque extension est un module complet avec données, API, logique et relations intermodules. Sa partie plugin conversationnel adopte le format standard GPT même sans publication dans ChatGPT. Le chat Creezio héberge plusieurs de ces plugins. Chaque application sépare son MCP d'administration du MCP destiné aux utilisateurs du front, avec outils, ressources, skills et politiques distincts dans le même déploiement. Vérifier les deux catalogues, le refus d'accès administratif depuis le front, les widgets de plusieurs plugins dans une même conversation, une opération entre modules et le même plugin utilisable sans publication GPT. Désactiver cette exposition ne supprime ni les données, ni les écrans et API du module. Voir [le contrat ChatGPT](COMPATIBILITE-CHATGPT.md).
+
 Voir [le dossier écosystème](EXTENSIONS-THEMES-ECOSYSTEME.md). Livrer SDK, manifeste validé, documentation, catalogue et starter de module utilisable par fork. Le starter contient modèles, API, outils MCP, permissions, écran admin, vue front et widget ; il produit un paquet installable et une démo du même code publiable sur Cloudflare.
 
 La recette exige une extension créée sans modifier les fichiers internes du CMS, sa démo en ligne, puis le même paquet installé dans le fork. Mettre à jour ce paquet seul et un thème séparément, vérifier les versions non concernées, les données et les personnalisations. Une incompatibilité ou origine inattendue bloque la livraison. GitHub, registre de paquets et catalogue ont des responsabilités distinctes.
@@ -118,7 +120,7 @@ Le cœur, le SDK et le starter d'extension seront livrés publiquement sous [lic
 
 Les modèles décrivent les données actuelles du produit. L'installation initialise les structures nécessaires sur une base neuve. Les modules ne contiennent pas de scripts de transformation de bases entre versions. Une mise à jour conserve les données présentes et bloque une incompatibilité détectée.
 
-La génération et la gestion **centralisées** des artefacts SQL sont acceptées. Les modèles actuels des modules alimentent cette génération ; les modules ne livrent aucun script SQL de transformation entre versions. Le SQL central et ses métadonnées sont inspectés avant publication ; les fichiers déjà appliqués et leur journal sont immuables. Sur Sites, le SQL est appliqué avant l'envoi du Worker : une publication échouée peut avoir déjà modifié le schéma. La recette vérifie la reprise et la compatibilité avec le code encore publié ; revenir au code précédent n'annule ni ce SQL ni les données modifiées. Une mise à jour de plugin cible sa version, mais reconstruit et republie la livraison Worker complète.
+La génération et la gestion **centralisées** des artefacts SQL sont acceptées. Les modèles actuels des modules alimentent cette génération ; les modules ne livrent aucun script SQL de transformation entre versions. Le SQL central et ses métadonnées sont inspectés avant publication ; les fichiers déjà appliqués et leur journal sont immuables. Sur Sites, le SQL est appliqué avant l'envoi du Worker : une publication échouée peut avoir déjà modifié le schéma. La recette vérifie la reprise et la compatibilité avec le code encore publié ; revenir au code précédent n'annule ni ce SQL ni les données modifiées. Une mise à jour de module cible sa version, mais reconstruit et republie la livraison Worker complète.
 
 | Hébergement | Déclenchement | Preuve |
 |---|---|---|

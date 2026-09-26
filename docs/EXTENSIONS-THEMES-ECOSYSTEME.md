@@ -4,12 +4,13 @@ Proposition d'architecture du 26 septembre 2026, avant implémentation. Les dép
 
 ## Responsabilités
 
-La compatibilité native ChatGPT fait partie du contrat des modules : outils MCP, widgets MCP Apps, skills et paquet distribuable, avec mêmes données D1/R2 et opérations autorisées. Lire [Compatibilité ChatGPT](COMPATIBILITE-CHATGPT.md). Une interface dans le chat Creezio ne prouve pas à elle seule son fonctionnement dans ChatGPT.
+Un **module ou extension Creezio** est la fonctionnalité complète, avec données, logique métier, API, relations intermodules et interfaces. Son **plugin conversationnel** en expose les outils MCP, widgets et skills aux chats. Cette partie utilise le format standard d'un plugin GPT même sans publication dans ChatGPT ; elle ne remplace pas le module ni ses données. Le chat Creezio héberge plusieurs de ces plugins. Chaque application distingue son MCP d'administration de son MCP destiné aux utilisateurs du front, avec catalogues et droits séparés dans un même déploiement. Lire [Compatibilité ChatGPT](COMPATIBILITE-CHATGPT.md). Une interface dans le chat Creezio ne prouve pas à elle seule son fonctionnement dans ChatGPT.
 
 | Élément | Responsabilité |
 |---|---|
 | Socle et modules natifs | Backend, administration Creezio, UI du chat, conversations persistantes, widgets et capacités fournies d'origine ; contrats communs et release cohérente pour les composants interdépendants. |
 | Extension | Fonctionnalité complète : modèles, opérations, API/MCP, permissions, événements, configuration, recherche, écrans et widgets selon son périmètre. |
+| Plugin conversationnel du module | Exposition aux chats : outils MCP, widgets et skills au format standard GPT, utilisant les opérations et données du module. Publication externe facultative. |
 | Thème | Présentation du front, dispositions, styles et emplacements de composants. Il ne possède ni les données métier ni les autorisations. |
 | Personnalisation d'application | Configuration du front, remplacements de composants et extensions privées ; fichiers conservés lors des mises à jour. |
 | SDK headless | Client typé, authentification, opérations, fichiers, conversations, widgets et événements, utilisable avec un front entièrement indépendant. |
@@ -25,7 +26,7 @@ Le chat utilise un **module OpenAI activé**, configuré avec une clé API conse
 
 Sur Sites, chaque application utilise **un couple D1/R2 partagé**, avec cloisonnement logique par contextes et autorisations serveur. Les extensions déclarent leurs modèles et leurs besoins d'accès dans ce couple ; elles n'imposent pas une base ou un bucket natif supplémentaire par utilisateur ou espace. Docker conserve la possibilité de sélectionner des ressources distinctes via ses adaptateurs. Ce choix ne multiplie pas les instances de l'application.
 
-Un plugin de service comme n8n ou Hermes est une intégration à un service déjà disponible. L'utilisateur fournit sa clé API et les autres paramètres nécessaires, dont l'URL pour une instance personnelle. Creezio n'est responsable ni de l'installation, ni de l'hébergement, ni des mises à jour, ni des sauvegardes du logiciel tiers. Le paquet et sa démonstration ne contiennent aucun installateur de ce service. Mettre à jour le plugin ne met pas à jour le service distant.
+Un module de service comme n8n ou Hermes est une intégration à un service déjà disponible. L'utilisateur fournit sa clé API et les autres paramètres nécessaires, dont l'URL pour une instance personnelle. Creezio n'est responsable ni de l'installation, ni de l'hébergement, ni des mises à jour, ni des sauvegardes du logiciel tiers. Le paquet et sa démonstration ne contiennent aucun installateur de ce service. Mettre à jour le module ne met pas à jour le service distant.
 
 La distinction thèmes/plugins et les personnalisations séparées du thème parent reprennent des principes éprouvés de [WordPress](https://developer.wordpress.org/themes/getting-started/what-is-a-theme/) et de ses [thèmes enfants](https://developer.wordpress.org/themes/advanced-topics/child-themes/). L'objectif du SDK headless rejoint celui de [Faust](https://github.com/wpengine/faustjs) : éviter à chaque front de reconstruire son raccordement au CMS. Faust lui-même, conçu pour WordPress, n'est pas une dépendance de Creezio ; GraphQL n'est pas imposé.
 
@@ -51,17 +52,23 @@ Sources : [métadonnées de plugins WordPress](https://developer.wordpress.org/p
 
 Prévoir un dépôt distinct, nom proposé **Creezio-Extension-Starter**, utilisable par fork et pouvant aussi être marqué comme template GitHub. Il permet de commencer une extension complète à partir d'un exemple fonctionnel. Le choix fork/template de cet outil de développement ne change pas le jalon imposant un véritable fork de Creezio pour la première application de test.
 
-Le dépôt fournit trois livrables à partir du même code :
+Le dépôt fournit un module complet, incluant sa partie plugin conversationnel au format GPT, pour les livrables suivants :
 
 - **Un paquet d'extension installable** dans une application Creezio, avec manifeste, modèles, relations, opérations, routes/API dérivées, outils MCP, permissions, événements, projection de recherche, configuration, écran d'administration, vue front et widget de chat.
 - **Une application de démonstration**, utilisant une version fixée du vrai socle Creezio et cette même extension. Elle démarre localement avec D1/R2 persistants et peut être publiée entièrement sur Cloudflare : Worker, front, administration, D1/R2 et assets.
-- **Un paquet de plugin ChatGPT/Codex**, contenant manifeste portable, configuration MCP et skills, relié au déploiement de l'application avec ressources UI MCP Apps. Sa publication et sa connexion sont qualifiées séparément ; aucune nouvelle application serveur n'est imposée par ce paquet.
+- **Une distribution ChatGPT/Codex facultative de la partie plugin**, utilisant le même manifeste portable, la même configuration MCP, les mêmes skills et ressources UI MCP Apps que le chat Creezio. La composition de l'application génère des profils distincts pour son MCP admin et son MCP front. Cette distribution connecte à l'application hébergeant le module ; elle ne contient pas une nouvelle base ou un second backend métier.
 
 Structure indicative :
 
 ```text
-extension/       Sources du module et manifeste
-demo/            Composition Creezio utilisant extension/ comme workspace
+module/          Contrat, modèles, fichiers, opérations, API et relations intermodules
+ui/              Écrans admin/front et composants partagés
+plugin/          Partie conversationnelle du module
+  plugin.json    Manifeste portable à la racine du paquet de plugin
+  mcp.json       Configuration de connexion MCP
+  skills/        Workflows conversationnels
+  widgets/       Ressources UI appelant les opérations du module
+demo/            Composition Creezio utilisant le module complet du starter
 tests/           Contrats, accès, API/MCP, widget et installation réelle
 docs/            Démarrage, configuration, publication et contribution
 scripts/         Validation, packaging et publication de la démo
@@ -75,7 +82,7 @@ Le SDK et les commandes génèrent les points d'enregistrement : installer le pa
 
 Les ressources Cloudflare, accès administrateur et secrets de démonstration appartiennent au développeur. Aucun compte partagé ou secret prérempli n'est livré. La démo conserve les mêmes droits que l'intégration réelle ; l'accès public éventuel à sa présentation n'ouvre pas son administration. Une démo fonctionnelle ne suffit pas à certifier le paquet : la recette inclut son installation dans une autre application Creezio et sa mise à jour.
 
-L'archive distribuée contient uniquement l'extension et les éléments nécessaires à son fonctionnement, avec dépendances déclarées. Elle exclut `demo/`, les données de démonstration, les identifiants/configurations d'hébergement et toute copie embarquée du socle Creezio. Les contrats partagés sont des dépendances compatibles, pas un second runtime. La recette installe l'archive effectivement produite dans Creezio Lab, sans résolution implicite vers le workspace de développement.
+L'archive de module distribuée à Creezio contient sa fonctionnalité complète, sa partie conversationnelle et leurs dépendances déclarées. La distribution du plugin vers ChatGPT n'embarque que les éléments de connexion et d'interaction nécessaires ; les données et opérations restent dans le module hébergé. Les deux archives excluent `demo/`, les données de démonstration, les secrets et identifiants privés d'hébergement, ainsi que toute copie embarquée du socle Creezio. La configuration MCP décrit la connexion ; l'URL propre à une application est résolue explicitement lors de la composition/distribution. Les contrats partagés sont des dépendances compatibles, pas un second runtime. La recette installe l'archive de module effectivement produite dans Creezio Lab, sans résolution implicite vers le workspace de développement, et vérifie sa partie plugin séparément.
 
 Construire et publier la démo depuis la racine du starter : aucune dépendance à une copie voisine non fournie du CMS. Le bouton [Deploy to Cloudflare](https://developers.cloudflare.com/workers/platform/deploy-buttons/) pourra compléter le parcours du starter public ; il ne remplace ni la distribution du paquet ni la preuve du vrai fork GitHub. Le parcours Wrangler authentifié reste disponible, notamment pour les extensions maintenues dans des dépôts privés indépendants.
 
@@ -92,7 +99,7 @@ Sur Sites, le catalogue et l'administration présentent les informations ; l'ins
 
 ## Mise à jour d'une seule extension
 
-Le socle, les extensions et les thèmes possèdent des versions distinctes. Les composants natifs interdépendants peuvent conserver une release commune. Exemple : mettre à jour le plugin n8n sans modifier la version de Stripe, du thème ou de l'extension privée de l'application.
+Le socle, les extensions et les thèmes possèdent des versions distinctes. Les composants natifs interdépendants peuvent conserver une release commune. Exemple : mettre à jour le module n8n sans modifier la version de Stripe, du thème ou de l'extension privée de l'application.
 
 1. Identifier précisément l'éditeur, le paquet, l'origine et la version cible.
 2. Présenter les changements, dépendances nécessaires, droits supplémentaires, configuration et compatibilité des données.
@@ -133,7 +140,7 @@ Le cœur, le SDK et le starter sont placés sous [licence MIT](../LICENSE), choi
 
 Le contrat de distribution sépare explicitement les exports serveur, client React, styles et assets. Le paquet publié déclare ses dépendances et peers ; ses fichiers réellement emballés contiennent les widgets, styles et ressources référencés. Le résolveur produit un manifeste d'assets pour le build hôte : aucun chemin vers le workspace du développeur ni import serveur depuis le navigateur n'est admis. Vérifier l'archive issue du packaging, puis l'installer dans l'application de recette sans lien workspace caché. La présence des sources dans un monorepo ne prouve pas qu'un module distribué fonctionne.
 
-Une mise à jour ciblée sélectionne une version de module et ses dépendances nécessaires, contrôle les compatibilités et reconstruit la livraison complète de l'application. L'activation d'un module déjà présent peut changer une configuration ; ajouter ou remplacer son code demande un build et une publication. L'installation de plugins ne repose pas sur l'écriture de code exécutable dans le système de fichiers du Worker.
+Une mise à jour ciblée sélectionne une version de module et ses dépendances nécessaires, contrôle les compatibilités et reconstruit la livraison complète de l'application. L'activation d'un module déjà présent peut changer une configuration ; ajouter ou remplacer son code demande un build et une publication. L'installation de modules ne repose pas sur l'écriture de code exécutable dans le système de fichiers du Worker.
 
 1. Un développeur suivant seulement le starter produit son extension avec API, MCP, écran et widget, sans modifier les fichiers internes du CMS.
 2. Il publie sa démo sur Cloudflare ; elle fonctionne après arrêt du local.

@@ -4,7 +4,7 @@
 
 ## 1. Résultat attendu
 
-Les modules sont nativement compatibles avec l'écosystème de plugins ChatGPT : outils MCP, widgets MCP Apps, skills et distribution standard, au-dessus des mêmes données et opérations Creezio. Le [contrat ChatGPT](COMPATIBILITE-CHATGPT.md) complète celui des extensions. La recette doit exercer un vrai widget et son skill dans ChatGPT, en plus des interfaces Creezio et des deux Sites.
+Chaque module ou extension Creezio constitue une fonctionnalité complète : données propres, logique métier, API, relations avec d'autres modules et écrans. Sa partie plugin conversationnel adopte le format standard GPT (manifeste, MCP, skills et widgets) et appelle les opérations du module. Elle fonctionne dans le chat Creezio même sans publication dans ChatGPT. Chaque application dispose de son MCP d'administration et peut exposer un MCP du front pour ses utilisateurs : catalogues, ressources, skills et droits séparés, même backend et même déploiement. Le [contrat ChatGPT](COMPATIBILITE-CHATGPT.md) complète celui des extensions. La recette exerce les deux MCP, les interactions entre modules, plusieurs plugins dans le chat Creezio, puis un vrai widget et son skill dans ChatGPT, en plus des deux Sites.
 
 Un dépôt autonome, prêt à démarrer sur GPT Sites avec un backend, un back-office Creezio et un front de départ. Une application dérivée conserve cette base, remplace son front et ajoute ses extensions. Sur GPT Sites, ses mises à jour sont demandées par l'utilisateur ou une tâche GPT planifiée, exécutées puis vérifiées. Sur un hébergement Docker, elles peuvent être déclenchées depuis son administration. Les deux parcours préservent les personnalisations et les données.
 
@@ -39,11 +39,11 @@ Meilisearch, Hermes, n8n, fournisseurs IA, transports de messagerie, moteurs de 
 
 L'extension Meili déclare et maintient les index externes. L'extension Hermes dialogue avec un service Hermes externe. L'extension n8n pilote un n8n externe. Creezio ne les installe ni ne les lance dans son runtime. Leur absence ne bloque ni le démarrage ni l'administration du socle.
 
-**Aucune prise en charge du cycle de vie de ces applications tierces :** Creezio ne les fournit, ne les déploie, ne les héberge, ne les met à jour et ne gère pas leurs sauvegardes. L'utilisateur obtient ses accès auprès du fournisseur ou d'une instance qu'il gère séparément. Le plugin configure seulement la connexion à ce service déjà existant et expose ses fonctions autorisées. La publication Cloudflare d'une application Creezio ou d'une démo de plugin n'embarque jamais n8n, Hermes ou Meili. La mise à jour du plugin concerne son code de connexion, pas le logiciel du fournisseur.
+**Aucune prise en charge du cycle de vie de ces applications tierces :** Creezio ne les fournit, ne les déploie, ne les héberge, ne les met à jour et ne gère pas leurs sauvegardes. L'utilisateur obtient ses accès auprès du fournisseur ou d'une instance qu'il gère séparément. Le module configure seulement la connexion à ce service déjà existant et expose ses fonctions autorisées. La publication Cloudflare d'une application Creezio ou d'une démo de module n'embarque jamais n8n, Hermes ou Meili. La mise à jour du module concerne son code de connexion, pas le logiciel du fournisseur.
 
 **Un module fournit une intégration prête à l'emploi, pas un connecteur laissé à programmer.** L'administrateur l'installe, renseigne les accès nécessaires puis utilise ses fonctionnalités. Le module enregistre ses API, outils MCP, permissions, événements, écrans et widgets sans ajout de routes ou de code d'intégration dans l'application cliente. Les contrats techniques ci-dessous servent à construire ces modules complets ; ils ne transfèrent pas ce travail à chaque client.
 
-**Les appels entrants font partie du socle.** n8n, un autre orchestrateur ou un client MCP peut appeler les opérations autorisées de Creezio depuis l'extérieur, sans navigateur et sans installer le plugin n8n. Le plugin n8n ajoute le pilotage et l'intégration de ce fournisseur depuis Creezio ; il n'est pas requis pour qu'un client externe utilise l'API native. La clé fournisseur n8n utilisée par Creezio et le jeton Creezio utilisé par n8n sont deux accès distincts.
+**Les appels entrants font partie du socle.** n8n, un autre orchestrateur ou un client MCP peut appeler les opérations autorisées de Creezio depuis l'extérieur, sans navigateur et sans installer le module n8n. Le module n8n ajoute le pilotage et l'intégration de ce fournisseur depuis Creezio ; il n'est pas requis pour qu'un client externe utilise l'API native. La clé fournisseur n8n utilisée par Creezio et le jeton Creezio utilisé par n8n sont deux accès distincts.
 
 | Responsabilité | Propriétaire |
 |---|---|
@@ -52,7 +52,7 @@ L'extension Meili déclare et maintient les index externes. L'extension Hermes d
 | États d'exécution, échéances, brouillons, boîte d'envoi, résultats et journaux | Creezio |
 | Calendrier, récurrences et relances automatiques | n8n ou un autre service externe déjà disponible |
 | Travail prolongé d'un workflow, agent ou navigateur | Le service externe correspondant ; Creezio expose les actions bornées et conserve le suivi |
-| Connexion, adaptation des API, écrans et widgets du fournisseur | Le plugin Creezio correspondant |
+| Connexion, adaptation des API, écrans et widgets du fournisseur | Le module Creezio correspondant |
 
 Les fonctions du produit sont décrites dans la [matrice](MATRICE-CAPACITES.md). Chaque capacité appartient au socle ou à un module identifié, avec un scénario de validation.
 
@@ -178,7 +178,7 @@ Chaque extension doit déclarer les éléments suivants, avec schéma et validat
 | Données | Modèles actuels, entités, relations, validation, propriétaires des données, besoins d'initialisation, export et conservation. |
 | Opérations | Schémas complets d'entrée/sortie publiés et validés, acteur utilisateur ou machine, droits, contexte, lecture/écriture, idempotence, effets externes et erreurs ; pagination ou références autorisées pour les résultats volumineux. |
 | API | Routes et documentation dérivées du registre d'opérations ; aucun contournement des règles métier. |
-| MCP | Outils et ressources exposables, schémas découvrables, autorisation et portée ; même exécution que l'API, réponses JSON structurées et compatibilité protocolaire testée. |
+| MCP | Contributions déclarées aux catalogues admin et/ou front, avec outils, ressources, widgets et skills séparés par surface et droits. Même exécution que l'API, réponses structurées et compatibilité protocolaire testée ; aucun accès administratif implicite depuis le MCP client. |
 | Recherche | Documents/projections, champs indexables, filtres d'accès, synchronisation et reconstruction ; fournisseur sélectionné, dont Meili en extension. |
 | Sources assistant | Sources d'entités, contexte courant, relations et outils autorisés ; déclarations liées aux opérations existantes, sans second jeu de handlers métier. |
 | UI | Pages administrateur éventuelles, composants front, navigation, onboarding et état non configuré. |
@@ -199,7 +199,7 @@ La proposition détaillée est dans [Extensions, thèmes et écosystème](EXTENS
 
 Prévoir un dépôt de départ d'extension, utilisable par fork : modèles, opérations, API/MCP, permissions, écran admin, vue front, widget, tests de contrat et documentation. Le même code produit un paquet installable et une démo fondée sur le vrai Creezio, publiable avec ses D1/R2 sur Cloudflare. Une extension installée s'intègre au déploiement de l'application ; le starter n'impose pas un Worker séparé pour chaque module. Le développement d'une extension n'exige pas de forker tout le CMS.
 
-L'objectif public et open source du cœur, du SDK, du starter et du catalogue est confirmé. Le dépôt `creezio/Creezio-D1R2` est public depuis le 26 septembre 2026 et sa [licence MIT](../LICENSE) est matérialisée. MIT est approuvée pour le cœur, le SDK et le starter ; leurs futurs paquets conserveront licence et mentions applicables. La distribution de ces paquets et le produit complet restent à réaliser. Les applications et extensions clientes peuvent rester privées. La filiation du premier fork applicatif public est un jalon distinct du mode de création des dépôts de plugins.
+L'objectif public et open source du cœur, du SDK, du starter et du catalogue est confirmé. Le dépôt `creezio/Creezio-D1R2` est public depuis le 26 septembre 2026 et sa [licence MIT](../LICENSE) est matérialisée. MIT est approuvée pour le cœur, le SDK et le starter ; leurs futurs paquets conserveront licence et mentions applicables. La distribution de ces paquets et le produit complet restent à réaliser. Les applications et extensions clientes peuvent rester privées. La filiation du premier fork applicatif public est un jalon distinct du mode de création des dépôts de modules.
 
 ### Deux modules de référence : n8n et Stripe
 
@@ -216,7 +216,7 @@ Le périmètre des opérations disponibles est explicite et versionné ; « prê
 
 Pour n8n, distinguer l'API de gestion des workflows et leurs déclencheurs : la clé de gestion ne suffit pas nécessairement à invoquer un webhook, qui peut avoir sa propre authentification. Les accès éventuellement transmis à n8n font l'objet d'un choix explicite et limité par connexion, avec rotation/révocation ; ne pas synchroniser tout le coffre automatiquement.
 
-Dans le sens **n8n → Creezio**, n8n conserve sa planification et appelle les opérations métier, de traitement par lot ou de reprise autorisées avec un accès Creezio dédié. Le calendrier reste exécuté dans n8n. API et MCP natifs sont disponibles pour les autres clients compatibles selon le même contrat ; aucun scheduler Sites, serveur de cron ou plugin n8n obligatoire dans le socle. La recette distingue bien connexion au fournisseur et autorisation du fournisseur à agir dans Creezio.
+Dans le sens **n8n → Creezio**, n8n conserve sa planification et appelle les opérations métier, de traitement par lot ou de reprise autorisées avec un accès Creezio dédié. Le calendrier reste exécuté dans n8n. API et MCP natifs sont disponibles pour les autres clients compatibles selon le même contrat ; aucun scheduler Sites, serveur de cron ou module n8n obligatoire dans le socle. La recette distingue bien connexion au fournisseur et autorisation du fournisseur à agir dans Creezio.
 
 **MCP entrant :** viser la spécification publiée **2026-07-28**, sans session de transport obligatoire, avec métadonnées par requête et en-têtes de routage/version conformes. Les opérations bornées peuvent répondre en JSON ; les abonnements et notifications progressives sont des capacités distinctes. Utiliser l'adaptateur Web Request/Response du SDK TypeScript, version figée et validée sous workerd, avec compatibilité stateless testée pour les clients 2025 encore utilisés. Ne pas imposer un canal SSE permanent pour appeler un outil. [Spécification Streamable HTTP](https://modelcontextprotocol.io/specification/2026-07-28/basic/transports/streamable-http)
 
@@ -345,12 +345,12 @@ Cette application prouve simultanément : ajout d'une extension cliente, réutil
 | Extension commune | n8n et Stripe configurés sans modification de code de l'application ; API/MCP/widget disponibles ; workflow et paiement de test réellement exécutés ; diagnostic d'échec et retrait sans corruption. |
 | Fonctions natives sans moteur externe | Tâches humaines, brouillons, tickets, CRM, landing et navigation utilisables d'origine ; seule une action qui nécessite un fournisseur absent est indisponible. |
 | MCP et entrées publiques | Réponses JSON avec client moderne et clients 2025 retenus ; schémas complets, pagination et limites vérifiés. Bearer natif et OAuth testés : découverte, PKCE, issuer/audience, consentement, préinscription/DCR selon client, renouvellement, révocation et refus de rejeu. Webhook brut signé accessible sans session navigateur, rapprochement test/live et rejeu contrôlé. |
-| Planification externe | Une tâche n8n planifiée appelle une opération Creezio réelle sans navigateur ouvert ; API avec jeton et client MCP compatible vérifiés, mêmes droits/contextes, résultat persisté puis visible au retour dans l'UI. Refus après révocation ou portée incorrecte, rejeu sans double effet. L'accès entrant natif fonctionne sans plugin n8n installé ; aucun scheduler Creezio lancé. |
+| Planification externe | Une tâche n8n planifiée appelle une opération Creezio réelle sans navigateur ouvert ; API avec jeton et client MCP compatible vérifiés, mêmes droits/contextes, résultat persisté puis visible au retour dans l'UI. Refus après révocation ou portée incorrecte, rejeu sans double effet. L'accès entrant natif fonctionne sans module n8n installé ; aucun scheduler Creezio lancé. |
 | Modèles et droits fins | CRUD générique incapable de modifier les champs calculés ; droits revérifiés lors de l'écriture ; compatibilité des données contrôlée avant publication. |
 | Chat | Module OpenAI activé avec clé API serveur et appel LLM réel dans les chats admin/front ; progression navigateur mesurée, annulation et état final vérifiés ; outil puis widget, action autorisée et refus d'action interdite, trace d'audit. Schémas et résultats structurés valides ; configuration absente/invalide signalée, aucun HTML/JS arbitraire du modèle. Les deux appels réussis de la sonde ne suffisent pas à cette recette. |
 | Concurrence et reprises | Clic doublé, requête rejouée, version périmée, service externe indisponible, tâche interrompue : erreurs et reprises correctes. |
 | Mise à jour Sites | Nouvelle release Creezio sur A ; demande dans GPT pour B ; publication puis vérification ; extension cliente toujours présente, front personnalisé et données intacts. |
-| Mise à jour d'un plugin | Seule la version sélectionnée et ses dépendances nécessaires évoluent ; contrôle de compatibilité et d'origine ; API/MCP/widget exercés après republication, autres versions et données inchangées. |
+| Mise à jour d'un module | Seule la version sélectionnée et ses dépendances nécessaires évoluent ; contrôle de compatibilité et d'origine ; API/MCP/widget exercés après republication, autres versions et données inchangées. |
 | Starter communautaire | Développer depuis le dépôt de départ, publier sa démo Cloudflare, installer le même paquet dans le fork et le mettre à jour sans modifier les fichiers internes du CMS. |
 | Thèmes et headless | Personnalisation conservée à la mise à jour du thème ; front distinct utilisant SDK/API avec ses droits ; backend et administration communs. |
 | Déclenchement local | Depuis le back-office local, publication et mise à jour de la cible Cloudflare, vérification et compte rendu ; aucune dépendance de la production au Docker local. |

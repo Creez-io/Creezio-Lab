@@ -18,12 +18,12 @@ Le même composant métier peut alimenter un widget Creezio et une ressource MCP
 
 ## Deux MCP distincts pour une même application
 
-Chaque application issue de Creezio possède son propre MCP d'administration et peut exposer un MCP destiné aux utilisateurs de son front. Le socle fournit nativement cette séparation. Deux routes dédiées, par exemple `/mcp/admin` et `/mcp/app`, sont servies par le même déploiement et les mêmes opérations autorisées ; aucun serveur supplémentaire n'est imposé.
+Chaque application issue de Creezio possède son propre MCP d'administration et peut exposer un MCP destiné à ses utilisateurs métier, qu'ils utilisent son front ou directement le workspace Creezio. Le front est facultatif et l'accès au workspace n'accorde pas l'administration du système. Le socle fournit nativement cette séparation de pouvoirs. Deux routes dédiées, par exemple `/mcp/admin` et `/mcp/app`, sont servies par le même déploiement et les mêmes opérations autorisées ; aucun serveur supplémentaire n'est imposé.
 
 | Surface | Destinataire | Contributions |
 |---|---|---|
 | MCP d'administration | Administrateur de cette application | Modules natifs Creezio : comptes, configuration, modules, données et administration ; fonctions administratives déclarées par les extensions métier. |
-| MCP du front | Utilisateurs de cette application | Fonctions métier explicitement exposées : catalogue, compte, commandes, achats ou autres parcours, avec les droits de l'utilisateur. |
+| MCP utilisateur, dit MCP du front | Utilisateurs de cette application, internes ou externes, avec ou sans front spécifique | Fonctions métier explicitement exposées, natives ou ajoutées : catalogue, compte, commandes, achats ou autres parcours, avec les droits de l'utilisateur. |
 
 Les deux surfaces possèdent des catalogues d'outils, ressources, widgets et skills distincts, ainsi que leurs politiques d'accès. Une extension déclare ses contributions à l'administration, au front ou aux deux. L'installation n'expose pas automatiquement toutes ses capacités aux clients. Le serveur filtre la découverte et vérifie chaque appel, chaque lecture de ressource et chaque écriture ; modifier un paramètre de surface ou appeler directement un outil ne permet pas d'obtenir des droits supplémentaires.
 
@@ -33,7 +33,7 @@ Le fork possède ses URL, sa configuration et ses identités de plugins. Prévoi
 
 ## Creezio comme hôte de plusieurs plugins
 
-Le chat Creezio charge les outils, skills et widgets de plusieurs plugins installés selon la surface et les droits de l'acteur. Le chat administrateur utilise les contributions administratives ; le chat du front utilise les contributions destinées aux utilisateurs. L'hôte assure des identifiants sans collision, le routage des messages vers la bonne instance de widget et la vérification des appels. Le plugin conserve ses mêmes schémas, opérations et ressources quel que soit l'hôte.
+Le chat Creezio charge les outils, skills et widgets de plusieurs plugins installés selon la surface et les droits de l'acteur. Le chat du workspace peut servir un administrateur ou un opérateur métier : seul le premier, avec ses permissions effectives, accède aux contributions de gestion système. Le chat du front utilise les contributions destinées à ses utilisateurs. L'hôte assure des identifiants sans collision, le routage des messages vers la bonne instance de widget et la vérification des appels. Le plugin conserve ses mêmes schémas, opérations et ressources quel que soit l'hôte.
 
 Les styles et dispositions du front restent personnalisables. Le protocole commun des widgets et leurs données ne nécessitent pas de réécrire le plugin pour le chat de chaque application. Le module OpenAI fournit le LLM du chat Creezio ; la composition des autres plugins est indépendante de ce fournisseur.
 
@@ -54,6 +54,8 @@ La clé du module OpenAI sert au LLM du chat intégré à Creezio. Elle n'est pa
 ## Skills et paquet distribuable
 
 Chaque module prévoit des workflows `skills/<nom>/SKILL.md`, avec références et ressources nécessaires. Ils expliquent comment employer les outils ; autorisations et données réelles restent au serveur. Leur qualité et leurs déclenchements font partie de la recette. L'import depuis MCP pendant Scan Tools produit une copie des skills dans le plugin, pas une lecture dynamique à chaque utilisation. [Skills](https://developers.openai.com/plugins/build/skills).
+
+Ces skills conversationnels sont distincts du pack de développement livré aux auteurs d'applications/modules pour respecter l'architecture et exécuter les contrôles de conformité. Le [cadre produit et communauté](CADRE-PRODUIT-ET-COMMUNAUTE.md) décrit ce second pack, ses commandes de validation et le parcours de contribution.
 
 L'import MCP des skills repose actuellement sur un sous-ensemble de l'extension draft SEP-2640, avec découverte, ressources et empreintes déclarées. La limite documentée est de cinq skills par scan : le générateur sélectionne et valide une composition explicite, sans omettre silencieusement des workflows. Épingler ce contrat versionné et revérifier ses limites avant distribution. Une modification exige un nouveau scan puis une nouvelle version, revue et publication. [Import des skills MCP](https://developers.openai.com/plugins/build/mcp-server#import-skills-from-the-mcp-server).
 

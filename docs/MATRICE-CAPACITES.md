@@ -4,6 +4,8 @@ Spécification du produit, proposée avant implémentation. Chaque capacité doi
 
 ## Socle serverless
 
+Le [cadre produit et communauté](CADRE-PRODUIT-ET-COMMUNAUTE.md) fait partie de cette matrice. Creezio couvre l'app personnelle, l'équipe interne et le SaaS ; le workspace est utilisable selon les rôles, le front est facultatif et les fonctions d'administration système restent soumises à des droits propres.
+
 | Domaine | Fonctionnalités | Preuve attendue |
 |---|---|---|
 | Installation | Configuration initiale, identité administrateur, modèles actuels et initialisation D1/R2. | Démarrage sur une base neuve depuis le dépôt ; republication sans perte de données. |
@@ -23,6 +25,14 @@ Spécification du produit, proposée avant implémentation. Chaque capacité doi
 | Secrets | Références opaques, coffre chiffré, configuration serveur et publication vers un environnement indépendant. | Aucun secret dans front/Git/logs ; transfert sélectif et rechiffrement vérifiés, sessions et autorisations transitoires exclues. |
 | Entrées publiques | Contrat distinct des sessions, signatures, corps brut, âge, périmètre, idempotence et correspondance test/production. | Appels réels Stripe/n8n/MCP sur le Site public sans session de navigateur ; signatures et autorisations applicatives contrôlées. |
 | Diagnostics | Audit, erreurs, état des connexions et versions. | Traces corrélées et résultats réels, sans annoncer un succès avant vérification. |
+| Profils d'usage | Personnel, équipe dans le workspace, front thémé facultatif ou headless ; mêmes modèles et opérations. | App sans front spécifique pleinement utilisable ; opérateur du workspace interdit de gestion système ; front personnalisé consommant les mêmes opérations. |
+| Composition UI | Vues, routes, navigation, emplacements, composants et permissions déclarés par les modules. | Module ajouté dans les thèmes officiels sans recoder l'app ; désactivation retirant les entrées sans perte de données ; headless libre ou adoptant le moteur de composition. |
+| Création et provenance | Fork GitHub réel si accès disponibles, copie d'une release sans GitHub ou dépôt indépendant privé, versions/origine conservées. | Droits de création vérifiés, reprise sans doublon, identité propre au fork et rattachement ultérieur d'un dépôt ; aucune filiation GitHub inventée. |
+| Registre central | Projet/déploiement, propriétaire vérifié GitHub/email, token de déclaration, URL, dépôt éventuel et versions datées ; inscription obligatoire à la publication officielle, local hors ligne. | Métadonnées vérifiées selon accès, tokens distincts, panne/reprise et état de synchronisation, absence de données métier/secrets ; installations existantes fonctionnelles pendant la panne. |
+| Développement assisté | Skills de développement, SDK, contrats versionnés et contrôles communs local/CI/livraison. | Module valide accepté et exemples invalides bloqués ; archive réellement installable ; aucun contournement des contrôles dans le parcours officiel. |
+| Éditions et activation | Politiques versionnées Community/Enterprise, usages personnels/interne/SaaS et fonctions activées par droits signés ; tarifs/licence/éligibilité SaaS différés. | Deux politiques de test autorisent puis réservent le SaaS au premium sans changer le métier ; activation UI/API/MCP, refus de faux droit ou mauvaise installation, expiration/panne sans suppression de données ; payer n'ouvre pas le multi-D1 Sites. Voir [licences et offres](LICENCES-ET-OFFRES.md). |
+| Accompagnement | Intervention sur un dépôt/copie sélectionné avec accord, droits limités, durée, journal et révocation. | Inscription/abonnement sans accès implicite ; lecture, branche/PR et déploiement traités comme mandats distincts ; aucun secret ou code privé publié automatiquement. |
+| Contribution | Diagnostic expurgé, issue/PR autorisée, revue, test de non-régression, release compatible et adoption par chaque app. | Correction amont appliquée au dérivé sans perte des personnalisations/données ; version du déploiement déclarée après vérification, sans déploiement client automatique. |
 
 Tous les Sites de la recette sont **publics**. Le visiteur accède directement au front sans compte GPT, puis utilise la connexion native Creezio pour les fonctions protégées. L'audience publique ne rend publics ni les données ni l'administration. Les Sites A et B ont chacun leur propre couple D1/R2 ; à l'intérieur de chaque application, les utilisateurs et espaces partagent ce couple avec des droits et contextes contrôlés côté serveur. Il n'y a pas de qualification multi-D1/R2 à mener sur Sites. Les entrées machine et capacités d'hébergement sont qualifiées dans [Qualification Sites](QUALIFICATION-SITES.md).
 
@@ -71,7 +81,7 @@ Ces capacités sont fournies d'origine et peuvent être organisées en modules n
 
 ## Front libre et thèmes
 
-- Front de départ immédiatement utilisable et entièrement remplaçable.
+- Front de départ immédiatement utilisable, facultatif et entièrement remplaçable ; le workspace à rôles peut être l'interface unique de l'application.
 - Bibliothèque de composants : navigation, formulaires, listes, panneaux, pièces jointes, chat et widgets.
 - Thème standard et thème ChatGPT-like, avec personnalisation propre à l'application.
 - Chat applicatif utilisant les services communs avec ses propres conversations et droits.
@@ -84,6 +94,8 @@ Ces capacités sont fournies d'origine et peuvent être organisées en modules n
 ## Extensions et services prêts à configurer
 
 Chaque extension fournit les modèles utiles, ses opérations, API/MCP, droits, événements, écrans, widgets et diagnostics selon son périmètre. Les accès sont configurés côté serveur. Le service externe reste indépendant du runtime Creezio. Les fonctions natives décrites plus haut restent présentes même si un fournisseur n'est pas configuré.
+
+Modules natifs, modules métier communs et modules spécifiques respectent ce même contrat. Une extension métier autonome ne requiert aucun fournisseur : la configuration d'accès externes concerne seulement les modules connecteurs. Les contributions UI déclarées rejoignent automatiquement les surfaces et thèmes compatibles selon les droits.
 
 Les services tiers sont obtenus et administrés hors de Creezio. Les modules n8n/Hermes/Meili ne fournissent aucun hébergement, installateur, mise à jour ou gestion de sauvegarde de ces applications : ils reçoivent les accès d'un service existant. Leur propre mise à jour concerne uniquement l'intégration Creezio.
 
@@ -108,13 +120,13 @@ Les services tiers sont obtenus et administrés hors de Creezio. Les modules n8n
 
 ## Communauté et développement d'extensions
 
-Chaque extension est un module complet avec données, API, logique et relations intermodules. Sa partie plugin conversationnel adopte le format standard GPT même sans publication dans ChatGPT. Le chat Creezio héberge plusieurs de ces plugins. Chaque application sépare son MCP d'administration du MCP destiné aux utilisateurs du front, avec outils, ressources, skills et politiques distincts dans le même déploiement. Vérifier les deux catalogues, le refus d'accès administratif depuis le front, les widgets de plusieurs plugins dans une même conversation, une opération entre modules et le même plugin utilisable sans publication GPT. Désactiver cette exposition ne supprime ni les données, ni les écrans et API du module. Voir [le contrat ChatGPT](COMPATIBILITE-CHATGPT.md).
+Chaque extension est un module complet avec données, API, logique et relations intermodules. Sa partie plugin conversationnel adopte le format standard GPT même sans publication dans ChatGPT. Le chat Creezio héberge plusieurs de ces plugins. Chaque application sépare son MCP d'administration du MCP destiné aux utilisateurs métier, dans le workspace ou dans le front, avec outils, ressources, skills et politiques distincts dans le même déploiement. Vérifier les deux catalogues, le refus d'accès administratif depuis le front, les widgets de plusieurs plugins dans une même conversation, une opération entre modules et le même plugin utilisable sans publication GPT. Désactiver cette exposition ne supprime ni les données, ni les écrans et API du module. Voir [le contrat ChatGPT](COMPATIBILITE-CHATGPT.md).
 
 Voir [le dossier écosystème](EXTENSIONS-THEMES-ECOSYSTEME.md). Livrer SDK, manifeste validé, documentation, catalogue et starter de module utilisable par fork. Le starter contient modèles, API, outils MCP, permissions, écran admin, vue front et widget ; il produit un paquet installable et une démo du même code publiable sur Cloudflare.
 
 La recette exige une extension créée sans modifier les fichiers internes du CMS, sa démo en ligne, puis le même paquet installé dans le fork. Mettre à jour ce paquet seul et un thème séparément, vérifier les versions non concernées, les données et les personnalisations. Une incompatibilité ou origine inattendue bloque la livraison. GitHub, registre de paquets et catalogue ont des responsabilités distinctes.
 
-Le cœur, le SDK et le starter d'extension seront livrés publiquement sous [licence MIT](../LICENSE), choix approuvé et matérialisé pour ce dépôt. Un véritable fork GitHub du dépôt public reste public : la première application sera `Creez-io/Creezio-Lab`, à créer après structuration et validation du socle ; aucun fork n'est encore créé. Une application ou une extension confidentielle peut vivre dans un dépôt indépendant privé, avec dépendances et origine Creezio explicites ; elle ne doit pas être présentée comme un fork GitHub privé du dépôt public. Données, secrets et audience d'un Site restent indépendants de la visibilité des sources.
+L'[architecture Community/Enterprise](LICENCES-ET-OFFRES.md) prépare éditions, activation et accompagnement ; licence, tarifs et éligibilité des SaaS restent à décider. Le LICENSE actuel reste applicable au contenu qu'il couvre. Le premier vrai fork public sera `Creez-io/Creezio-Lab`, après validation du socle ; aucun fork créé. Une app ou extension privée peut vivre dans un dépôt indépendant avec origine et versions, sans être présentée comme un fork GitHub privé du dépôt public. Données, secrets et audience d'un Site restent indépendants de la visibilité des sources.
 
 ## Installation et mises à jour
 

@@ -16,7 +16,9 @@ L'accès depuis une application restant dans Docker à des D1/R2 Cloudflare deme
 
 Le code métier, les modèles, les modules et les contrats restent communs. Les adaptateurs encapsulent les différences d'hébergement. Les clés et identités du compte de développement ne sont pas intégrées au code livré à chaque fork.
 
-Le cœur, le SDK et le starter relèvent de la [licence MIT](../LICENSE) approuvée. Le futur dérivé de recette sera le vrai fork public `Creez-io/Creezio-Lab`, créé après structuration et validation du socle ; sa destination est acquise, sa création reste à effectuer. Ses ressources et identifiants d'hébergement seront propres à son déploiement.
+La même app peut fonctionner uniquement dans le workspace Creezio avec des rôles, avec un front thémé dynamique ou en headless, sur chaque hébergement. Un profil de capacités validé pilote les fonctions disponibles ; aucun module ne maintient une logique métier spéciale pour Sites. Le [cadre produit et communauté](CADRE-PRODUIT-ET-COMMUNAUTE.md) définit ce profil, les usages et le registre central. Enregistrement obligatoire à la publication officielle avec propriétaire GitHub/email vérifié ; développement local possible hors ligne. Ce registre ne reçoit ni les données métier ni les secrets fournisseurs.
+
+Les éditions Community/Enterprise partagent les mêmes adaptateurs ; une licence premium ne rend pas disponible une capacité absente de l'hébergement. Leurs conditions sont cadrées dans [Licences et offres](LICENCES-ET-OFFRES.md). Le futur dérivé de recette sera le vrai fork public `Creez-io/Creezio-Lab`, créé après validation du socle ; sa destination est acquise, sa création reste à effectuer. Ses ressources et identifiants seront propres à son déploiement.
 
 Le workspace utilise des panneaux React stables, avec localisation et état propres, séparés du routeur de chaque hébergement. Les modules n'importent aucun contexte privé Next/Vinext ; un éventuel pont interne reste dans l'adaptateur, avec contrôle de version. La résolution d'un import ou le succès du mode dev ne valide pas le comportement des onglets dans le Worker. Qualifier séparément les builds, l'hydratation et la conservation des vues sur les cibles sans réduire leurs fonctions.
 
@@ -28,7 +30,9 @@ Sur Sites, l'application utilise un seul D1 et un seul R2 fournis nativement. Le
 
 Les deux Sites de recette, original et fork, ont chacun leur couple propre. Cette indépendance entre applications complète la vérification des droits entre contextes au sein d'une application. Le provisionnement de plusieurs D1/R2 natifs dans un même Site est hors périmètre ; il ne conditionne pas la construction du socle.
 
-Docker conserve la possibilité de choisir des ressources physiquement distinctes, locales ou distantes, selon l'application. Le contexte serveur sélectionne alors la ressource autorisée via l'adaptateur ; aucun état global mutable ne choisit la base pour toutes les requêtes. Ce mode ne crée pas d'instance applicative par client.
+Hors Sites, les adaptateurs conservent la possibilité de choisir des ressources physiquement distinctes, en développement local et sur Cloudflare direct. Le contexte serveur sélectionne alors la ressource autorisée ; aucun état global mutable ne choisit la base pour toutes les requêtes. Ce mode ne crée pas d'instance applicative par client et ne nécessite pas un Docker permanent lorsque l'app est publiée sur Workers. Le provisioning, le raccordement, les quotas et le routage de plusieurs ressources demandent une recette réelle ; leur disponibilité n'est pas déduite du seul token Cloudflare.
+
+Le résolveur Worker sélectionne un binding autorisé réellement présent dans la configuration déployée. Une nouvelle ressource nécessite sa création et son raccordement au Worker, pas seulement un identifiant dans une table. Wrangler permet plusieurs entrées D1/R2 dans un même Worker ; quotas et budget de métadonnées limitent cette composition. Ne pas annoncer un nombre illimité de clients ni confondre le nombre de bindings D1 avec autant de couples D1/R2. [Configuration Wrangler](https://developers.cloudflare.com/workers/wrangler/configuration/), [limites D1](https://developers.cloudflare.com/d1/platform/limits/).
 
 ## Sites publics et authentification native
 
@@ -68,6 +72,8 @@ Sources : [Workers Static Assets](https://developers.cloudflare.com/workers/stat
 ## Action « Publier sur Cloudflare » depuis l'environnement local
 
 Le back-office local propose un parcours guidé, traité par un exécuteur local de livraison. Il ne demande pas au développeur de recoder le déploiement dans chaque fork.
+
+Avant toute application SQL ou publication en production, l'exécuteur valide l'enregistrement Creezio, le propriétaire vérifié et le token de cette installation ; les fonctions premium vérifient séparément leurs droits d'usage. Un échec conserve la préparation et l'app déjà publiée. Après vérification de la livraison, il déclare sa version et son URL au registre avec idempotence ; une erreur de déclaration reste visible et reprenable.
 
 1. **Connecter le compte.** Renseigner un jeton Cloudflare adapté et choisir le compte cible. Vérifier les droits nécessaires à Workers, D1 et R2 ; ajouter ceux du domaine seulement si cette option est choisie. Les droits utiles à la création de ressources ne sont pas déduits de la seule présence d'une clé.
 2. **Préparer la destination.** Définir l'identité de l'application et ses ressources propres ; afficher la destination et ce qui sera créé/utilisé. Un fork reçoit ses propres identifiants. Ne pas écraser une installation existante en réutilisant silencieusement un nom.
@@ -121,13 +127,16 @@ Sources : [D1 depuis une application externe](https://developers.cloudflare.com/
 
 ## Recette requise
 
+- Profils produit : même application personnelle ou collective entièrement utilisable dans le workspace sans front spécifique sur les cibles ; opérateur sans gestion système, front dynamique facultatif et refus explicite d'une capacité absente. Aucun changement de logique métier selon l'hébergeur.
+- Ressources physiques distinctes hors Sites : même module sur deux D1/R2 autorisés derrière un backend commun, en local puis sur Cloudflare direct. Vérifier raccordement, isolation, concurrence, quotas, révocation et absence de repli silencieux ; Sites conserve son stockage partagé.
+- Enregistrement : local hors ligne, propriétaire GitHub/email vérifié et token requis avant publication officielle ; panne du registre avant publication préservant l'installation existante ; annonce de la version réellement publiée et reprise d'une déclaration échouée.
 - GPT Sites original et véritable fork : deux Sites publics, démarrage avec un couple D1/R2 natif propre à chacun, interfaces et mise à jour via GPT. Cloisonnement logique entre contextes vérifié dans chaque application, sans bases supplémentaires.
 - Local : démarrage sans clé Cloudflare, données persistantes après redémarrage du conteneur et fonctions métier identiques.
 - Cloudflare direct : application originale puis fork publiables avec identités propres ; backend, back-office et front réellement servis par Workers.
 - Passage local → Cloudflare : données, relations, fichiers et métadonnées vérifiés, accès de production configurés ; interruption/reprise contrôlée et aucune altération de l'installation locale.
 - Indépendance : production fonctionnelle après arrêt de Docker local.
 - Mise à jour : créer aussi des données directement en production, publier une évolution du code, vérifier qu'elles sont conservées ainsi que les personnalisations du fork.
-- Sécurité fonctionnelle : clés invalides, permissions insuffisantes, ressources déjà existantes, URLs de fichiers privées et absence de fuite entre applications ou contextes d'un même D1/R2. Le mode Docker à ressources distinctes est vérifié séparément.
+- Sécurité fonctionnelle : clés invalides, permissions insuffisantes, ressources déjà existantes, URLs de fichiers privées et absence de fuite entre applications ou contextes d'un même D1/R2. Le mode à ressources distinctes hors Sites est vérifié séparément.
 - Identités/secrets : sur les Sites publics, accès au front et connexion native Creezio sans compte GPT, puis refus des opérations non autorisées. Sessions locales inutilisables en production, coffre lisible avec la clé de destination et absence d'accès de publication dans le Worker.
 - Chat : module OpenAI activé, clé API serveur configurée, réponse réelle et appel d'outil autorisé raccordés aux conversations/widgets natifs ; comportement explicite si clé absente ou invalide.
 - Workspace : mêmes interactions sur les cibles, deux fiches d'un module conservant chacune brouillon/scroll/historique, transitions interrompues et changement de query sans mélange, portails inactifs neutralisés. Mutation depuis widget ou client externe visible sans effacement silencieux d'un brouillon ; révocation et changement de session purgent les caches. Cette compatibilité avec Vinext et le build Worker reste à vérifier.

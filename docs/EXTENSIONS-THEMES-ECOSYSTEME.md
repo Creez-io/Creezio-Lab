@@ -1,10 +1,10 @@
 # Extensions, thèmes et écosystème Creezio
 
-Proposition d'architecture du 26 septembre 2026, avant implémentation. Les dépôts, paquets, domaines et catalogues supplémentaires décrits ici ne sont pas encore créés ou publiés. L'ouverture publique et la [licence MIT](../LICENSE) du cœur, du SDK et du starter d'extension sont décidées et la licence est présente dans ce dépôt.
+Proposition d'architecture du 26 septembre 2026, avant implémentation. Les dépôts, paquets, domaines et catalogues supplémentaires décrits ici ne sont pas encore créés ou publiés. Sources publiques, architecture d'éditions, activation premium et accompagnement sont prévus ; les conditions commerciales/licences, notamment pour les SaaS, sont différées. Voir [Licences et offres](LICENCES-ET-OFFRES.md). Le LICENSE actuel couvre le contenu déjà publié et reste inchangé.
 
 ## Responsabilités
 
-Un **module ou extension Creezio** est la fonctionnalité complète, avec données, logique métier, API, relations intermodules et interfaces. Son **plugin conversationnel** en expose les outils MCP, widgets et skills aux chats. Cette partie utilise le format standard d'un plugin GPT même sans publication dans ChatGPT ; elle ne remplace pas le module ni ses données. Le chat Creezio héberge plusieurs de ces plugins. Chaque application distingue son MCP d'administration de son MCP destiné aux utilisateurs du front, avec catalogues et droits séparés dans un même déploiement. Lire [Compatibilité ChatGPT](COMPATIBILITE-CHATGPT.md). Une interface dans le chat Creezio ne prouve pas à elle seule son fonctionnement dans ChatGPT.
+Un **module ou extension Creezio** est la fonctionnalité complète, avec données, logique métier, API, relations intermodules et interfaces. Son **plugin conversationnel** en expose les outils MCP, widgets et skills aux chats. Cette partie utilise le format standard d'un plugin GPT même sans publication dans ChatGPT ; elle ne remplace pas le module ni ses données. Le chat Creezio héberge plusieurs de ces plugins. Chaque application distingue son MCP d'administration de son MCP destiné aux utilisateurs métier, dans le workspace ou dans le front, avec catalogues et droits séparés dans un même déploiement. Lire [Compatibilité ChatGPT](COMPATIBILITE-CHATGPT.md). Une interface dans le chat Creezio ne prouve pas à elle seule son fonctionnement dans ChatGPT.
 
 | Élément | Responsabilité |
 |---|---|
@@ -17,6 +17,8 @@ Un **module ou extension Creezio** est la fonctionnalité complète, avec donné
 | Catalogue | Découverte, éditeur, versions, compatibilité, dépendances, documentation, état de maintenance et origine des paquets. |
 
 Les extensions officielles, communautaires et privées utilisent le même contrat. Les points d'extension sont publics, typés et versionnés : événements après opérations, filtres de présentation, emplacements UI et registres de rendus. Un hook ne permet pas de désactiver les autorisations ni de contourner la validation des données.
+
+Trois familles utilisent ce contrat : modules natifs, modules métier communs installables dans plusieurs applications, et modules spécifiques. Une fonction métier n'est pas forcément propre à une marque ni liée à un fournisseur. Les modules natifs relèvent de la revue et des releases du socle ; les autres peuvent être distribués et mis à jour indépendamment selon leurs dépendances. Le [cadre produit et communauté](CADRE-PRODUIT-ET-COMMUNAUTE.md) précise leurs usages et les contrôles associés.
 
 Les API et MCP sont des capacités natives du socle. Un client externe, dont n8n, peut appeler les opérations autorisées avec un token API ou une autorisation MCP sans installer le module n8n. Ce module apporte le pilotage et l'intégration de n8n depuis Creezio ; il n'ouvre pas l'accès aux API du socle et ne devient pas un prérequis des autres clients.
 
@@ -116,7 +118,13 @@ Ce parcours s'inspire des [mises à jour ciblées WordPress](https://developer.w
 
 Fournir un thème standard, un thème ChatGPT-like et des points de remplacement documentés : disposition, navigation, pages, composants, rendus des widgets et styles. Les fichiers personnalisés de l'application sont séparés des fichiers du thème commun. La mise à jour du thème ne les écrase pas.
 
+Le front est facultatif. Une personne ou une équipe peut travailler uniquement dans le workspace Creezio, avec des rôles donnant accès aux vues/opérations métier sans accorder la gestion du système. La séparation des permissions s'applique aussi à son chat standard. Les thèmes et fronts indépendants permettent un design propre, aussi bien pour un usage interne que pour un SaaS.
+
+Chaque module déclare ses vues, routes, entrées de navigation, emplacements, composants et permissions pour les surfaces concernées. Le build compose ce registre ; les thèmes officiels affichent automatiquement les contributions des modules installés, actifs et autorisés. Ajouter un module conforme ne demande pas de modifier les routes ou le code du thème dans chaque application. Une capacité de rendu manquante est détectée avant livraison ; désactivation et liens historiques ont des états explicites. Les modules sans vue front n'exposent pas leur administration par défaut.
+
 Le SDK front fournit sessions, clients d'opérations, gestion des conversations, fichiers, événements, widgets et erreurs. Un développeur peut conserver tout le thème, remplacer seulement des composants ou construire son propre front avec ce SDK. Une prévisualisation de brouillons ou données privées exige toujours une autorisation explicite.
+
+Le SDK expose aussi le registre et le moteur de composition des vues de modules. Un front headless peut les adopter ou créer ses propres écrans ; l'intégration automatique des nouvelles vues n'est garantie que s'il respecte ce contrat de composition. Les mêmes API et autorisations restent disponibles dans les deux cas.
 
 Les écrans d'administration apportés par les extensions se montent dans des panneaux React stables du workspace Creezio. Le SDK fournit identité de vue, localisation propre au panneau, navigation, activité et invalidation ; il n'expose pas les contextes privés Next/Vinext. Les vues utilisent les opérations autorisées pour leurs données. Un changement de route ou de thème ne doit pas mélanger les fiches, perdre un brouillon ou remplacer le chat standard. Les thèmes du front utilisent les contrats publics de conversation et de widgets, sans importer le workspace privé de l'administration.
 
@@ -132,9 +140,13 @@ Le front livré et l'administration restent publiables avec le backend dans une 
 
 Livrer une documentation publique, un SDK versionné, le starter public, un exemple installé, des tests de conformité, une procédure de contribution, un changelog et une politique de compatibilité. Le catalogue distingue officiel, tiers et privé, ainsi que l'état de maintenance. Les dépôts et paquets privés conservent leurs contrôles d'accès.
 
+Livrer aussi des skills de développement versionnés, distincts des skills métier du chat, et une commande de conformité commune au local, à la CI et à la livraison. Les schémas, linters, tests de contrat, archives réelles et exemples invalides doivent prouver que le parcours officiel refuse un module non conforme. Les instructions données à l'IA ne sont pas seules responsables de cette garantie. Le [cadre commun](CADRE-PRODUIT-ET-COMMUNAUTE.md) décrit les contrôles, la création sans GitHub et le cycle issue/PR → revue → release → adoption compatible.
+
+Le registre central demandé suit les projets et déploiements enregistrés, leur propriétaire vérifié, URL, dépôt éventuel et versions datées. L'inscription devient obligatoire à la publication officielle ; le développement local fonctionne hors ligne. Le token de déclaration reste distinct des droits GitHub, des comptes applicatifs et des secrets fournisseurs. Les contributions nécessitent un accès GitHub autorisé ; une release amont rend une mise à jour disponible sans la déployer automatiquement dans les apps. Une copie open source modifiée peut ne pas participer au registre.
+
 Le paquet est vérifié avec ses dépendances transitives pour Workers et Sites. Les extensions incluses dans le Worker restent du code de confiance ; le manifeste de permissions n'isole pas du code malveillant. L'intégrité et, lorsque disponible, la [provenance npm](https://docs.npmjs.com/trusted-publishers/) complètent la revue sans la remplacer. Aucun mécanisme d'exécution arbitraire de code non approuvé n'est implicite.
 
-Le cœur, le SDK et le starter sont placés sous [licence MIT](../LICENSE), choix approuvé. Les futures distributions de ces composants conservent le texte de licence et les mentions nécessaires ; les dépendances et contributions tierces conservent leurs propres mentions applicables. Cette ouverture ne rend publics ni les applications privées indépendantes, ni leurs extensions, secrets ou données, et n'implique aucun changement d'offre commerciale.
+Chaque future distribution précisera ses composants Community/Enterprise et leurs licences ; aucun paquet premium n'est implicitement couvert par une licence permissive globale. Le contenu déjà publié et les tiers gardent les mentions et droits applicables. Les sources privées des apps, leurs données et secrets restent privées. Un abonnement n'ouvre pas leur dépôt : l'accompagnement demande une autorisation distincte, limitée et révocable. Voir [Licences et offres](LICENCES-ET-OFFRES.md).
 
 ## Preuves de réussite
 
@@ -149,6 +161,7 @@ Une mise à jour ciblée sélectionne une version de module et ses dépendances 
 5. Une extension incompatible ou d'origine inattendue est refusée avant publication.
 6. Changer ou mettre à jour un thème préserve les personnalisations, conversations et opérations ; l'administration reste Creezio.
 7. Le SDK permet à un front distinct d'exercer une opération et un widget avec les droits de son utilisateur, sans importer l'administration.
+   Une recette séparée installe un module puis vérifie ses vues/navigation dans les deux thèmes sans changement manuel de l'app ; le même module reste utilisable dans le workspace avec des rôles et sans front spécifique.
 8. Les deux Sites publics permettent d'atteindre le front et de se connecter à Creezio sans compte GPT ; les opérations protégées exigent une session utilisateur ou une identité machine autorisée selon leur contrat, ainsi que les droits et validations requis.
 9. Le module OpenAI activé et configuré produit une réponse réelle, un appel d'outil autorisé puis un widget dans les interfaces natives ; aucune clé API n'atteint le navigateur.
 10. Deux contextes de la même application Sites utilisent le même couple D1/R2 sans fuite de données, fichiers, résultats de recherche ou conversations.

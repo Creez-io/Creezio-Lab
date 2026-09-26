@@ -6,8 +6,8 @@ Vérification documentaire du 26 septembre 2026. Ces parcours font partie du pro
 
 | Parcours | Application | Données et fichiers | Accès |
 |---|---|---|---|
-| GPT Sites | Runtime du Site, backend/back-office/front | D1 et R2 fournis nativement au Site | Compte Sites ; aucune clé Cloudflare personnelle nécessaire. |
-| Développement local Docker | Worker exécuté localement avec Miniflare/workerd | D1/R2 locaux persistants dans des volumes | Aucun compte Cloudflare nécessaire. Ce parcours sert au développement et aux tests. |
+| GPT Sites | Runtime du Site public, backend/back-office/front | Un couple D1/R2 natif partagé par application ; cloisonnement logique par contextes et droits | Compte Sites pour publier ; aucun compte GPT requis des visiteurs, connexion native Creezio pour les fonctions protégées. Aucune clé Cloudflare personnelle nécessaire. |
+| Développement local Docker | Worker exécuté localement avec Miniflare/workerd | D1/R2 locaux persistants dans des volumes ; ressources distinctes possibles | Aucun compte Cloudflare nécessaire. Ce parcours sert au développement et aux tests. |
 | Production Cloudflare | Backend, API, back-office et front sur Workers avec Static Assets | D1 et R2 dans le compte Cloudflare choisi | Connexion Cloudflare guidée, jeton avec droits nécessaires et identifiant de compte. |
 
 Le parcours principal depuis Docker est **développer et tester localement, puis publier l'application entière avec ses données et ses fichiers sur Cloudflare**. La production ainsi publiée ne dépend plus du Docker local ; son arrêt ne doit pas interrompre le service.
@@ -18,15 +18,23 @@ Le code métier, les modèles, les modules et les contrats restent communs. Les 
 
 Les profils de build Sites et Cloudflare direct partagent une source, un lockfile et l'authentification native Creezio. Leurs conventions de packaging, portes d'accès d'hébergement, ressources et déclencheurs restent distinctes. La présence de D1/R2 sur les deux plateformes ne prouve pas l'équivalence de ces capacités. Qualifier une tranche fonctionnelle sur chaque cible avant de développer toutes les interfaces ; consulter [Qualification Sites](QUALIFICATION-SITES.md) pour les preuves et limites hébergées.
 
-## Authentification native et porte d'accès Sites
+## Un couple D1/R2 par application Sites
 
-Creezio fournit ses propres comptes et sessions pour le front et l'administration, avec droits distincts. La politique d'audience de Sites constitue une couche préalable indépendante :
+Sur Sites, l'application utilise un seul D1 et un seul R2 fournis nativement. Les comptes et espaces partagent ces ressources ; leurs données sont cloisonnées logiquement par le contexte résolu côté serveur et les permissions de chaque opération. Les métadonnées D1 et les accès aux fichiers R2 suivent les mêmes contrôles. Un identifiant ou une clé de fichier transmis par le front ne suffit jamais à obtenir un accès.
 
-- **Site privé :** l'utilisateur franchit la porte ChatGPT de l'hébergement, atteint le front, puis se connecte à son compte Creezio pour les fonctions protégées.
-- **Site public :** l'utilisateur atteint directement le front, puis utilise la même connexion native Creezio.
-- **Docker local et Cloudflare direct :** la connexion native Creezio protège les fonctions applicatives ; aucune identité ChatGPT n'est requise par le produit.
+Les deux Sites de recette, original et fork, ont chacun leur couple propre. Cette indépendance entre applications complète la vérification des droits entre contextes au sein d'une application. Le provisionnement de plusieurs D1/R2 natifs dans un même Site est hors périmètre ; il ne conditionne pas la construction du socle.
 
-Une identité ChatGPT ou ses headers ne créent jamais automatiquement un compte, une session ni des permissions Creezio. Le Site peut rester privé ; il n'est pas nécessaire de le rendre public pour implémenter des comptes applicatifs. Pour les clients machine, qualifier séparément l'accès à l'hébergement et l'autorisation API/MCP ou la signature de webhook, sans distribuer un accès technique global au navigateur.
+Docker conserve la possibilité de choisir des ressources physiquement distinctes, locales ou distantes, selon l'application. Le contexte serveur sélectionne alors la ressource autorisée via l'adaptateur ; aucun état global mutable ne choisit la base pour toutes les requêtes. Ce mode ne crée pas d'instance applicative par client.
+
+## Sites publics et authentification native
+
+Tous les Sites de la recette sont publics. Le visiteur atteint directement le front sans compte GPT, puis se connecte à Creezio pour les fonctions protégées. Creezio fournit ses propres comptes et sessions pour le front et l'administration, avec droits distincts. Une URL publique n'accorde pas l'accès aux données ni aux opérations d'administration.
+
+Docker local et Cloudflare direct utilisent la même connexion native. Une identité ChatGPT ou ses en-têtes ne créent jamais automatiquement un compte, une session ni des permissions Creezio. Les API/MCP et webhooks conservent leurs autorisations ou signatures propres ; l'ouverture publique du Site ne désactive pas leurs contrôles.
+
+## Module OpenAI et chat natif
+
+Le chat est alimenté par un module OpenAI activé et configuré avec une clé API conservée côté serveur. Les appels au LLM passent par ce module ; l'UI, les conversations persistantes, les droits et les widgets restent natifs Creezio. Les thèmes et le navigateur ne reçoivent pas la clé. Le compte GPT utilisé pour publier n'est pas un accès implicite au LLM. La recette des Sites publics et des autres hébergements vérifie une vraie réponse, les appels d'outils et les erreurs de configuration ; sans clé valide, l'absence de réponse LLM est explicite.
 
 ## SQL central de création et d'évolution
 
@@ -95,25 +103,25 @@ Sources : [D1 depuis une application externe](https://developers.cloudflare.com/
 
 ## Recette requise
 
-- GPT Sites original et véritable fork : démarrage, D1/R2 natifs, interfaces et mise à jour via GPT toujours requis.
+- GPT Sites original et véritable fork : deux Sites publics, démarrage avec un couple D1/R2 natif propre à chacun, interfaces et mise à jour via GPT. Cloisonnement logique entre contextes vérifié dans chaque application, sans bases supplémentaires.
 - Local : démarrage sans clé Cloudflare, données persistantes après redémarrage du conteneur et fonctions métier identiques.
 - Cloudflare direct : application originale puis fork publiables avec identités propres ; backend, back-office et front réellement servis par Workers.
 - Passage local → Cloudflare : données, relations, fichiers et métadonnées vérifiés, accès de production configurés ; interruption/reprise contrôlée et aucune altération de l'installation locale.
 - Indépendance : production fonctionnelle après arrêt de Docker local.
 - Mise à jour : créer aussi des données directement en production, publier une évolution du code, vérifier qu'elles sont conservées ainsi que les personnalisations du fork.
-- Sécurité fonctionnelle : clés invalides, permissions insuffisantes, ressources déjà existantes, URLs de fichiers privées et absence de fuite interapplications.
-- Identités/secrets : connexion native Creezio après publication, sessions locales inutilisables, coffre lisible avec la clé de destination et absence d'accès de publication dans le Worker. Sur Sites privé, l'accès GPT seul ne vaut jamais session Creezio ; ne pas modifier l'audience pour réaliser ce test.
+- Sécurité fonctionnelle : clés invalides, permissions insuffisantes, ressources déjà existantes, URLs de fichiers privées et absence de fuite entre applications ou contextes d'un même D1/R2. Le mode Docker à ressources distinctes est vérifié séparément.
+- Identités/secrets : sur les Sites publics, accès au front et connexion native Creezio sans compte GPT, puis refus des opérations non autorisées. Sessions locales inutilisables en production, coffre lisible avec la clé de destination et absence d'accès de publication dans le Worker.
+- Chat : module OpenAI activé, clé API serveur configurée, réponse réelle et appel d'outil autorisé raccordés aux conversations/widgets natifs ; comportement explicite si clé absente ou invalide.
 
 ## Capacités Sites restant à qualifier
 
-- Plusieurs D1/R2 physiquement distincts pour un même Site, au-delà du couple natif fourni au démarrage.
-- Accès machine aux webhooks et endpoints MCP d'un Site privé, sans session ChatGPT dans le navigateur.
-- Déclencheurs durables disponibles pour tâches, indexation et boîte d'envoi lorsque l'utilisateur ferme son navigateur.
-- Transport des comptes/sessions natifs Creezio à travers le dispatcher Sites : cookies, bearer applicatif et révocation qualifiés sur la sonde machine privée ; parcours navigateur, comptes complets, cache et expiration restent à éprouver. La porte GPT et la session applicative restent distinctes ; le choix d'une authentification native est acquis.
-- Matérialisation et évolution des modèles : ajout SQL généré conservant les données D1/R2 qualifié sur la sonde ; chaîne du produit, mises à jour de modules et reprise après échec restent à éprouver. La chaîne SQL centrale est acceptée ; aucun script SQL de transformation n'est confié aux modules.
-- Progression du chat : événements SSE reçus groupés sur le chemin machine privé testé, y compris avec un second client. Qualifier le parcours navigateur et le transport retenu sans déduire une parité de la simple réception du contenu complet.
+- Déclenchement des travaux sans navigateur ouvert : un Site public peut recevoir un appel, mais il faut encore un mécanisme qui effectue cet appel au bon moment. Vérifier ce qui lance les tâches différées, reprend les envois et poursuit l'indexation, avec retries et idempotence. Cette question est indépendante de l'audience du Site et ne remet pas en cause le couple D1/R2 partagé.
+- Appels machine sur le Site public : la sonde HMAC signée, le rejeu et le refus d'un corps altéré sont vérifiés sans accès GPT. Réception réelle des événements Stripe/n8n et MCP/OAuth complet restent à éprouver lors de la construction des modules.
+- Sessions natives sur le Site public : cookies, bearer applicatif et révocation sont désormais vérifiés par la sonde publique sans jeton Sites. Le parcours navigateur avec comptes complets, cache et expiration reste à éprouver ; aucun compte GPT nécessaire. Conserver séparément les résultats privés initiaux et publics actuels.
+- Matérialisation et évolution des modèles : un ajout SQL généré conservant les données D1/R2 a été qualifié sur la sonde ; la chaîne du produit, les mises à jour de modules et la reprise après échec restent à éprouver. La chaîne SQL centrale est acceptée ; aucun script SQL de transformation n'est confié aux modules.
+- Progression du chat sur le Site public avec le module OpenAI configuré : mesurer le flux réellement reçu par le navigateur, l'annulation et la reprise. Les événements SSE synthétiques arrivent groupés depuis le poste de test sur les chemins privés initiaux puis sur le chemin public sans jeton Sites. Ce constat ne localise pas le composant responsable et ne remplace pas la recette navigateur/LLM réel.
 
-Les résultats et limites sont détaillés dans [Qualification Sites](QUALIFICATION-SITES.md). Les points restants donnent lieu à des prototypes et résultats mesurés, pas à des fonctionnalités présumées disponibles. Les identifiants de déploiement ne sont jamais codés dans le starter générique.
+Les résultats et limites sont détaillés dans [Qualification Sites](QUALIFICATION-SITES.md). Les mesures privées conservées décrivent leur contexte d'origine ; seules les nouvelles mesures publiques servent à qualifier le parcours désormais retenu. Les points restants donnent lieu à des résultats mesurés, pas à des fonctionnalités présumées disponibles. Les identifiants de déploiement ne sont jamais codés dans le starter générique.
 
 ## Sources de transfert et publication
 

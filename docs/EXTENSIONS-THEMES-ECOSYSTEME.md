@@ -6,7 +6,7 @@ Proposition d'architecture du 26 septembre 2026, avant implémentation. Les dép
 
 | Élément | Responsabilité |
 |---|---|
-| Socle et modules natifs | Backend, administration Creezio et capacités fournies d'origine ; contrats communs et release cohérente pour les composants interdépendants. |
+| Socle et modules natifs | Backend, administration Creezio, UI du chat, conversations persistantes, widgets et capacités fournies d'origine ; contrats communs et release cohérente pour les composants interdépendants. |
 | Extension | Fonctionnalité complète : modèles, opérations, API/MCP, permissions, événements, configuration, recherche, écrans et widgets selon son périmètre. |
 | Thème | Présentation du front, dispositions, styles et emplacements de composants. Il ne possède ni les données métier ni les autorisations. |
 | Personnalisation d'application | Configuration du front, remplacements de composants et extensions privées ; fichiers conservés lors des mises à jour. |
@@ -14,6 +14,10 @@ Proposition d'architecture du 26 septembre 2026, avant implémentation. Les dép
 | Catalogue | Découverte, éditeur, versions, compatibilité, dépendances, documentation, état de maintenance et origine des paquets. |
 
 Les extensions officielles, communautaires et privées utilisent le même contrat. Les points d'extension sont publics, typés et versionnés : événements après opérations, filtres de présentation, emplacements UI et registres de rendus. Un hook ne permet pas de désactiver les autorisations ni de contourner la validation des données.
+
+Le chat utilise un **module OpenAI activé**, configuré avec une clé API conservée côté serveur. Ce module fournit les appels au LLM, le choix des modèles autorisés, le streaming et les appels d'outils selon les contrats Creezio. L'interface du chat, les conversations, leur persistance et les widgets restent natifs ; un thème ne réintègre pas OpenAI lui-même. L'administration standard et le front utilisent ces services communs avec leurs propres droits. Sans clé valide, l'indisponibilité du LLM est explicite ; le compte GPT qui publie le Site ne fournit pas implicitement l'accès API.
+
+Sur Sites, chaque application utilise **un couple D1/R2 partagé**, avec cloisonnement logique par contextes et autorisations serveur. Les extensions déclarent leurs modèles et leurs besoins d'accès dans ce couple ; elles n'imposent pas une base ou un bucket natif supplémentaire par utilisateur ou espace. Docker conserve la possibilité de sélectionner des ressources distinctes via ses adaptateurs. Ce choix ne multiplie pas les instances de l'application.
 
 Un plugin de service comme n8n ou Hermes est une intégration à un service déjà disponible. L'utilisateur fournit sa clé API et les autres paramètres nécessaires, dont l'URL pour une instance personnelle. Creezio n'est responsable ni de l'installation, ni de l'hébergement, ni des mises à jour, ni des sauvegardes du logiciel tiers. Le paquet et sa démonstration ne contiennent aucun installateur de ce service. Mettre à jour le plugin ne met pas à jour le service distant.
 
@@ -33,7 +37,7 @@ Chaque composant a une source effective unique : workspace local ou paquet réso
 
 Un véritable fork GitHub d'un dépôt public reste public. La première application de test utilise cette filiation publique vérifiable. Pour garder le code d'une application ou d'une extension confidentiel, utiliser un dépôt indépendant privé, avec les versions et l'origine Creezio explicites ; ce dépôt n'est pas présenté comme un fork GitHub privé du socle public. Les mises à jour des composants communs restent possibles par les paquets et contrats versionnés.
 
-La visibilité des sources, l'audience du Site et les droits applicatifs sont distincts : du code public peut servir un Site privé, et des sources privées une application publique. Les secrets et données des applications n'entrent jamais dans un paquet ni dans les sources publiées.
+La visibilité des sources et les droits applicatifs sont distincts. Tous les Sites de la recette sont publics, avec connexion native Creezio pour les fonctions protégées ; cette audience n'ouvre ni les données privées ni l'administration. Les secrets et données des applications n'entrent jamais dans un paquet ni dans les sources publiées.
 
 Sources : [métadonnées de plugins WordPress](https://developer.wordpress.org/plugins/plugin-basics/header-requirements/), [scopes npm](https://docs.npmjs.com/about-scopes/), [visibilité npm](https://docs.npmjs.com/package-scope-access-level-and-visibility/), [lockfile](https://docs.npmjs.com/cli/v11/configuring-npm/package-lock-json/).
 
@@ -100,7 +104,7 @@ Fournir un thème standard, un thème ChatGPT-like et des points de remplacement
 
 Le SDK front fournit sessions, clients d'opérations, gestion des conversations, fichiers, événements, widgets et erreurs. Un développeur peut conserver tout le thème, remplacer seulement des composants ou construire son propre front avec ce SDK. Une prévisualisation de brouillons ou données privées exige toujours une autorisation explicite.
 
-La connexion native de l'application reste identique quel que soit le mode d'accès Sites. Sur un Site privé, le contrôle GPT précède l'accès au front, puis l'utilisateur se connecte avec son compte Creezio. Sur un Site public, le front est accessible directement sans compte GPT, puis la connexion native ouvre les fonctions autorisées de l'application. L'identité GPT ne crée aucune session, aucun compte ni aucun droit Creezio implicitement. Le SDK et les thèmes utilisent les sessions applicatives ; ils ne remplacent pas les permissions serveur par un en-tête d'identité GPT. Voir [Qualification Sites](QUALIFICATION-SITES.md) pour les contraintes de plateforme et les recettes distinctes des appels machine.
+Les Sites de la recette sont publics : le front est accessible directement sans compte GPT, puis la connexion native ouvre les fonctions autorisées de l'application. L'identité GPT ne crée aucune session, aucun compte ni aucun droit Creezio implicitement. Le SDK et les thèmes utilisent les sessions applicatives ; ils ne remplacent pas les permissions serveur par un en-tête d'identité GPT. La clé API du module OpenAI reste côté serveur et ne sert pas à identifier les utilisateurs. Voir [Qualification Sites](QUALIFICATION-SITES.md) pour les contraintes de plateforme et les recettes des appels machine.
 
 Le front livré et l'administration restent publiables avec le backend dans une seule application. Un front headless hébergé séparément est une option de composition ; il utilise les mêmes API et un parcours d'identité/CORS explicitement configuré. Cela n'implique aucun backend distinct par utilisateur ou client.
 
@@ -121,4 +125,6 @@ L'ouverture publique et open source du cœur, du SDK et du starter est actée. C
 5. Une extension incompatible ou d'origine inattendue est refusée avant publication.
 6. Changer ou mettre à jour un thème préserve les personnalisations, conversations et opérations ; l'administration reste Creezio.
 7. Le SDK permet à un front distinct d'exercer une opération et un widget avec les droits de son utilisateur, sans importer l'administration.
-8. Sur Site privé, l'accès GPT seul ne donne aucun droit applicatif ; la connexion native est encore nécessaire. Sur Site public, le front et cette connexion fonctionnent sans compte GPT. Les mêmes droits Creezio sont appliqués dans les deux cas.
+8. Les deux Sites publics permettent d'atteindre le front et de se connecter à Creezio sans compte GPT ; les opérations protégées refusent l'absence de session ou de droits applicatifs.
+9. Le module OpenAI activé et configuré produit une réponse réelle, un appel d'outil autorisé puis un widget dans les interfaces natives ; aucune clé API n'atteint le navigateur.
+10. Deux contextes de la même application Sites utilisent le même couple D1/R2 sans fuite de données, fichiers, résultats de recherche ou conversations.

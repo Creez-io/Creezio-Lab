@@ -2,29 +2,28 @@
 
 26 septembre 2026. Vérification du contrat disponible et sonde technique publiée. Le CMS complet, les interfaces à onglets et le fork de recette ne sont pas encore implémentés ; les preuves ci-dessous ne les remplacent pas.
 
-## Deux niveaux d'accès indépendants
+## Périmètre retenu
 
-| Audience de l'hébergement | Accès au front | Accès aux fonctions protégées |
-|---|---|---|
-| Site privé | Contrôle d'accès ChatGPT de Sites | Connexion native Creezio, session et droits propres à l'application |
-| Site public | Front accessible directement | Même connexion native Creezio, session et droits propres à l'application |
+Les Sites du projet et de sa recette sont **publics**, par choix utilisateur. Le front est accessible sans connexion GPT ; les fonctions protégées, les données et l'administration exigent les comptes, sessions et droits natifs Creezio. Une identité GPT ne crée aucun compte, session ou droit applicatif. La [documentation Sites](https://learn.chatgpt.com/docs/sites) décrit le mode public de l'hébergement.
 
-Une identité GPT ne crée aucun compte, aucune session ni permission Creezio automatiquement. L'audience peut rester privée. Une connexion applicative ne franchit pas à elle seule la protection préalable d'un Site privé. La [documentation Sites](https://learn.chatgpt.com/docs/sites) décrit l'audience et les fonctions d'identité fournies par la plateforme ; celles-ci restent distinctes des comptes de l'application.
+Chaque Site utilise **un couple D1/R2 natif commun à son application**, avec cloisonnement logique par contexte et autorisations serveur. Le provisionnement de plusieurs ressources dans un même Site est abandonné ; ce n'est plus une question ouverte. Docker conserve la possibilité de ressources D1/R2 distinctes, à éprouver dans son propre parcours. Les deux applications de recette sur A et B gardent chacune leurs ressources et secrets indépendants.
+
+Le chat appelle son LLM via le **module OpenAI activé et configuré avec une clé API serveur**. Interface, conversations, outils et widgets restent Creezio. Les tests de transport ci-dessous ne sont pas encore un appel OpenAI ni une recette complète du chat.
 
 ## Ce qui a été vérifié sur un Site hébergé
 
-Une sonde minimale a été publiée avec un Worker, une base D1 et un bucket R2. Elle ne contient aucun compte ni document métier. Son audience reste privée. Les tests machine utilisent l'accès technique de Sites pour franchir la protection de l'hébergement, puis des autorisations applicatives séparées. Ce jeton technique n'est ni une identité utilisateur ni une méthode de connexion à fournir au navigateur.
+Une sonde minimale a été publiée avec un Worker, une base D1 et un bucket R2. Elle ne contient aucun compte ni document métier. Initialement testée avec l'audience privée par défaut, elle a été passée en public conformément à la clarification utilisateur, puis retestée le 26 septembre à 12:29 UTC **sans aucun jeton d'accès GPT/Sites**. Le Worker publié est inchangé ; les opérations sensibles gardent leur protection applicative.
 
 | Vérification | Résultat |
 |---|---|
 | Publication Worker et ressources natives | Publication réussie ; D1 `DB` et R2 `BUCKET` présents sans clé Cloudflare personnelle. |
-| Protection de l'hébergement | Requête sans accès Sites refusée avec HTTP 401. |
-| Autorisation applicative distincte | Après franchissement de la protection Sites, une requête sans clé applicative reste refusée. Aucune identité GPT injectée pendant cette sonde machine. |
+| Front public | Requête anonyme sur la page de présentation : HTTP 200, sans connexion GPT ni jeton Sites. |
+| Autorisation applicative | Requête sans clé applicative refusée avec HTTP 401 ; requête autorisée acceptée. Aucune identité GPT reçue pendant cette sonde. |
 | Transport des sessions | `Set-Cookie` Secure/HttpOnly transmis ; retour du cookie accepté par l'application sans son bearer ; révocation vérifiée. |
 | D1/R2 | Écriture et relecture indépendantes, correspondance des empreintes du contenu vérifiée. |
-| Corps brut et signature | Requête HMAC correctement reçue, rejeu identifié, modification des octets refusée. Le test passe par l'accès technique du Site privé. |
+| Corps brut et signature | Requête HMAC correctement reçue sur le Site public, sans cookie ni bearer applicatif/GPT ; rejeu identifié et modification des octets refusée. |
 | HTTP sortant | Requête HTTPS vers une documentation publique réussie depuis le Worker. |
-| Streaming court | Les trois événements arrivent, mais ont été reçus groupés dans cette mesure. Le test prolongé est traité séparément ci-dessous. |
+| Streaming synthétique | Les événements arrivent, mais groupés après environ 4 secondes sur le chemin public testé. Le passage public ne suffit pas à valider leur affichage progressif. |
 
 Ces tests qualifient les transports nécessaires à une authentification native. Ils ne remplacent pas la future recette de comptes Creezio : invitation/inscription, mot de passe, session navigateur, permissions, expiration et protection des actions. Aucun scaffold d'authentification GPT n'est utilisé comme identité applicative de substitution.
 
@@ -34,18 +33,17 @@ Une seconde version a été publiée avec un champ nullable supplémentaire, pro
 
 Une continuation `waitUntil` a écrit en D1 après une réponse HTTP 202. Il s'agit d'une tâche courte déclenchée par une requête : cela ne prouve aucun ordonnanceur durable, réveil autonome, retry ni travail long.
 
-**L'affichage progressif du chat n'est pas validé.** Cinq événements SSE espacés d'une seconde ont été reçus groupés, après environ 5,4 secondes. Ajouter du remplissage (environ 20 Ko au total) a produit plusieurs fragments réseau, tous reçus en moins de 10 ms vers la fin de la réponse. Les en-têtes de non-transformation et d'encodage `identity` n'ont pas changé ce résultat. Un second client indépendant, `curl --no-buffer`, a reçu lui aussi les cinq événements en un seul fragment après environ 5,6 secondes.
+**L'affichage progressif du chat n'est pas validé.** Lors de la qualification privée initiale, cinq événements SSE espacés d'une seconde ont été reçus groupés après environ 5,4 secondes. Ajouter du remplissage (environ 20 Ko au total) a produit plusieurs fragments réseau, tous reçus en moins de 10 ms vers la fin de la réponse. Les en-têtes de non-transformation et d'encodage `identity` n'ont pas changé ce résultat. Un second client indépendant, `curl --no-buffer`, les a également reçus groupés. Après ouverture publique, le test Node sans jeton Sites reçoit encore le flux groupé en un fragment vers 4 secondes.
 
-Ce constat concerne le chemin testé : ce poste vers le Site privé avec accès technique machine. La sonde émet bien les événements espacés côté Worker ; ces mesures ne localisent pas le composant qui les regroupe. Elles ne prouvent ni une impossibilité générale du streaming sur Sites, ni le comportement du navigateur après connexion GPT, ni celui d'un Site public. La recette doit qualifier le parcours navigateur et un transport permettant de conserver la progression, l'annulation et la reprise du chat avant d'en déclarer la parité. Un éventuel mécanisme de consultation périodique des événements persistés reste une solution à éprouver, pas une capacité déjà livrée.
+Ce constat concerne les trajets testés depuis ce poste, d'abord privés puis publics. Il ne peut plus être attribué à la seule porte GPT privée. La sonde émet les événements espacés côté Worker ; les mesures ne localisent pas le composant qui les regroupe et ne démontrent aucune impossibilité générale de Sites. La recette navigateur avec le module OpenAI réellement configuré doit conserver progression, annulation et reprise du chat avant d'en déclarer la parité. Un éventuel mécanisme de consultation périodique des événements persistés reste une solution à éprouver, pas une capacité déjà livrée.
 
 ## Capacités non établies par le contrat actuel
 
 | Capacité | Limite de ce qui est vérifié | Conséquence de conception |
 |---|---|---|
-| Plusieurs D1/R2 natifs par Site | Le starter et la sonde exposent un couple ; l'inspecteur sait représenter plusieurs bindings D1, mais aucun contrat de provisionnement multiple n'est disponible dans les outils consultés. | Conserver le résolveur extensible ; ne pas annoncer l'isolation physique de plusieurs clients comme déjà validée sur Sites. |
-| Déclencheurs durables | Des planifications sont mentionnées dans les métadonnées Sites ; pas de contrat accessible précisant leur création et le réveil d'un handler Worker. | Ne pas promettre un Cron Trigger métier ni des garanties de reprise sur cette seule mention. |
+| Actions automatiques sans visite | Par exemple, envoyer un rappel demain sans navigateur ouvert. Des planifications sont mentionnées dans les métadonnées Sites ; leur exécution applicative n'est pas établie. | Qualifier pour les fonctions qui en dépendent, via une capacité d'hébergement réelle ou une extension externe comme n8n. Question indépendante de l'audience et du chat déclenché par l'utilisateur. |
 | Queues et Durable Objects | Aucun contrat de configuration ou d'exécution établi dans le workflow inspecté. | Ne pas en faire des dépendances obligatoires du socle Sites. |
-| Webhooks sur Site privé | Le test signé réussit après authentification technique Sites. Un fournisseur doit pouvoir atteindre cette entrée avec un mécanisme réellement accepté. | La compatibilité Stripe/n8n ne se déduit pas du test HMAC synthétique. Ne pas exposer le jeton d'accès Sites dans une URL ou dans le front. |
+| Connecteurs fournisseurs réels | L'entrée publique signée est vérifiée sans accès GPT ; les événements Stripe/n8n et leurs signatures exactes restent à tester lors de l'implémentation des modules. | L'accès à un Site privé n'est plus une contrainte du projet. Une sonde HMAC synthétique ne remplace pas la recette réelle de chaque connecteur. |
 | MCP complet | Le connecteur Sites prévoit une URL MCP en HTTP streamable lorsque la publication est prête pour MCP. La sonde vérifie les transports HTTP, pas un serveur MCP/OAuth complet. | Recette distincte découverte/PKCE/consentement/portées/refresh/révocation, avec les comptes Creezio. |
 | WebSocket, tâches longues | Pas de preuve hébergée réalisée. | Aucun engagement de durée ou d'exécution durable implicite. |
 

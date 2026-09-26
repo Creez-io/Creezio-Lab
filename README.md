@@ -10,7 +10,7 @@ Le dossier [Extensions, thèmes et écosystème](docs/EXTENSIONS-THEMES-ECOSYSTE
 
 Un CMS et backend communs, un back-office conservant l'identité Creezio réservé à l'administrateur de l'application, et un front applicatif indépendant utilisant les API avec les permissions de ses utilisateurs.
 
-Chaque application rassemble son administration et son front dans un seul projet/repo et un déploiement applicatif commun. GPT Sites est la cible principale ; le socle ne dépend ni de Docker ni de processus persistants. L'organisation des données est un choix applicatif : service de données commun ou espaces D1/R2 isolés par client, sans multiplier les instances de l'application.
+Chaque application rassemble son administration et son front dans un seul projet/repo et un déploiement applicatif commun. GPT Sites est la cible principale ; le socle ne dépend ni de Docker ni de processus persistants. Sur Sites, un couple D1/R2 commun dessert l'application avec séparation logique des données par contexte et droits serveur. Docker permet aussi de choisir des ressources D1/R2 distinctes, sans multiplier les instances de l'application.
 
 ## Exigences acquises
 
@@ -21,7 +21,8 @@ Chaque application rassemble son administration et son front dans un seul projet
 - Distinguer les capacités natives, les extensions communes installables (exemples : catalogue produits, Stripe) et les extensions propres à chaque application.
 - Standardiser les modèles actuels, données, API, MCP, permissions, index/projections de recherche et contributions UI de chaque extension. L'installation initialise une base neuve ; les mises à jour préservent les données présentes.
 - Générer et inspecter le SQL de création et d'évolution dans la chaîne centrale de publication, puis le versionner avec la source. Les modules déclarent leurs modèles et ne fournissent aucun script de transformation SQL.
-- Fournir les comptes et sessions natifs Creezio. Sur un Site privé, la porte ChatGPT de l'hébergement précède la connexion Creezio ; sur un Site public, le front est atteint directement, puis la connexion Creezio protège les fonctions privées. Une identité ChatGPT ne crée ni compte, ni session, ni permission Creezio automatiquement. Le Site peut rester privé.
+- Publier les Sites du projet en mode public : le front est atteint directement, puis les comptes et sessions natifs Creezio protègent les fonctions privées, données et administration. Aucune connexion GPT requise ; une identité ChatGPT ne crée ni compte, ni session, ni permission Creezio automatiquement.
+- Fournir le LLM du chat par un module OpenAI activé et configuré avec une clé API serveur. Le chat, ses conversations, outils et widgets restent des capacités Creezio ; sans configuration valide, aucune réponse IA n'est simulée.
 - Ajouter au contrat d'extension les widgets interactifs affichables dans le chat, utilisant les mêmes opérations métier et permissions que le front.
 - Fournir des modules prêts à configurer : n8n ou Stripe apportent déjà leurs API, outils MCP, droits, événements et interfaces/widgets. Chaque application ne doit pas réintégrer le fournisseur.
 - Les applications tierces restent entièrement gérées hors de Creezio : aucun hébergement, installation ou mise à jour de n8n/Hermes/Meili. Le plugin reçoit les accès à un service existant ; sa mise à jour concerne uniquement l'intégration.

@@ -106,7 +106,7 @@ Pour Sites : conserver son plugin de build, produire l'entrée Worker attendue e
 
 GitHub reste la source du projet et de sa filiation. Le dépôt source géré par Sites est un transport de publication distinct. Une livraison enregistre le SHA GitHub, le SHA publié, la version et l'identifiant de déploiement. Deux Sites ne doivent jamais partager accidentellement cette identité.
 
-Les nouveaux Sites commencent privés et peuvent le rester. Sur un Site privé, la porte ChatGPT de l'hébergement précède l'accès au front ; l'utilisateur doit ensuite ouvrir sa session Creezio pour les fonctions protégées. Sur un Site public, il atteint directement le front et utilise la même connexion Creezio. L'audience du Site ne remplace jamais l'authentification applicative ; elle n'est pas modifiée implicitement pour réaliser cette dernière.
+La cible et la recette sont des Sites publics, conformément au choix utilisateur : front accessible directement puis connexion native Creezio pour les fonctions protégées. L'initialisation sécurise l'administration avant l'ouverture ; aucun premier visiteur ne devient administrateur. La visibilité publique de l'hébergement ne rend pas les données ni l'administration publiques. Les contrôles applicatifs sont exercés sans connexion GPT.
 
 ## 5. Données, identités et sécurité
 
@@ -118,7 +118,9 @@ Concevoir les modèles pour D1 dès l'origine : tables, relations, contraintes, 
 
 Chaque opération reçoit un contexte serveur obligatoire : utilisateur, permissions, application et espace de données résolu. Aucun identifiant fourni par le front ne suffit à choisir une base ou à obtenir un droit. Aucun binding mutable global ne doit laisser passer une requête dans l'espace d'une autre.
 
-Sur GPT Sites, le cas de départ utilise les bindings D1/R2 fournis nativement au Site ; aucune clé Cloudflare personnelle n'est nécessaire. Sur Docker, le stockage local doit être disponible sans compte Cloudflare, avec volumes persistants ; l'utilisateur peut choisir ses ressources Cloudflare via la connexion native fournie. Le contrat permet également des espaces physiquement distincts. La capacité de GPT Sites à exposer plusieurs ressources devra être vérifiée séparément. Si un accès distant requiert une API HTTPS dédiée, l'adaptateur natif s'en charge ; aucun développement spécifique n'est demandé à l'application cliente. Un simple filtre `tenant_id` ne vaut pas preuve d'isolation physique. Aucun de ces choix ne multiplie les déploiements applicatifs par client.
+Sur GPT Sites, un seul couple D1/R2 natif est partagé par l'application, sans clé Cloudflare personnelle. Comme dans un SaaS, le serveur applique le contexte autorisé et les droits à chaque opération, conversation et fichier ; les préfixes R2 ne remplacent pas ces vérifications. L'isolation physique de plusieurs bases/buckets dans un même Site est retirée du périmètre, pas laissée comme une qualification en attente.
+
+Sur Docker, le stockage local reste disponible sans compte Cloudflare avec volumes persistants ; l'utilisateur peut choisir ses ressources Cloudflare via la connexion native. L'application/extensions peut sélectionner des ressources D1/R2 physiquement distinctes via le résolveur serveur. Si un accès distant nécessite une API HTTPS dédiée, l'adaptateur l'encapsule. Qualifier cette possibilité sur Docker séparément du stockage partagé Sites. Aucun de ces choix ne multiplie les déploiements applicatifs par client.
 
 En production entièrement sur Cloudflare, l'application Worker utilise directement ses bindings D1/R2. La première publication copie de façon contrôlée les données et fichiers locaux de cette installation vers ses ressources de production. Les publications suivantes conservent les données de production ; elles ne réimportent pas automatiquement le jeu de développement. Cette copie à modèles identiques est une opération de livraison, pas un script de transformation de base dans un module.
 
@@ -134,7 +136,7 @@ Un utilisateur applicatif n'obtient pas l'administration Creezio. Les mêmes res
 
 Creezio fournit ses comptes, identifiants de connexion et sessions applicatives natifs. Les mots de passe sont stockés uniquement sous forme de dérivation sécurisée ; les sessions sont gérées et révocables côté serveur. Cette authentification fonctionne sur Sites, en développement local et sur Cloudflare direct, avec les mêmes droits et parcours front/administration.
 
-Sur Sites, deux couches sont explicitement séparées : en mode privé, l'accès ChatGPT de l'hébergement puis la connexion native Creezio ; en mode public, l'accès direct au front puis la même connexion native Creezio pour les fonctions protégées. Une identité ChatGPT, ses headers ou son email ne créent automatiquement ni compte, ni session, ni permission Creezio. Un utilisateur ayant franchi la porte Sites mais sans session Creezio reste anonyme pour les API applicatives protégées. Ne pas forcer le Site à devenir public ni présenter la double porte du mode privé comme incompatible avec le produit.
+Sur les Sites publics retenus, le visiteur accède au front sans compte GPT. Seule une session native Creezio autorisée ouvre les fonctions protégées. Une identité ChatGPT, ses headers ou son email ne créent automatiquement ni compte, ni session, ni permission Creezio. La recette privée avec une porte GPT n'est pas un objectif de ce projet.
 
 Conserver invitations, activation, expiration/révocation des sessions, restrictions par compte (autorisé/interdit/hérité) et impersonation administrateur explicite/auditée. Le changement d'hébergement ne doit pas attribuer les comptes à partir d'un email ni copier des sessions locales actives. Qualifier la transmission des cookies, headers et corps par le dispatcher Sites, ainsi que deux comptes Creezio distincts. Le fonctionnement de la porte ChatGPT seule ne valide pas l'authentification native ; les résultats figurent dans [Qualification Sites](QUALIFICATION-SITES.md).
 
@@ -193,11 +195,13 @@ Pour n8n, distinguer l'API de gestion des workflows et leurs déclencheurs : la 
 
 MCP doit couvrir connexion des clients, découverte, consentement, autorisation OAuth avec PKCE et enregistrement des clients quand requis, renouvellement/révocation, politiques par client et audit. Les outils de navigation/UI s'exécutent dans un client actif autorisé ; les opérations de données restent serveur. Une connexion MCP, une clé fournisseur et une session d'utilisateur sont trois autorisations distinctes.
 
-Un Site privé impose sa porte ChatGPT aux visiteurs. Pour les machines, qualifier séparément le passage de cette porte et l'autorisation applicative : client MCP, clé limitée ou événement fournisseur signé. Un mécanisme d'accès technique de l'hébergement, s'il est utilisé, ne crée aucune identité ni permission Creezio et ne remplace pas la signature du fournisseur. Ne pas l'exposer au navigateur ni modifier automatiquement l'audience du Site pour recevoir un callback. Une restriction restante est documentée dans [Qualification Sites](QUALIFICATION-SITES.md).
+Les callbacks sont exposés sur le Site public et protégés par leur contrat applicatif : autorisation MCP, clé limitée ou signature fournisseur. Ils ne demandent aucune session GPT ni session de navigateur. Tester les fournisseurs réels, la signature, le rejeu et les droits ; l'accès à un Site privé est retiré des points à qualifier. Les résultats de la sonde figurent dans [Qualification Sites](QUALIFICATION-SITES.md).
 
 ## 7. Chat et widgets
 
-Le socle fournit conversations, messages, pièces jointes, flux de réponse, rendu des widgets et journal des actions. Les modèles IA sont des fournisseurs configurables par extensions. Un message peut afficher un composant interactif déclaré par une extension : fiche, liste, formulaire, suivi d'exécution ou action métier.
+Le socle fournit conversations, messages, pièces jointes, flux de réponse, rendu des widgets et journal des actions. Le LLM est fourni par le **module OpenAI activé**, avec sa **clé API configurée côté serveur** et le modèle choisi dans sa configuration. L'administrateur active et configure le module ; les utilisateurs autorisés du front ou du chat admin passent par les opérations Creezio, jamais directement par la clé fournisseur. Sans module actif ou clé valide, l'état de configuration est explicite et aucune réponse IA n'est simulée. Le contrat permet d'autres fournisseurs par extensions sans les rendre nécessaires au démarrage du socle.
+
+Un message peut afficher un composant interactif déclaré par une extension : fiche, liste, formulaire, suivi d'exécution ou action métier. Qualifier séparément l'appel réel OpenAI et le transport progressif Worker → front ; une sonde SSE synthétique ne valide ni ne remplace l'intégration du LLM.
 
 Deux interfaces utilisent ces services : le chat administrateur standard de Creezio et le chat applicatif librement dessiné dans le front. Partager un moteur n'implique pas de partager les conversations, les outils accessibles ou les droits. Le contexte d'administration ne doit pas être transmis au chat d'un client. Une app peut personnaliser son rendu sans copier le backend des conversations ni remplacer le chat de l'administration.
 
@@ -211,7 +215,7 @@ Version de schéma du widget, révision de son état interactif et version de l'
 
 ## 8. Exécution asynchrone et intégrations
 
-L'état des travaux, demandes et événements est durable. Leur exécution utilise les mécanismes serverless réellement disponibles ou une extension d'exécution externe. Aucun `setInterval` ou processus laissé vivant ne constitue un ordonnanceur fiable.
+L'état des travaux, demandes et événements est durable. Leur exécution utilise les mécanismes serverless réellement disponibles ou une extension d'exécution externe. Un déclencheur automatique désigne par exemple l'envoi d'un rappel demain même si personne n'ouvre l'application : cette question est indépendante du caractère public du Site et du chat lancé par un utilisateur. Qualifier ce mécanisme lorsque la fonctionnalité en dépend, éventuellement via le module n8n connecté à un service existant. Aucun `setInterval` ou processus laissé vivant ne constitue un ordonnanceur fiable.
 
 Les exécutions sont identifiées, reprenables et dédupliquées ; prévoir bail, expiration, annulation et reprise d'un travail interrompu. Un `Map`/`Set` en mémoire ou une promesse lancée après une réponse HTTP ne constitue pas l'état d'une exécution. Le flux de chat transmet des événements dont la progression durable peut être relue après reconnexion. Les déclencheurs/queues planifiés de Cloudflare direct et les possibilités de Sites sont spécifiés séparément : ne pas supposer leur équivalence.
 
@@ -227,7 +231,7 @@ La messagerie conserve notamment boîte d'envoi durable, reprises, pièces joint
 
 Le dépôt original `creezio/Creezio-D1R2` est public ; sa licence open source reste à choisir et à ajouter. Le premier dérivé sera un véritable fork GitHub public, créé avec l'API de fork puis vérifié par `fork`, `parent` et l'ancêtre Git commun. Une copie par template ne répond pas à ce jalon. Le compte personnel `creezio`, propriétaire de l'original, ne peut pas posséder aussi son fork. L'organisation accessible `Creez-io` est une destination proposée pour le fork public de test ; cela n'autorise aucun transfert de l'original ni changement d'offre ou de politique d'organisation.
 
-Un fork GitHub d'un dépôt public reste public. Une application cliente devant rester privée utilise donc un dépôt indépendant, qui conserve explicitement l'origine Creezio, la version du socle, la composition et le parcours de mise à jour. Cette filiation documentée n'est pas présentée comme un vrai fork GitHub. La preuve sur deux Sites conserve, elle, le véritable fork public de test demandé. La visibilité GitHub n'impose aucune audience publique aux Sites A et B.
+Un fork GitHub d'un dépôt public reste public. Une application cliente dont les sources doivent rester privées utilise donc un dépôt indépendant, qui conserve explicitement l'origine Creezio, la version du socle, la composition et le parcours de mise à jour. Cette filiation documentée n'est pas présentée comme un vrai fork GitHub. La preuve sur deux Sites conserve le véritable fork public de test demandé. Les Sites A et B sont publics par choix utilisateur ; les droits et données applicatifs restent protégés indépendamment de la visibilité des sources.
 
 ### Propriété des fichiers
 
@@ -283,9 +287,9 @@ Cette application prouve simultanément : ajout d'une extension cliente, réutil
 | Scénario | Résultat exigé |
 |---|---|
 | Installation de l'original et du fork | A et B démarrent par le processus documenté, sans réparation manuelle des sources. |
-| Deux couches d'accès Sites | Site privé : franchir la porte GPT puis se connecter à Creezio. Site public, si choisi : front direct puis connexion Creezio. Sans session native, aucune API protégée accessible, même avec une identité GPT ; aucun compte ou droit créé automatiquement depuis celle-ci. |
+| Site public et connexion native | Front accessible sans compte GPT ; sans session Creezio, aucune API ou donnée protégée accessible. Connexion, déconnexion et rôles appliqués par l'app ; aucune identité GPT utilisée comme autorisation implicite. |
 | Absence de services optionnels | Le socle, les données et l'administration fonctionnent sans Meili, Hermes ou n8n. Les fonctionnalités nécessitant une extension absente sont explicites. |
-| Administration distincte | Un compte applicatif ne peut accéder aux écrans ou opérations d'administration, même en appelant directement l'API. Tester avec deux comptes Creezio réellement distincts ; l'identité employée pour franchir la porte Sites ne détermine pas ces rôles. |
+| Administration distincte | Un compte applicatif ne peut accéder aux écrans ou opérations d'administration, même en appelant directement l'API. Tester avec deux comptes Creezio réellement distincts sur Site public. |
 | Conservation de l'interface admin | Réexécuter les scénarios d'onglets, navigation, état des panneaux et chat établis depuis l'original. Même administration standard sur A et B ; aucune fonctionnalité retirée silencieusement. |
 | Thèmes et chats | Passer du thème standard au thème ChatGPT-like, conserver conversations et droits ; les personnalisations du chat client ne modifient pas le chat Creezio de l'administration. |
 | Persistance | Données et fichiers demeurent après rafraîchissement, nouvelle session et nouvelle publication ; sauvegarde/restauration éprouvée sur données de test. |
@@ -293,13 +297,14 @@ Cette application prouve simultanément : ajout d'une extension cliente, réutil
 | Production Cloudflare complète | Depuis le local, publier original et fork avec identités propres : Worker, front/back-office, D1 et R2. Vérifier contenu transféré, droits, URL de production, indépendance du local et conservation des données de production lors de la mise à jour suivante. |
 | Docker avec Cloudflare | Connexion guidée, sélection des ressources, mêmes opérations et droits ; données réellement dans le compte choisi ; erreur explicite si accès révoqué, sans repli sur une autre base. |
 | Isolation entre A et B | Ressources de données, accès, secrets et fichiers indépendants ; mêmes identifiants d'objets dans les deux Sites sans fuite. |
-| Espaces isolés dans une application | Une extension utilise deux ressources réellement distinctes si cette capacité est déclarée validée ; les deux Sites seuls ne prouvent pas ce scénario. Aucune substitution par simple partition logique. |
+| Cloisonnement dans un Site | Deux contextes applicatifs partagent le même D1/R2 ; droits serveur, conversations, requêtes, fichiers et actions empêchent tout accès croisé. Aucun provisionnement de ressources supplémentaires. |
+| Ressources distinctes sur Docker | Une extension sélectionne deux ressources D1/R2 réellement distinctes avec les droits attendus, tout en conservant un runtime applicatif commun. Recette séparée du stockage partagé Sites. |
 | Extension cliente | Modèles, entités, relations, permissions, API, MCP et widget réellement utilisables sur B. |
 | Extension commune | n8n et Stripe configurés sans modification de code de l'application ; API/MCP/widget disponibles ; workflow et paiement de test réellement exécutés ; diagnostic d'échec et retrait sans corruption. |
 | Fonctions natives sans moteur externe | Tâches humaines, brouillons, tickets, CRM, landing et navigation utilisables d'origine ; seule une action qui nécessite un fournisseur absent est indisponible. |
 | MCP et entrées publiques | Consentement/portées/révocation et callbacks réels ; webhook brut signé accessible sans session navigateur, rapprochement test/live et rejeu contrôlé. |
 | Modèles et droits fins | CRUD générique incapable de modifier les champs calculés ; droits revérifiés lors de l'écriture ; compatibilité des données contrôlée avant publication. |
-| Chat | Fournisseur réel configuré pour la recette IA ; outil puis widget, action autorisée et trace d'audit ; aucun HTML/JS arbitraire du modèle. |
+| Chat | Module OpenAI activé avec clé API serveur et appel LLM réel ; outil puis widget, action autorisée et trace d'audit ; configuration absente/invalide signalée, aucun HTML/JS arbitraire du modèle. |
 | Concurrence et reprises | Clic doublé, requête rejouée, version périmée, service externe indisponible, tâche interrompue : erreurs et reprises correctes. |
 | Mise à jour Sites | Nouvelle release Creezio sur A ; demande dans GPT pour B ; publication puis vérification ; extension cliente toujours présente, front personnalisé et données intacts. |
 | Mise à jour d'un plugin | Seule la version sélectionnée et ses dépendances nécessaires évoluent ; contrôle de compatibilité et d'origine ; API/MCP/widget exercés après republication, autres versions et données inchangées. |
@@ -315,9 +320,9 @@ Pour chaque preuve : URL, versions, SHA, date, acteur, données de test, résult
 
 - Destination technique du fork GitHub public de test ; `Creez-io` proposée, aucun transfert de l'original présumé. Dépôts indépendants avec origine/version/mises à jour pour les applications privées ; aucune copie présentée comme un vrai fork.
 - Accès au compte Sites courant pour deux nouvelles installations.
-- Comptes Creezio de test administrateur et utilisateur distincts ; accès à la porte Sites selon l'audience choisie. Les comptes applicatifs restent indépendants des identités ChatGPT.
-- Secrets de test pour les extensions effectivement démontrées : IA, Meili ou autres fournisseurs. Ne pas réutiliser implicitement des secrets de production.
-- Possibilité d'accès à plusieurs ressources D1/R2 ; environnement Docker de test pour son parcours de mise à jour. Une limitation reste visible tant qu'elle n'est pas résolue.
+- Comptes Creezio de test administrateur et utilisateur distincts ; Sites publics, sans connexion GPT.
+- Clé API de test autorisée pour le module OpenAI, puis accès des autres extensions effectivement démontrées. Ne pas réutiliser implicitement des secrets de production.
+- Environnement Docker de test, notamment pour ressources D1/R2 distinctes et parcours de mise à jour. Aucune capacité multiressource requise sur GPT Sites.
 - Compte Cloudflare et accès de test autorisés pour publier Workers/assets et ressources D1/R2, vérifier le transfert et l'indépendance de la production. Docker local avec Miniflare doit fonctionner pour le développement sans ces accès.
 
 Ces points ne demandent pas de redéfinir le métier des applications. L'absence d'un secret d'extension ne bloque pas le développement du socle ; elle empêche de déclarer cette intégration validée en conditions réelles.

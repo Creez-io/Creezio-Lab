@@ -27,7 +27,7 @@ Le produit doit également permettre de **développer en Docker avec Miniflare, 
 - Modèles de données, initialisation D1, stockage R2, résolution des espaces de données.
 - Back-office Creezio : configuration, utilisateurs, droits, données autorisées, extensions, connexions, journaux, état et mises à jour.
 - Conversations persistantes, protocole de chat et de widgets, interface de départ et composants réutilisables.
-- Contrats de fournisseurs IA, recherche, exécution de tâches et événements ; état durable des travaux asynchrones, sans boucle résidente.
+- Contrats de fournisseurs IA, recherche, opérations et événements ; persistance des travaux et résultats. La planification et les relances automatiques appartiennent aux services externes, sans scheduler intégré au socle.
 - Journal d'audit, erreurs, diagnostics et export des événements.
 - Capacités fonctionnelles fournies d'origine : tâches humaines et suivi du travail, boîtes/brouillons de messagerie, support, CRM, navigation configurable, landing éditable, analytics et validation des demandes de travail. Elles peuvent être organisées en modules natifs, mais ne deviennent pas des fonctions à racheter ou réintégrer. Les transports et moteurs externes se raccordent séparément.
 
@@ -40,6 +40,17 @@ L'extension Meili déclare et maintient les index externes. L'extension Hermes d
 **Aucune prise en charge du cycle de vie de ces applications tierces :** Creezio ne les fournit, ne les déploie, ne les héberge, ne les met à jour et ne gère pas leurs sauvegardes. L'utilisateur obtient ses accès auprès du fournisseur ou d'une instance qu'il gère séparément. Le plugin configure seulement la connexion à ce service déjà existant et expose ses fonctions autorisées. La publication Cloudflare d'une application Creezio ou d'une démo de plugin n'embarque jamais n8n, Hermes ou Meili. La mise à jour du plugin concerne son code de connexion, pas le logiciel du fournisseur.
 
 **Un module fournit une intégration prête à l'emploi, pas un connecteur laissé à programmer.** L'administrateur l'installe, renseigne les accès nécessaires puis utilise ses fonctionnalités. Le module enregistre ses API, outils MCP, permissions, événements, écrans et widgets sans ajout de routes ou de code d'intégration dans l'application cliente. Les contrats techniques ci-dessous servent à construire ces modules complets ; ils ne transfèrent pas ce travail à chaque client.
+
+**Les appels entrants font partie du socle.** n8n, un autre orchestrateur ou un client MCP peut appeler les opérations autorisées de Creezio depuis l'extérieur, sans navigateur et sans installer le plugin n8n. Le plugin n8n ajoute le pilotage et l'intégration de ce fournisseur depuis Creezio ; il n'est pas requis pour qu'un client externe utilise l'API native. La clé fournisseur n8n utilisée par Creezio et le jeton Creezio utilisé par n8n sont deux accès distincts.
+
+| Responsabilité | Propriétaire |
+|---|---|
+| Comptes, permissions, API/MCP, logique métier et modèles | Creezio |
+| Administration, onglets, chat, widgets, tâches humaines et approbations | Creezio |
+| États d'exécution, échéances, brouillons, boîte d'envoi, résultats et journaux | Creezio |
+| Calendrier, récurrences et relances automatiques | n8n ou un autre service externe déjà disponible |
+| Travail prolongé d'un workflow, agent ou navigateur | Le service externe correspondant ; Creezio expose les actions bornées et conserve le suivi |
+| Connexion, adaptation des API, écrans et widgets du fournisseur | Le plugin Creezio correspondant |
 
 Les fonctions du produit sont décrites dans la [matrice](MATRICE-CAPACITES.md). Chaque capacité appartient au socle ou à un module identifié, avec un scénario de validation.
 
@@ -116,7 +127,7 @@ Les parcours de base sont **GPT Sites avec ses D1/R2 natifs**, **développement 
 
 Concevoir les modèles pour D1 dès l'origine : tables, relations, contraintes, index SQL, pagination, requêtes préparées et mutations bornées. Utiliser JSON pour les champs réellement structurés, sans convertir toute l'application en documents opaques. R2 conserve les fichiers ; D1 conserve leurs métadonnées, propriétaires et autorisations.
 
-Chaque opération reçoit un contexte serveur obligatoire : utilisateur, permissions, application et espace de données résolu. Aucun identifiant fourni par le front ne suffit à choisir une base ou à obtenir un droit. Aucun binding mutable global ne doit laisser passer une requête dans l'espace d'une autre.
+Chaque opération reçoit un contexte serveur obligatoire : acteur (utilisateur ou compte de service), mode d'authentification, permissions, application et espace de données résolu. Le serveur rattache le jeton machine à ses opérations et contextes autorisés. Aucun identifiant fourni par le front ou le client externe ne suffit à choisir une base ou à obtenir un droit. Aucun binding mutable global ne doit laisser passer une requête dans l'espace d'une autre.
 
 Sur GPT Sites, un seul couple D1/R2 natif est partagé par l'application, sans clé Cloudflare personnelle. Comme dans un SaaS, le serveur applique le contexte autorisé et les droits à chaque opération, conversation et fichier ; les préfixes R2 ne remplacent pas ces vérifications. L'isolation physique de plusieurs bases/buckets dans un même Site est retirée du périmètre, pas laissée comme une qualification en attente.
 
@@ -136,7 +147,9 @@ Un utilisateur applicatif n'obtient pas l'administration Creezio. Les mêmes res
 
 Creezio fournit ses comptes, identifiants de connexion et sessions applicatives natifs. Les mots de passe sont stockés uniquement sous forme de dérivation sécurisée ; les sessions sont gérées et révocables côté serveur. Cette authentification fonctionne sur Sites, en développement local et sur Cloudflare direct, avec les mêmes droits et parcours front/administration.
 
-Sur les Sites publics retenus, le visiteur accède au front sans compte GPT. Seule une session native Creezio autorisée ouvre les fonctions protégées. Une identité ChatGPT, ses headers ou son email ne créent automatiquement ni compte, ni session, ni permission Creezio. La recette privée avec une porte GPT n'est pas un objectif de ce projet.
+Sur les Sites publics retenus, le visiteur accède au front sans compte GPT. Les actions du navigateur utilisent une session native Creezio autorisée ; les appels externes utilisent un jeton API ou une autorisation MCP valide, sans cookie de navigateur. Les deux chemins appliquent les mêmes opérations, contextes et droits. Les webhooks fournisseurs utilisent leur propre contrat signé. Une identité ChatGPT, ses headers ou son email ne créent automatiquement ni compte, ni session, ni permission Creezio. La recette privée avec une porte GPT n'est pas un objectif de ce projet.
+
+Les accès machine sont limités par opérations et contextes, expirables, révocables et auditables ; ils ne donnent pas des droits administrateur par défaut. Une autorisation préalable permet les appels sans intervention interactive à chaque exécution, selon le protocole du client. Révoquer l'accès ou retirer un droit doit bloquer la prochaine action. Un compte de service ne peut usurper une validation réservée à un approbateur humain.
 
 Conserver invitations, activation, expiration/révocation des sessions, restrictions par compte (autorisé/interdit/hérité) et impersonation administrateur explicite/auditée. Le changement d'hébergement ne doit pas attribuer les comptes à partir d'un email ni copier des sessions locales actives. Qualifier la transmission des cookies, headers et corps par le dispatcher Sites, ainsi que deux comptes Creezio distincts. Le fonctionnement de la porte ChatGPT seule ne valide pas l'authentification native ; les résultats figurent dans [Qualification Sites](QUALIFICATION-SITES.md).
 
@@ -153,14 +166,14 @@ Chaque extension doit déclarer les éléments suivants, avec schéma et validat
 | Identité | Identifiant stable, version, compatibilité Creezio, dépendances, éditeur, empreinte de livraison. |
 | Configuration | Champs publics, références de secrets, connexions externes, diagnostic et état de disponibilité. |
 | Données | Modèles actuels, entités, relations, validation, propriétaires des données, besoins d'initialisation, export et conservation. |
-| Opérations | Entrées/sorties typées, droits, contexte, lecture/écriture, idempotence, effets externes et erreurs. |
+| Opérations | Entrées/sorties typées, acteur utilisateur ou machine, droits, contexte, lecture/écriture, idempotence, effets externes et erreurs. |
 | API | Routes et documentation dérivées du registre d'opérations ; aucun contournement des règles métier. |
 | MCP | Outils et ressources exposables, autorisation et portée ; même exécution que l'API. |
 | Recherche | Documents/projections, champs indexables, filtres d'accès, synchronisation et reconstruction ; fournisseur sélectionné, dont Meili en extension. |
 | Sources assistant | Sources d'entités, contexte courant, relations et outils autorisés ; déclarations liées aux opérations existantes, sans second jeu de handlers métier. |
 | UI | Pages administrateur éventuelles, composants front, navigation, onboarding et état non configuré. |
 | Widgets | Type et version, données de rendu, lectures/actions autorisées, compatibilité des messages anciens. |
-| Événements | Événements émis/reçus, webhooks signés, reprise, déduplication et politique de nouvelles tentatives. |
+| Événements | Événements émis/reçus, webhooks signés, état persistant, déduplication et opérations de reprise appelables de l'extérieur ; les relances automatiques sont exécutées par le fournisseur/orchestrateur externe. |
 | Cycle de vie | Installation, activation, désactivation, mise à jour, désinstallation explicite et sort des données. |
 | Validation | Tests de contrat, permissions, initialisation, conservation des données, isolation et intégration réelle du service externe. |
 
@@ -187,11 +200,13 @@ L'objectif public et open source du cœur, du SDK, du starter et du catalogue es
 | API Creezio et MCP | Opérations déjà déclarées, typées et autorisées ; utilisables immédiatement depuis l'application et l'assistant. | Même principe ; aucune réintégration du SDK Stripe dans chaque application. |
 | Événements | Raccordement guidé des déclencheurs, callbacks/webhooks authentifiés, reprise et déduplication. | Webhooks vérifiés par signature, rapprochement des événements avec l'état du paiement, idempotence. |
 | Interface et chat | Configuration, choix des workflows accessibles, lancement et widget de suivi d'exécution. | Configuration, état des paiements et widget approprié ; validation serveur des montants et droits avant action. |
-| Preuve | Depuis une application fraîche : configurer, appeler par API puis MCP, exécuter un workflow de test et afficher le résultat sans modifier le code de l'application. | Depuis une application fraîche : configurer, créer un paiement de test, recevoir l'événement et consulter son état via API/MCP/widget sans modifier le code de l'application. |
+| Preuve | Configurer puis piloter un workflow depuis Creezio ; dans l'autre sens, une planification n8n appelle une opération Creezio sans navigateur par accès machine autorisé, avec résultat et état consultables. Aucun code spécifique ajouté à l'application. | Depuis une application fraîche : configurer, créer un paiement de test, recevoir l'événement et consulter son état via API/MCP/widget sans modifier le code de l'application. |
 
 Le périmètre des opérations disponibles est explicite et versionné ; « prêt à l'emploi » ne veut pas dire exposer sans contrôle toutes les méthodes du fournisseur. La clé est vérifiée et conservée côté serveur. Si le fournisseur exige aussi une URL, un secret de webhook, des droits spécifiques ou une validation dans sa console, le module automatise ce qui est possible et guide précisément le reste. Une connexion réussie ne remplace pas la vérification d'un parcours réel.
 
 Pour n8n, distinguer l'API de gestion des workflows et leurs déclencheurs : la clé de gestion ne suffit pas nécessairement à invoquer un webhook, qui peut avoir sa propre authentification. Les accès éventuellement transmis à n8n font l'objet d'un choix explicite et limité par connexion, avec rotation/révocation ; ne pas synchroniser tout le coffre automatiquement.
+
+Dans le sens **n8n → Creezio**, n8n conserve sa planification et appelle les opérations métier, de traitement par lot ou de reprise autorisées avec un accès Creezio dédié. Le calendrier reste exécuté dans n8n. API et MCP natifs sont disponibles pour les autres clients compatibles selon le même contrat ; aucun scheduler Sites, serveur de cron ou plugin n8n obligatoire dans le socle. La recette distingue bien connexion au fournisseur et autorisation du fournisseur à agir dans Creezio.
 
 MCP doit couvrir connexion des clients, découverte, consentement, autorisation OAuth avec PKCE et enregistrement des clients quand requis, renouvellement/révocation, politiques par client et audit. Les outils de navigation/UI s'exécutent dans un client actif autorisé ; les opérations de données restent serveur. Une connexion MCP, une clé fournisseur et une session d'utilisateur sont trois autorisations distinctes.
 
@@ -213,17 +228,21 @@ Le SDK de front fournit les états de conversation et d'action, indépendamment 
 
 Version de schéma du widget, révision de son état interactif et version de l'objet métier sont distinctes. Les anciens messages ne sont pas réécrits à chaque mutation. Les résultats volumineux d'outils sont paginés ou consultables par référence autorisée ; une troncature silencieuse ne vaut pas résultat complet. Les caches et stockages de navigateur sont séparés par utilisateur, surface admin/front et espace de données, puis invalidés lors d'une révocation ou déconnexion.
 
-## 8. Exécution asynchrone et intégrations
+## 8. Appels externes, suivi et intégrations
 
-L'état des travaux, demandes et événements est durable. Leur exécution utilise les mécanismes serverless réellement disponibles ou une extension d'exécution externe. Un déclencheur automatique désigne par exemple l'envoi d'un rappel demain même si personne n'ouvre l'application : cette question est indépendante du caractère public du Site et du chat lancé par un utilisateur. Qualifier ce mécanisme lorsque la fonctionnalité en dépend, éventuellement via le module n8n connecté à un service existant. Aucun `setInterval` ou processus laissé vivant ne constitue un ordonnanceur fiable.
+**Décision acquise : la planification est externe.** n8n ou un autre service déjà disponible gère calendriers, récurrences et relances, puis appelle Creezio par API avec jeton ou par MCP autorisé. Le socle n'embarque aucun scheduler, daemon, cron ni boucle de polling pour se réveiller seul. Rechercher un Cron Trigger ou une Queue native Sites n'est pas un prérequis du produit. Cette séparation reste la même sur Docker et Cloudflare direct.
 
-Les exécutions sont identifiées, reprenables et dédupliquées ; prévoir bail, expiration, annulation et reprise d'un travail interrompu. Un `Map`/`Set` en mémoire ou une promesse lancée après une réponse HTTP ne constitue pas l'état d'une exécution. Le flux de chat transmet des événements dont la progression durable peut être relue après reconnexion. Les déclencheurs/queues planifiés de Cloudflare direct et les possibilités de Sites sont spécifiés séparément : ne pas supposer leur équivalence.
+Creezio reçoit l'appel, vérifie l'acteur et les droits, exécute une opération bornée et conserve son résultat. Données des tâches, dates d'échéance, demandes, approbations, boîte d'envoi, progression et journaux restent natifs. Un traitement long s'effectue dans le service concerné, ou progresse par appels bornés successifs du client externe avec état enregistré. Une nouvelle tentative arrive par un nouvel appel externe, un callback ou une action explicite autorisée ; une simple ligne en attente ne promet pas un réveil autonome.
+
+Les exécutions sont identifiées, reprenables et dédupliquées ; les mécanismes de concurrence, expiration et annulation protègent les appels reçus. Un `Map`/`Set` en mémoire ne constitue pas l'état d'une exécution. Les appels de reprise vérifient l'état courant avant de reprendre un travail interrompu. Le flux de chat transmet des événements dont la progression persistée peut être relue après reconnexion. Retirer le scheduler ne retire ni la persistance ni les garanties des opérations.
 
 Vérifier le résultat du claim atomique : seule la requête ayant effectivement acquis le travail peut déclencher l'effet externe. Utiliser une clé d'idempotence fournisseur lorsqu'elle existe. Après une rupture sur un envoi, paiement ou déclenchement n8n, conserver un état incertain et réconcilier avant de recommencer. La déduplication D1 ne garantit pas à elle seule qu'un fournisseur n'a pas déjà exécuté l'action.
 
-Les extensions doivent annoncer leurs besoins : HTTPS, webhooks, déclencheur planifié, service d'exécution ou stockage externe. La disponibilité de tâches planifiées ou de files dans Sites est à vérifier avant d'en dépendre. Des tâches longues, agents Hermes, automatisations n8n ou navigateurs distants vivent dans leurs services respectifs ; Creezio reçoit progression, résultat et erreurs.
+Les extensions annoncent leurs besoins : HTTPS, webhooks, service de planification/exécution externe ou stockage externe. Des tâches longues, agents Hermes, automatisations n8n ou navigateurs distants vivent dans leurs services respectifs ; Creezio reçoit progression, résultat et erreurs. Si aucun service externe n'est configuré, tâches humaines, brouillons et suivi restent utilisables ; seule l'automatisation qui en dépend est indisponible explicitement.
 
 La messagerie conserve notamment boîte d'envoi durable, reprises, pièces jointes, réception et webhooks. Les transports SMTP/IMAP dépendant de connexions non disponibles sur Sites passent par un fournisseur ou une passerelle externe. Une intégration ne sera pas déclarée validée sur la seule base de réponses simulées.
+
+Envoi différé, reprise de la boîte d'envoi et reconstruction/indexation volumineuse exposent des opérations bornées appelables par l'orchestrateur externe ; ils ne recréent pas un moteur central qui les planifie. Les mutations venues de l'extérieur sont visibles dans les conversations, widgets et vues à leur actualisation/reconnexion. Ouvrir un onglet, afficher une notification ou garder une session UI active n'est jamais nécessaire pour exécuter une opération métier machine. Les validations humaines déjà requises restent vérifiées côté serveur.
 
 ## 9. GitHub, fork et mises à jour
 
@@ -287,7 +306,7 @@ Cette application prouve simultanément : ajout d'une extension cliente, réutil
 | Scénario | Résultat exigé |
 |---|---|
 | Installation de l'original et du fork | A et B démarrent par le processus documenté, sans réparation manuelle des sources. |
-| Site public et connexion native | Front accessible sans compte GPT ; sans session Creezio, aucune API ou donnée protégée accessible. Connexion, déconnexion et rôles appliqués par l'app ; aucune identité GPT utilisée comme autorisation implicite. |
+| Site public et accès autorisés | Front accessible sans compte GPT ; opérations et données protégées exigent selon le canal une session utilisateur, un accès API/MCP machine ou une signature fournisseur valide. Absence de cookie compatible avec un appel machine autorisé ; aucun accès anonyme implicite. |
 | Absence de services optionnels | Le socle, les données et l'administration fonctionnent sans Meili, Hermes ou n8n. Les fonctionnalités nécessitant une extension absente sont explicites. |
 | Administration distincte | Un compte applicatif ne peut accéder aux écrans ou opérations d'administration, même en appelant directement l'API. Tester avec deux comptes Creezio réellement distincts sur Site public. |
 | Conservation de l'interface admin | Réexécuter les scénarios d'onglets, navigation, état des panneaux et chat établis depuis l'original. Même administration standard sur A et B ; aucune fonctionnalité retirée silencieusement. |
@@ -303,6 +322,7 @@ Cette application prouve simultanément : ajout d'une extension cliente, réutil
 | Extension commune | n8n et Stripe configurés sans modification de code de l'application ; API/MCP/widget disponibles ; workflow et paiement de test réellement exécutés ; diagnostic d'échec et retrait sans corruption. |
 | Fonctions natives sans moteur externe | Tâches humaines, brouillons, tickets, CRM, landing et navigation utilisables d'origine ; seule une action qui nécessite un fournisseur absent est indisponible. |
 | MCP et entrées publiques | Consentement/portées/révocation et callbacks réels ; webhook brut signé accessible sans session navigateur, rapprochement test/live et rejeu contrôlé. |
+| Planification externe | Une tâche n8n planifiée appelle une opération Creezio réelle sans navigateur ouvert ; API avec jeton et client MCP compatible vérifiés, mêmes droits/contextes, résultat persisté puis visible au retour dans l'UI. Refus après révocation ou portée incorrecte, rejeu sans double effet. L'accès entrant natif fonctionne sans plugin n8n installé ; aucun scheduler Creezio lancé. |
 | Modèles et droits fins | CRUD générique incapable de modifier les champs calculés ; droits revérifiés lors de l'écriture ; compatibilité des données contrôlée avant publication. |
 | Chat | Module OpenAI activé avec clé API serveur et appel LLM réel ; outil puis widget, action autorisée et trace d'audit ; configuration absente/invalide signalée, aucun HTML/JS arbitraire du modèle. |
 | Concurrence et reprises | Clic doublé, requête rejouée, version périmée, service externe indisponible, tâche interrompue : erreurs et reprises correctes. |

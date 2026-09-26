@@ -4,11 +4,13 @@
 
 ## Périmètre retenu
 
-Les Sites du projet et de sa recette sont **publics**, par choix utilisateur. Le front est accessible sans connexion GPT ; les fonctions protégées, les données et l'administration exigent les comptes, sessions et droits natifs Creezio. Une identité GPT ne crée aucun compte, session ou droit applicatif. La [documentation Sites](https://learn.chatgpt.com/docs/sites) décrit le mode public de l'hébergement.
+Les Sites du projet et de sa recette sont **publics**, par choix utilisateur. Le front est accessible sans connexion GPT ; les fonctions protégées utilisent selon leur canal une session native Creezio, une autorisation machine API/MCP ou un webhook signé, avec leurs droits propres. Un cookie de navigateur n'est pas exigé pour un client externe autorisé. Une identité GPT ne crée aucun compte, session ou droit applicatif. La [documentation Sites](https://learn.chatgpt.com/docs/sites) décrit le mode public de l'hébergement.
 
 Chaque Site utilise **un couple D1/R2 natif commun à son application**, avec cloisonnement logique par contexte et autorisations serveur. Le provisionnement de plusieurs ressources dans un même Site est abandonné ; ce n'est plus une question ouverte. Docker conserve la possibilité de ressources D1/R2 distinctes, à éprouver dans son propre parcours. Les deux applications de recette sur A et B gardent chacune leurs ressources et secrets indépendants.
 
 Le chat appelle son LLM via le **module OpenAI activé et configuré avec une clé API serveur**. Interface, conversations, outils et widgets restent Creezio. Les tests de transport ci-dessous ne sont pas encore un appel OpenAI ni une recette complète du chat.
+
+La planification est **externe** : n8n ou un autre service appelle les opérations Creezio par API token/MCP sans navigateur. Les points à vérifier portent sur ces appels réels, les autorisations, les résultats et les reprises ; aucun scheduler ou Cron Trigger Sites n'est à rechercher. Les API/MCP entrants appartiennent au socle, sans dépendance obligatoire au plugin n8n.
 
 ## Ce qui a été vérifié sur un Site hébergé
 
@@ -31,7 +33,7 @@ Ces tests qualifient les transports nécessaires à une authentification native.
 
 Une seconde version a été publiée avec un champ nullable supplémentaire, produit par Drizzle depuis le modèle. Le nouveau champ est présent et l'enregistrement D1 ainsi que l'objet R2 créés avant la publication restent accessibles avec la même empreinte. Cette preuve couvre une évolution additive sur données synthétiques ; elle ne qualifie pas encore toutes les évolutions de modèles, la reprise après échec ou les mises à jour de plugins du futur produit.
 
-Une continuation `waitUntil` a écrit en D1 après une réponse HTTP 202. Il s'agit d'une tâche courte déclenchée par une requête : cela ne prouve aucun ordonnanceur durable, réveil autonome, retry ni travail long.
+Une continuation `waitUntil` a écrit en D1 après une réponse HTTP 202. Cette preuve concerne uniquement une tâche courte déclenchée par requête. La planification et les relances restent externes conformément au périmètre, sans besoin de qualification d'un ordonnanceur natif.
 
 **L'affichage progressif du chat n'est pas validé.** Lors de la qualification privée initiale, cinq événements SSE espacés d'une seconde ont été reçus groupés après environ 5,4 secondes. Ajouter du remplissage (environ 20 Ko au total) a produit plusieurs fragments réseau, tous reçus en moins de 10 ms vers la fin de la réponse. Les en-têtes de non-transformation et d'encodage `identity` n'ont pas changé ce résultat. Un second client indépendant, `curl --no-buffer`, les a également reçus groupés. Après ouverture publique, le test Node sans jeton Sites reçoit encore le flux groupé en un fragment vers 4 secondes.
 
@@ -41,8 +43,7 @@ Ce constat concerne les trajets testés depuis ce poste, d'abord privés puis pu
 
 | Capacité | Limite de ce qui est vérifié | Conséquence de conception |
 |---|---|---|
-| Actions automatiques sans visite | Par exemple, envoyer un rappel demain sans navigateur ouvert. Des planifications sont mentionnées dans les métadonnées Sites ; leur exécution applicative n'est pas établie. | Qualifier pour les fonctions qui en dépendent, via une capacité d'hébergement réelle ou une extension externe comme n8n. Question indépendante de l'audience et du chat déclenché par l'utilisateur. |
-| Queues et Durable Objects | Aucun contrat de configuration ou d'exécution établi dans le workflow inspecté. | Ne pas en faire des dépendances obligatoires du socle Sites. |
+| Appels planifiés depuis l'extérieur | Les primitives HTTP autorisées fonctionnent ; le workflow n8n réel et le serveur MCP du produit restent à construire/tester. | Vérifier une planification externe appelant une opération sans navigateur, avec accès limité, état/résultat, rejeu sûr et révocation. Aucune recherche de scheduler Sites. |
 | Connecteurs fournisseurs réels | L'entrée publique signée est vérifiée sans accès GPT ; les événements Stripe/n8n et leurs signatures exactes restent à tester lors de l'implémentation des modules. | L'accès à un Site privé n'est plus une contrainte du projet. Une sonde HMAC synthétique ne remplace pas la recette réelle de chaque connecteur. |
 | MCP complet | Le connecteur Sites prévoit une URL MCP en HTTP streamable lorsque la publication est prête pour MCP. La sonde vérifie les transports HTTP, pas un serveur MCP/OAuth complet. | Recette distincte découverte/PKCE/consentement/portées/refresh/révocation, avec les comptes Creezio. |
 | WebSocket, tâches longues | Pas de preuve hébergée réalisée. | Aucun engagement de durée ou d'exécution durable implicite. |

@@ -15,6 +15,10 @@ Proposition d'architecture du 26 septembre 2026, avant implémentation. Les dép
 
 Les extensions officielles, communautaires et privées utilisent le même contrat. Les points d'extension sont publics, typés et versionnés : événements après opérations, filtres de présentation, emplacements UI et registres de rendus. Un hook ne permet pas de désactiver les autorisations ni de contourner la validation des données.
 
+Les API et MCP sont des capacités natives du socle. Un client externe, dont n8n, peut appeler les opérations autorisées avec un token API ou une autorisation MCP sans installer le module n8n. Ce module apporte le pilotage et l'intégration de n8n depuis Creezio ; il n'ouvre pas l'accès aux API du socle et ne devient pas un prérequis des autres clients.
+
+La planification appartient à n8n ou à un autre service déjà hébergé. Creezio conserve tâches, boîte d'envoi, progression et résultats ; les appels entrants effectuent des traitements bornés, avec reprise par nouvel appel externe. Aucun scheduler, poller ou daemon central n'est à fournir ni à qualifier sur Sites. Les opérations des modules appliquent les mêmes droits, contextes, révocations et validations humaines aux utilisateurs et aux identités machine ; elles ne déduisent pas une approbation humaine de la présence d'un token valide.
+
 Le chat utilise un **module OpenAI activé**, configuré avec une clé API conservée côté serveur. Ce module fournit les appels au LLM, le choix des modèles autorisés, le streaming et les appels d'outils selon les contrats Creezio. L'interface du chat, les conversations, leur persistance et les widgets restent natifs ; un thème ne réintègre pas OpenAI lui-même. L'administration standard et le front utilisent ces services communs avec leurs propres droits. Sans clé valide, l'indisponibilité du LLM est explicite ; le compte GPT qui publie le Site ne fournit pas implicitement l'accès API.
 
 Sur Sites, chaque application utilise **un couple D1/R2 partagé**, avec cloisonnement logique par contextes et autorisations serveur. Les extensions déclarent leurs modèles et leurs besoins d'accès dans ce couple ; elles n'imposent pas une base ou un bucket natif supplémentaire par utilisateur ou espace. Docker conserve la possibilité de sélectionner des ressources distinctes via ses adaptateurs. Ce choix ne multiplie pas les instances de l'application.
@@ -85,7 +89,7 @@ Sur Sites, le catalogue et l'administration présentent les informations ; l'ins
 
 ## Mise à jour d'une seule extension
 
-Le socle, les extensions et les thèmes possèdent des versions distinctes. Les composants natifs interdépendants peuvent conserver une release commune. Exemple : mettre à jour n8n sans modifier la version de Stripe, du thème ou de l'extension privée de l'application.
+Le socle, les extensions et les thèmes possèdent des versions distinctes. Les composants natifs interdépendants peuvent conserver une release commune. Exemple : mettre à jour le plugin n8n sans modifier la version de Stripe, du thème ou de l'extension privée de l'application.
 
 1. Identifier précisément l'éditeur, le paquet, l'origine et la version cible.
 2. Présenter les changements, dépendances nécessaires, droits supplémentaires, configuration et compatibilité des données.
@@ -106,6 +110,8 @@ Le SDK front fournit sessions, clients d'opérations, gestion des conversations,
 
 Les Sites de la recette sont publics : le front est accessible directement sans compte GPT, puis la connexion native ouvre les fonctions autorisées de l'application. L'identité GPT ne crée aucune session, aucun compte ni aucun droit Creezio implicitement. Le SDK et les thèmes utilisent les sessions applicatives ; ils ne remplacent pas les permissions serveur par un en-tête d'identité GPT. La clé API du module OpenAI reste côté serveur et ne sert pas à identifier les utilisateurs. Voir [Qualification Sites](QUALIFICATION-SITES.md) pour les contraintes de plateforme et les recettes des appels machine.
 
+Le contrat du canal distingue session utilisateur et identité machine autorisée : un client API/MCP externe n'a pas besoin d'un cookie ou d'un navigateur ouvert. Son token détermine les opérations et contextes accordés, avec expiration, révocation et audit ; il ne permet ni d'élargir ses droits depuis les paramètres de la requête ni de contourner les validations humaines. Le SDK front ne reçoit pas les tokens des automatisations externes.
+
 Le front livré et l'administration restent publiables avec le backend dans une seule application. Un front headless hébergé séparément est une option de composition ; il utilise les mêmes API et un parcours d'identité/CORS explicitement configuré. Cela n'implique aucun backend distinct par utilisateur ou client.
 
 ## Développeurs et confiance
@@ -125,6 +131,7 @@ L'ouverture publique et open source du cœur, du SDK et du starter est actée. C
 5. Une extension incompatible ou d'origine inattendue est refusée avant publication.
 6. Changer ou mettre à jour un thème préserve les personnalisations, conversations et opérations ; l'administration reste Creezio.
 7. Le SDK permet à un front distinct d'exercer une opération et un widget avec les droits de son utilisateur, sans importer l'administration.
-8. Les deux Sites publics permettent d'atteindre le front et de se connecter à Creezio sans compte GPT ; les opérations protégées refusent l'absence de session ou de droits applicatifs.
+8. Les deux Sites publics permettent d'atteindre le front et de se connecter à Creezio sans compte GPT ; les opérations protégées exigent une session utilisateur ou une identité machine autorisée selon leur contrat, ainsi que les droits et validations requis.
 9. Le module OpenAI activé et configuré produit une réponse réelle, un appel d'outil autorisé puis un widget dans les interfaces natives ; aucune clé API n'atteint le navigateur.
 10. Deux contextes de la même application Sites utilisent le même couple D1/R2 sans fuite de données, fichiers, résultats de recherche ou conversations.
+11. Un n8n existant planifie une action Creezio exécutée navigateur fermé, sans module n8n installé dans Creezio ; son résultat ou callback est consultable après reconnexion. Les mauvais tokens, portées/contextes non autorisés, accès révoqués et rejeux non autorisés sont refusés ; une reprise idempotente autorisée ne répète aucun effet et ne contourne aucune validation humaine.

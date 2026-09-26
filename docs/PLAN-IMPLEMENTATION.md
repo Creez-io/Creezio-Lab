@@ -1,17 +1,17 @@
 # Creezio-D1R2 — plan d'implémentation
 
-26 septembre 2026. Plan proposé, avant implémentation. Intègre la correction explicite : **Creezio est nativement serverless ; les services externes sont des extensions, pas des composants du socle.**
+26 septembre 2026. Plan proposé, avant implémentation. **Creezio est un nouveau CMS nativement serverless ; les services externes sont des extensions, pas des composants du socle.**
 
 ## 1. Résultat attendu
 
-Un dépôt autonome, prêt à démarrer sur GPT Sites avec un backend, un back-office Creezio et un front de départ. Une application dérivée conserve cette base, remplace son front et ajoute ses extensions. Elle reçoit les mises à jour de Creezio depuis son administration en préservant ses personnalisations.
+Un dépôt autonome, prêt à démarrer sur GPT Sites avec un backend, un back-office Creezio et un front de départ. Une application dérivée conserve cette base, remplace son front et ajoute ses extensions. Sur GPT Sites, ses mises à jour sont demandées par l'utilisateur ou une tâche GPT planifiée, exécutées puis vérifiées. Sur un hébergement Docker, elles peuvent être déclenchées depuis son administration. Les deux parcours préservent les personnalisations et les données.
 
 La preuve finale comprend deux nouveaux GPT Sites réellement utilisables :
 
 - **Site A : Creezio original**, issu de `creezio/Creezio-D1R2` ; installation standard, capacités du socle et extensions communes.
-- **Site B : Creezio Lab**, issu d'un véritable fork GitHub ; front personnalisé, extension propre et données indépendantes. Une évolution du socle est ensuite appliquée à B depuis son back-office.
+- **Site B : Creezio Lab**, issu d'un véritable fork GitHub ; front personnalisé, extension propre et données indépendantes. Une évolution du socle est ensuite appliquée à B sur demande dans GPT, puis vérifiée.
 
-Un seul déploiement applicatif par application, quel que soit le nombre de ses utilisateurs ou espaces de données. Les extensions déterminent les règles métier. Aucun remplacement de WinHub, Tempoflow ou Certivan avant validation de cette démonstration.
+Un seul déploiement applicatif par application, quel que soit le nombre de ses utilisateurs ou espaces de données. Les extensions déterminent les règles métier. La démonstration précède la construction d'applications métier supplémentaires.
 
 **Invariants d'interface :** préserver toutes les fonctionnalités et interactions de l'administration Creezio, notamment son workspace à onglets et son chat standard. Les applications clientes ne recodent pas leur chat métier dans l'administration. Leur liberté de design et les thèmes concernent le front applicatif.
 
@@ -22,7 +22,7 @@ Un seul déploiement applicatif par application, quel que soit le nombre de ses 
 - Initialisation, configuration, versions et registre des extensions.
 - Identités, sessions adaptées à l'hébergement, permissions, séparation administration/application.
 - Contrat d'opérations partagé entre API, MCP, back-office, front et widgets.
-- Schémas et accès D1, migrations, stockage R2, résolution des espaces de données.
+- Modèles de données, initialisation D1, stockage R2, résolution des espaces de données.
 - Back-office Creezio : configuration, utilisateurs, droits, données autorisées, extensions, connexions, journaux, état et mises à jour.
 - Conversations persistantes, protocole de chat et de widgets, interface de départ et composants réutilisables.
 - Contrats de fournisseurs IA, recherche, exécution de tâches et événements ; état durable des travaux asynchrones, sans boucle résidente.
@@ -36,15 +36,15 @@ L'extension Meili déclare et maintient les index externes. L'extension Hermes d
 
 **Un module fournit une intégration prête à l'emploi, pas un connecteur laissé à programmer.** L'administrateur l'installe, renseigne les accès nécessaires puis utilise ses fonctionnalités. Le module enregistre ses API, outils MCP, permissions, événements, écrans et widgets sans ajout de routes ou de code d'intégration dans l'application cliente. Les contrats techniques ci-dessous servent à construire ces modules complets ; ils ne transfèrent pas ce travail à chaque client.
 
-Les fonctions historiques sont conservées dans la cible appropriée, conformément à la [matrice](MATRICE-CAPACITES.md). Préserver une capacité n'impose ni de conserver son ancien déploiement ni de l'activer par défaut. Toute adaptation fonctionnelle est explicite.
+Les fonctions du produit sont décrites dans la [matrice](MATRICE-CAPACITES.md). Chaque capacité appartient au socle ou à un module identifié, avec un scénario de validation.
 
 ### Front applicatif
 
-Le front de départ est livré et fonctionnel ; il peut être remplacé entièrement. Il consomme les API publiques autorisées, jamais les composants privés du back-office ou les identifiants des fournisseurs. Les composants inspirés de Certivan V5 couvrent conversations, navigation, pièces jointes, panneaux, formulaires et widgets. Les simulations présentes dans Certivan ne deviennent pas des intégrations réputées opérationnelles.
+Le front de départ est livré et fonctionnel ; il peut être remplacé entièrement. Il consomme les API publiques autorisées, jamais les composants privés du back-office ou les identifiants des fournisseurs. Les composants couvrent conversations, navigation, pièces jointes, panneaux, formulaires et widgets. Chaque intégration annoncée opérationnelle doit avoir été testée avec son service réel.
 
 Le socle conserve **une administration standardisée**, avec ses onglets, navigation, panneaux, chat, états et interactions. L'externalisation d'un moteur technique ne supprime pas sa surface fonctionnelle : le module correspondant la raccorde au service externe. Toute impossibilité démontrée doit être traitée explicitement ; elle ne justifie pas une version simplifiée de l'interface.
 
-Le front propose initialement un thème standard et un thème **« ChatGPT-like » inspiré de Certivan V5**. Un thème fournit dispositions, composants, navigation et style ; il respecte les contrats d'identité, de conversation, d'opérations et de widgets. L'application peut les personnaliser ou les remplacer sans modifier le back-office. Les thèmes ne changent pas les règles d'autorisation du backend.
+Le front propose initialement un thème standard et un thème **« ChatGPT-like »**. Un thème fournit dispositions, composants, navigation et style ; il respecte les contrats d'identité, de conversation, d'opérations et de widgets. L'application peut les personnaliser ou les remplacer sans modifier le back-office. Les thèmes ne changent pas les règles d'autorisation du backend.
 
 ## 3. Architecture proposée
 
@@ -62,9 +62,9 @@ Front de l'application                 Back-office Creezio /admin
                                 n8n, IA, mails...
 ```
 
-Base proposée : TypeScript, React, routage et build issus du starter GPT Sites actuel, avec Vinext/Vite si ce starter le confirme lors de l'implémentation. API fondée sur les interfaces Web Request/Response ; schémas validés à l'exécution et exposables en JSON Schema ; D1 avec migrations Drizzle et requêtes préparées. Les versions seront figées dans un lockfile et vérifiées sur Sites avant d'accumuler des fonctionnalités.
+Base proposée : TypeScript, React, routage et build issus du starter GPT Sites actuel, avec Vinext/Vite si ce starter le confirme lors de l'implémentation. API fondée sur les interfaces Web Request/Response ; schémas validés à l'exécution et exposables en JSON Schema ; modèles D1 conçus directement pour le produit et requêtes préparées. Les versions seront figées dans un lockfile et vérifiées sur Sites avant d'accumuler des fonctionnalités.
 
-Les services métier ne dépendront ni du framework UI ni d'un serveur Node persistant. Aucun SQLite local de production, disque durable local, lancement de binaire ou worker métier permanent dans le socle. Les éventuels clients desktop sont des consommateurs externes des API.
+Les services métier ne dépendront ni du framework UI ni d'un serveur Node persistant. Le runtime serverless utilise ses bindings de données ; le déploiement Docker fournit les adaptateurs de stockage local persistant ou d'accès au Cloudflare de l'utilisateur. Les détails internes de l'implémentation locale, notamment SQLite et fichiers sur disque, restent dans l'adaptateur et les volumes, sans changer les modèles métier. Les services externes ne sont pas lancés par le socle. Les éventuels clients desktop sont des consommateurs externes des API.
 
 ```text
 app/                       Entrées HTTP, pages, raccordement au runtime Sites
@@ -77,12 +77,14 @@ application/frontend/      Front de départ, appartenant ensuite à l'applicatio
 application/extensions/    Extensions propres à l'application
 application/config/        Choix, branding du front, composition de l'application
 adapters/sites/            Auth, bindings D1/R2 et conventions GPT Sites
-migrations/                Migrations composées, ordonnées et immuables
+adapters/docker/           Runtime autonome et cycle de vie du déploiement
+adapters/storage/          Sites natif, D1/R2 locaux, compte Cloudflare distant
+data/                      Modèles actuels, initialisation et accès D1/R2
 scripts/                   Setup, validation, build, publication et mise à jour
 docs/                      Contrats, installation, exploitation et recette
 ```
 
-Le dépôt contient les sources nécessaires au démarrage : pas de dépendance à un ancien registre npm privé pour amorcer l'installation. Des frontières de propriété explicites séparent les fichiers maintenus par Creezio de ceux appartenant à l'application. Les extensions optionnelles sont exclues du bundle serveur lorsqu'elles ne sont pas sélectionnées.
+Le dépôt contient les sources nécessaires au démarrage. Des frontières de propriété explicites séparent les fichiers maintenus par Creezio de ceux appartenant à l'application. Les extensions optionnelles sont exclues du bundle serveur lorsqu'elles ne sont pas sélectionnées. Un adaptateur d'hébergement Docker peut exécuter la même application sans devenir une dépendance du socle serverless.
 
 ## 4. Installation prête à l'emploi sur GPT Sites
 
@@ -100,13 +102,15 @@ Les nouveaux Sites commencent privés. L'accès public, un domaine ou l'ajout d'
 
 ### D1/R2 natifs
 
+Trois modes de base sont obligatoires : **GPT Sites avec les bindings D1/R2 du Site**, **Docker autonome avec D1/R2 locaux persistants**, et **Docker connecté aux D1/R2 du compte Cloudflare de l'utilisateur**. Le choix est configuré dans Creezio ; les modules ne réimplémentent pas ces transports. Le [dossier de stockage et hébergement](STOCKAGE-ET-HEBERGEMENT.md) présente les projets officiels Miniflare/workerd, les accès distants et la qualification nécessaire. Leur fonctionnement local est documenté ; la distribution Docker Creezio reste à tester avant de la déclarer opérationnelle.
+
 Concevoir les modèles pour D1 dès l'origine : tables, relations, contraintes, index SQL, pagination, requêtes préparées et mutations bornées. Utiliser JSON pour les champs réellement structurés, sans convertir toute l'application en documents opaques. R2 conserve les fichiers ; D1 conserve leurs métadonnées, propriétaires et autorisations.
 
 Chaque opération reçoit un contexte serveur obligatoire : utilisateur, permissions, application et espace de données résolu. Aucun identifiant fourni par le front ne suffit à choisir une base ou à obtenir un droit. Aucun binding mutable global ne doit laisser passer une requête dans l'espace d'une autre.
 
-Le cas de départ utilise les bindings D1/R2 du Site. Le contrat permet également des espaces physiquement distincts. La capacité de GPT Sites à provisionner ou exposer plusieurs D1/R2 devra être vérifiée : on ne confond pas les capacités générales de Cloudflare avec celles offertes par Sites. Si nécessaire, une extension de ressources externes utilise une API HTTPS dédiée ; un simple filtre `tenant_id` ne vaut pas preuve d'isolation physique. Cette extension n'implique aucun déploiement applicatif par client.
+Sur GPT Sites, le cas de départ utilise les bindings D1/R2 fournis nativement au Site ; aucune clé Cloudflare personnelle n'est nécessaire. Sur Docker, le stockage local doit être disponible sans compte Cloudflare, avec volumes persistants ; l'utilisateur peut choisir ses ressources Cloudflare via la connexion native fournie. Le contrat permet également des espaces physiquement distincts. La capacité de GPT Sites à exposer plusieurs ressources devra être vérifiée séparément. Si un accès distant requiert une API HTTPS dédiée, l'adaptateur natif s'en charge ; aucun développement spécifique n'est demandé à l'application cliente. Un simple filtre `tenant_id` ne vaut pas preuve d'isolation physique. Aucun de ces choix ne multiplie les déploiements applicatifs par client.
 
-Les migrations ont un propriétaire, une version, un journal et un ordre déterministe. Les migrations du socle et celles d'une extension cliente doivent coexister. Les migrations publiées ne sont jamais réécrites. Les traitements volumineux sont découpés, reprenables et séparés de la modification de schéma.
+Le projet définit directement ses modèles actuels et initialise une base neuve. Un module décrit les entités et relations dont il a besoin ; il ne fournit pas de chaîne de transformations entre versions de bases. L'installation prépare les structures nécessaires sans effacer les données présentes. La mise à jour vérifie la compatibilité du code avec les données : elle ne réinitialise pas une base existante et bloque une évolution incompatible plutôt que d'altérer silencieusement les données. Le traitement d'une future évolution incompatible devra être conçu explicitement si ce besoin apparaît.
 
 D1/R2 et les services externes ne partagent pas une transaction globale : utiliser idempotence, états intermédiaires, compensations et événements durables. L'index de recherche n'est pas la source de vérité ; le résultat final et les actions restent soumis aux droits du backend.
 
@@ -114,7 +118,7 @@ D1/R2 et les services externes ne partagent pas une transaction globale : utilis
 
 Un utilisateur applicatif n'obtient pas l'administration Creezio. Les mêmes restrictions sont appliquées au routage UI, aux API, au MCP et aux actions du chat. Le premier administrateur est associé à une identité explicitement autorisée, jamais au premier visiteur quelconque.
 
-Sur Sites, examiner et utiliser son mécanisme d'authentification fourni, puis le rattacher aux identités internes Creezio. Vérifier séparément la possibilité de conserver les parcours historiques de comptes/mots de passe via un fournisseur d'authentification adapté. L'identité Sites est propre à chaque Site ; l'email seul n'est pas une clé d'autorisation. Hors du proxy de confiance Sites, un en-tête d'identité fourni par un navigateur ne doit jamais être accepté comme preuve.
+Sur Sites, examiner et utiliser son mécanisme d'authentification fourni, puis le rattacher aux identités internes Creezio. Vérifier les parcours de comptes/mots de passe via un fournisseur d'authentification adapté. L'identité Sites est propre à chaque Site ; l'email seul n'est pas une clé d'autorisation. Hors du proxy de confiance Sites, un en-tête d'identité fourni par un navigateur ne doit jamais être accepté comme preuve.
 
 Secrets uniquement côté serveur et dans le stockage de secrets approprié ; références opaques dans la configuration. Clés d'extension, connexions R2 et mots de passe ne figurent ni dans Git, ni dans le chat, ni dans les bundles UI, ni dans les journaux. Chaque fork configure ses propres accès.
 
@@ -126,7 +130,7 @@ Chaque extension doit déclarer les éléments suivants, avec schéma et validat
 |---|---|
 | Identité | Identifiant stable, version, compatibilité Creezio, dépendances, éditeur, empreinte de livraison. |
 | Configuration | Champs publics, références de secrets, connexions externes, diagnostic et état de disponibilité. |
-| Données | Entités, relations, validation, propriétaires des tables, migrations, stratégie d'export et de conservation. |
+| Données | Modèles actuels, entités, relations, validation, propriétaires des données, besoins d'initialisation, export et conservation. |
 | Opérations | Entrées/sorties typées, droits, contexte, lecture/écriture, idempotence, effets externes et erreurs. |
 | API | Routes et documentation dérivées du registre d'opérations ; aucun contournement des règles métier. |
 | MCP | Outils et ressources exposables, autorisation et portée ; même exécution que l'API. |
@@ -135,9 +139,9 @@ Chaque extension doit déclarer les éléments suivants, avec schéma et validat
 | Widgets | Type et version, données de rendu, lectures/actions autorisées, compatibilité des messages anciens. |
 | Événements | Événements émis/reçus, webhooks signés, reprise, déduplication et politique de nouvelles tentatives. |
 | Cycle de vie | Installation, activation, désactivation, mise à jour, désinstallation explicite et sort des données. |
-| Validation | Tests de contrat, permissions, migrations, isolation et intégration réelle du service externe. |
+| Validation | Tests de contrat, permissions, initialisation, conservation des données, isolation et intégration réelle du service externe. |
 
-Une extension est du code de confiance revu et livré avec l'application ; le contrat n'est pas une sandbox garantissant l'isolation de code malveillant. L'installation de nouveau code déclenche un build et une publication. On peut activer immédiatement une extension déjà incluse et compatible, mais on ne télécharge pas du JavaScript arbitraire pour l'exécuter dans le Worker en production.
+Une extension est du code de confiance revu et livré avec l'application ; le contrat n'est pas une sandbox garantissant l'isolation de code malveillant. L'ajout de nouveau code nécessite un build et une publication selon le parcours de l'hébergement : demande dans GPT sur Sites, déclenchement possible depuis l'administration sur Docker. Une extension déjà incluse et compatible peut être activée et configurée directement. On ne télécharge pas du JavaScript arbitraire pour l'exécuter dans le Worker en production.
 
 L'API d'extension reste identique qu'elle provienne du catalogue Creezio ou du client. Exemples communs : catalogue produits, Stripe, Meili, n8n, Hermes. Exemples propres à un client : objets et parcours de son métier.
 
@@ -182,44 +186,44 @@ Le premier dérivé sera créé avec l'API de fork GitHub, avec vérification de
 
 Les versions du socle, du contrat et des extensions sont enregistrées dans un manifeste de livraison. Les répertoires de l'application lui appartiennent. Les évolutions du front de départ deviennent disponibles à comparaison ; elles ne remplacent pas le front personnalisé.
 
-Pour les fichiers communs, comparer version d'origine, état local et nouvelle version. Une modification locale incompatible produit un conflit explicite et bloque l'application automatique ; elle n'est pas écrasée. Composer les dépendances, le lockfile et les migrations du socle avec ceux de l'application, au lieu de recopier un journal de migrations par-dessus l'autre.
+Pour les fichiers communs, comparer version d'origine, état local et nouvelle version. Une modification locale incompatible produit un conflit explicite et bloque l'application automatique ; elle n'est pas écrasée. Composer les dépendances et le lockfile en respectant les modules et modèles de données de l'application.
 
-### Mise à jour depuis le back-office
+### GPT Sites : demande et exécution dans GPT
 
-1. Consulter version disponible, compatibilités, dépendances et migrations.
-2. Préparer une proposition reproductible sur une révision précise, avec contrôle des personnalisations.
-3. Vérifier migrations, droits, tests, build et configuration ; sauvegarder les données nécessaires au retour arrière.
-4. Déclencher la publication par un exécuteur de livraison authentifié ; conserver un journal durable et une reprise idempotente.
-5. Publier sur le même Site, vérifier l'état final et la recette minimale ; afficher le résultat réel dans Creezio.
+L'utilisateur demande la mise à jour, ou une tâche GPT explicitement configurée porte cette demande. GPT prépare la version, contrôle les personnalisations, vérifie données et dépendances, exécute les tests, publie sur le même Site puis vérifie le résultat. L'utilisateur dispose du compte rendu et peut contrôler son application. Aucune tâche n'est créée par ce plan.
 
-**Point de faisabilité prioritaire :** les outils Sites disponibles à l'assistant ne sont pas automatiquement une API invocable depuis une application. Il faut établir un chemin de publication programmatique autorisé et durable pour le bouton du back-office. Un pont de livraison externe peut être nécessaire et relève d'une extension. Une publication manuelle par l'assistant n'est pas une preuve de mise à jour autonome depuis Creezio.
+Le back-office affiche la version et les informations utiles. Il ne déclenche pas la publication Sites ; aucun pont de publication depuis l'application n'est à développer ou à rechercher pour cette cible. Ce parcours s'applique aussi à l'ajout de modules qui nécessitent du nouveau code.
 
-Les migrations Sites peuvent être appliquées avant l'envoi du code. Préférer les évolutions compatibles et les déploiements en étapes. Revenir au code précédent ne restaure pas automatiquement D1/R2. Documenter les sauvegardes, la compatibilité des anciennes versions et tester une restauration sur des données de test. Avec plusieurs espaces, suivre la progression des migrations sans fabriquer plusieurs versions de l'application.
+### Docker : déclenchement depuis le back-office
+
+Un module de livraison permet à l'administrateur de demander la mise à jour. Un exécuteur d'hébergement limité à cette application prépare et teste la version, construit ou récupère l'image, contrôle les personnalisations, remplace le déploiement et vérifie son état. Le back-office suit l'opération et son résultat ; le runtime applicatif ne reçoit pas un accès Docker général.
+
+Tester la reprise après échec et le retour à une image compatible. Les secrets et les ressources D1/R2 restent séparés de l'image. Le retour au code précédent ne doit pas être présenté comme une restauration des données. Les sauvegardes et leur restauration sont vérifiées séparément.
 
 ## 10. Lots d'implémentation et critères de sortie
 
 | Lot | Travail | Preuve nécessaire avant la suite |
 |---|---|---|
-| 0 — Inventaire et contraintes | Décomposer la matrice historique en comportements, routes, modèles et tests ; établir la référence d'interface onglets/chat/panneaux/états ; confirmer runtime Sites, auth, ressources multiples, déclencheurs, publication programmatique et destination du fork privé. | Décisions documentées et grille de non-régression de l'interface. Pas de promesse cachant une impossibilité de plateforme. Les points bloquants ont une solution vérifiée ou sont signalés comme non résolus. |
+| 0 — Spécification et contraintes | Détailler les capacités en comportements, routes, modèles et tests ; définir les interactions onglets/chat/panneaux/états ; qualifier les trois modes de stockage, Miniflare/workerd pour Docker local, accès Cloudflare distant, runtime/auth Sites, ressources multiples, déclencheurs et destination du fork privé. | Spécification et grille fonctionnelle complètes. Preuve technique initiale de persistance dans chaque mode avant généralisation du socle. Les points bloquants ont une solution vérifiée ou sont signalés comme non résolus. |
 | 1 — Socle démarrable | Structure du dépôt, runtime serverless, build, configuration, assistant initial, D1/R2 et premier back-office. | Premier Site A : démarrage depuis le dépôt, donnée créée puis relue après nouvelle session, fichier R2 relu avec droits. Aucune dépendance Meili/Hermes/n8n/Docker. Réutiliser ensuite ce Site. |
-| 2 — Sécurité et opérations | Identités, rôles, contextes de données, registre d'opérations, migrations, audit, API et MCP. | Même opération et mêmes permissions depuis les différents canaux ; refus prouvés, absence de fuite entre contextes, migrations cumulatives rejouables sur base neuve. |
+| 2 — Sécurité et opérations | Identités, rôles, contextes de données, modèles et initialisation, registre d'opérations, audit, API et MCP. | Même opération et mêmes permissions depuis les différents canaux ; refus prouvés, absence de fuite entre contextes, installation sur base neuve et conservation des données après republication. |
 | 3 — Contrats d'extensions | Manifestes, validation, SDK, cycle de vie, événements, projections, configuration et diagnostics. | Extension minimale installée, versionnée et désactivée sans perte de données ; incompatibilité bloquée ; code optionnel absent du socle minimal. |
-| 4 — Interfaces et chat | Préserver le back-office Creezio et son workspace/chat ; construire le front remplaçable, les thèmes standard et ChatGPT-like, composants Certivan, conversations, fournisseur IA et widgets. | Parité des interactions administratives ; thème du front interchangeable sans modification de l'admin ; utilisateur applicatif exclu de l'administration ; widget réel lisant/modifiant un objet avec trace serveur ; conversation persistante et réouverture cohérente. |
-| 5 — Capacités et extensions communes | Porter les fonctions historiques vers leur cible, par groupes : données/configuration ; productivité/chat ; connecteurs/agents ; exploitation/développement externe. Construire n8n et Stripe comme deux modules de référence prêts à configurer, puis Meili et les autres modules selon la matrice. | Installation + accès fournisseur suffisent pour obtenir les API, MCP, événements et widgets prévus, sans intégration spécifique dans l'app. Chaque ligne de la matrice dispose d'une preuve ou d'une dépendance externe précisément identifiée. Aucun composant incompatible ne rentre dans le bundle du socle. Les fonctions annoncées opérationnelles sont testées réellement. |
-| 6 — Distribution et mises à jour | Manifeste de release, composition des migrations, protection du front/extensions, exécuteur de publication et état dans le back-office. | Mise à jour sur Site A, conflit détecté sans écrasement, panne récupérable et restauration documentée/testée. Chaîne de publication effectivement déclenchable par le back-office. |
+| 4 — Interfaces et chat | Construire le back-office Creezio et son workspace/chat complets ; front remplaçable, thèmes standard et ChatGPT-like, composants réutilisables, conversations, fournisseur IA et widgets. | Toutes les interactions administratives spécifiées vérifiées ; thème du front interchangeable sans modification de l'admin ; utilisateur applicatif exclu de l'administration ; widget réel lisant/modifiant un objet avec trace serveur ; conversation persistante et réouverture cohérente. |
+| 5 — Capacités et extensions communes | Construire les fonctions par groupes : données/configuration ; productivité/chat ; connecteurs/agents ; exploitation/développement externe. Construire n8n et Stripe comme deux modules de référence prêts à configurer, puis Meili et les autres modules selon la matrice. | Installation + accès fournisseur suffisent pour obtenir les API, MCP, événements et widgets prévus, sans intégration spécifique dans l'app. Chaque ligne de la matrice dispose d'une preuve ou d'une dépendance externe précisément identifiée. Aucun composant incompatible ne rentre dans le bundle du socle. Les fonctions annoncées opérationnelles sont testées réellement. |
+| 6 — Distribution et mises à jour | Manifeste de release, protection du front/extensions/données. Parcours GPT pour Sites ; adaptateur Docker et module de livraison déclenchable depuis le back-office. | Mise à jour sur Site A demandée dans GPT puis vérifiée. Recette Docker distincte : déclenchement admin, état final, échec récupérable et retour à une image compatible. Conflits bloqués sans écrasement et restauration testée. |
 | 7 — Release et véritable fork | Stabiliser l'original, publier une release, créer le fork Creezio Lab et enregistrer Site B ; personnaliser le front et développer l'extension « demandes ». | Deux URLs actives, filiation GitHub vérifiée, persistance et identités de déploiement indépendantes ; démarrage du fork par le parcours standard. |
-| 8 — Recette comparative | Nouvelle release sur A, mise à jour de B depuis son administration, tests complets ci-dessous. | Socle de B actualisé ; front, extension, migrations propres et données préservés ; compte rendu avec versions et preuves. |
-| 9 — Validation utilisateur | Présenter les deux Sites et la démonstration reproductible. | Validation avant de programmer une migration WinHub ou Tempoflow. |
+| 8 — Recette comparative | Nouvelle release sur A, demande de mise à jour de B dans GPT, publication et vérifications ci-dessous. | Socle de B actualisé ; front, extension, modèles propres et données préservés ; compte rendu avec versions et preuves. |
+| 9 — Validation utilisateur | Présenter les deux Sites et la démonstration reproductible, ainsi que la recette du parcours Docker. | Validation avant la construction d'autres applications métier. |
 
 Chaque lot produit du code, sa documentation, des vérifications pertinentes et un état des limites. Les tests locaux de contrat ne remplacent pas la recette hébergée. Les deux Sites sont réutilisés ; pas de multiplication des déploiements et copies de travail à chaque essai.
 
 ## 11. Première application dérivée : Creezio Lab
 
-Proposition de métier volontairement neutre : des demandes contenant titre, description, statut et pièce jointe. Une extension cliente apporte les modèles, migrations, API, outils MCP et un widget permettant de consulter puis modifier une demande selon les droits.
+Proposition de métier volontairement neutre : des demandes contenant titre, description, statut et pièce jointe. Une extension cliente apporte les modèles de données, API, outils MCP et un widget permettant de consulter puis modifier une demande selon les droits.
 
 Le front du fork utilise le thème ChatGPT-like, avec son propre écran d'accueil et son organisation conversationnelle. Son administration reste Creezio, avec le même chat et le même comportement d'onglets que l'original. Une extension commune de recherche Meili, si configurée, indexe les demandes avec les droits ; le même contrat fonctionne sans cette extension et annonce clairement l'absence de recherche Meili.
 
-Cette application prouve simultanément : ajout d'une extension cliente, réutilisation d'une extension commune, remplacement du front, persistance D1/R2, API/MCP/widget partagés, distinction administrateur/utilisateur et compatibilité avec les mises à jour. Elle ne commence pas à reconstruire un restaurant ou WinHub.
+Cette application prouve simultanément : ajout d'une extension cliente, réutilisation d'une extension commune, remplacement du front, persistance D1/R2, API/MCP/widget partagés, distinction administrateur/utilisateur et compatibilité avec les mises à jour.
 
 ## 12. Recette obligatoire sur les deux Sites
 
@@ -231,14 +235,17 @@ Cette application prouve simultanément : ajout d'une extension cliente, réutil
 | Conservation de l'interface admin | Réexécuter les scénarios d'onglets, navigation, état des panneaux et chat établis depuis l'original. Même administration standard sur A et B ; aucune fonctionnalité retirée silencieusement. |
 | Thèmes et chats | Passer du thème standard au thème ChatGPT-like, conserver conversations et droits ; les personnalisations du chat client ne modifient pas le chat Creezio de l'administration. |
 | Persistance | Données et fichiers demeurent après rafraîchissement, nouvelle session et nouvelle publication ; sauvegarde/restauration éprouvée sur données de test. |
+| Docker local autonome | Sans compte Cloudflare : initialisation, lecture/écriture, fichiers, arrêt/redémarrage et recréation du conteneur conservant ses volumes ; intégrité et restauration testées. |
+| Docker avec Cloudflare | Connexion guidée, sélection des ressources, mêmes opérations et droits ; données réellement dans le compte choisi ; erreur explicite si accès révoqué, sans repli sur une autre base. |
 | Isolation entre A et B | Ressources de données, accès, secrets et fichiers indépendants ; mêmes identifiants d'objets dans les deux Sites sans fuite. |
 | Espaces isolés dans une application | Une extension utilise deux ressources réellement distinctes si cette capacité est déclarée validée ; les deux Sites seuls ne prouvent pas ce scénario. Aucune substitution par simple partition logique. |
-| Extension cliente | Entité, relation, migration, permissions, API, MCP et widget réellement utilisables sur B. |
+| Extension cliente | Modèles, entités, relations, permissions, API, MCP et widget réellement utilisables sur B. |
 | Extension commune | n8n et Stripe configurés sans modification de code de l'application ; API/MCP/widget disponibles ; workflow et paiement de test réellement exécutés ; diagnostic d'échec et retrait sans corruption. |
 | Chat | Fournisseur réel configuré pour la recette IA ; outil puis widget, action autorisée et trace d'audit ; aucun HTML/JS arbitraire du modèle. |
 | Concurrence et reprises | Clic doublé, requête rejouée, version périmée, service externe indisponible, tâche interrompue : erreurs et reprises correctes. |
-| Mises à jour | Nouvelle release Creezio sur A ; déclenchement depuis B ; extension et migration clientes toujours présentes ; front personnalisé et données intacts. |
-| Échec de mise à jour | Conflit de personnalisation ou migration incompatible détecté ; aucun succès annoncé avant publication vérifiée ; procédure de reprise testée. |
+| Mise à jour Sites | Nouvelle release Creezio sur A ; demande dans GPT pour B ; publication puis vérification ; extension cliente toujours présente, front personnalisé et données intacts. |
+| Mise à jour Docker | Déclenchement depuis le back-office, remplacement du déploiement, vérification et compte rendu ; données et personnalisations préservées. Recette distincte des deux Sites. |
+| Échec de mise à jour | Conflit de personnalisation ou incompatibilité avec les données détecté avant application ; aucun succès annoncé avant publication vérifiée ; procédure de reprise testée. |
 | Poids/runtime | Build minimal sans code des services externes ; démarrage et routes critiques testés dans les contraintes réelles Workers/Sites. |
 
 Pour chaque preuve : URL, versions, SHA, date, acteur, données de test, résultat attendu/obtenu et limites. Une capture d'écran seule, une CI verte, un healthcheck ou une réponse mockée ne suffisent pas à valider un parcours complet.
@@ -246,24 +253,23 @@ Pour chaque preuve : URL, versions, SHA, date, acteur, données de test, résult
 ## 13. Pré requis à traiter au moment utile
 
 - Destination GitHub autorisée pour le fork privé ; aucune recréation par template présentée comme équivalente.
-- Accès au compte Sites courant pour deux nouvelles installations ; les anciens Sites ne sont pas requis.
+- Accès au compte Sites courant pour deux nouvelles installations.
 - Identité administrateur et, pour la recette de séparation des rôles hébergée, seconde identité de test autorisée.
-- Secrets de test pour les extensions effectivement démontrées : IA, Meili ou autres fournisseurs. Ne pas réutiliser implicitement les secrets de production Tempoflow.
-- Possibilités réelles de publication depuis une extension de livraison et d'accès à plusieurs ressources D1/R2. Une limitation reste visible tant qu'elle n'est pas résolue.
+- Secrets de test pour les extensions effectivement démontrées : IA, Meili ou autres fournisseurs. Ne pas réutiliser implicitement des secrets de production.
+- Possibilité d'accès à plusieurs ressources D1/R2 ; environnement Docker de test pour son parcours de mise à jour. Une limitation reste visible tant qu'elle n'est pas résolue.
+- Compte Cloudflare et accès de test autorisés pour la recette Docker distant ; Docker local doit fonctionner sans ces accès. Qualification des versions de Miniflare/workerd et des volumes persistants avant usage durable.
 
 Ces points ne demandent pas de redéfinir le métier des applications. L'absence d'un secret d'extension ne bloque pas le développement du socle ; elle empêche de déclarer cette intégration validée en conditions réelles.
 
 ## 14. Références et limites de cette conception
 
-Inventaire : Creezio `6bd6507`, Creezio Lite réparation `206f052`, WinHub `4c591d3`, WinHub Lite distant `ada646f` et corrections locales `a608f3c`, Certivan V5 local `4f9a6cf`. Ne pas modifier ces sources pendant la reconstruction du socle.
-
-Les instructions du plugin Sites consultées décrivent le runtime Workers, les bindings D1/R2, l'authentification et la publication. Leur disponibilité dans l'outil ne constitue pas une API publique pour l'application. Les vérifications de plateforme du lot 0 restent nécessaires.
+Le runtime, les bindings D1/R2, l'authentification et la publication utilisent les capacités effectivement disponibles dans GPT Sites. Les vérifications de plateforme du lot 0 restent nécessaires. La publication Sites est effectuée dans le parcours GPT, hors du runtime de l'application.
 
 Sources techniques primaires :
 
 - [Compatibilité Node dans Workers](https://developers.cloudflare.com/workers/runtime-apis/nodejs/) et [flags de compatibilité](https://developers.cloudflare.com/workers/configuration/compatibility-flags/) : ne pas assimiler présence d'un module à capacité d'exécuter un processus système.
 - [API Web du runtime Workers](https://developers.cloudflare.com/workers/runtime-apis/web-standards/) : contraintes de code dynamique et choix de compilation des extensions.
-- [Limites D1](https://developers.cloudflare.com/d1/platform/limits/) : requêtes, paramètres et migrations bornés ; les limites réellement disponibles sur Sites restent à vérifier.
+- [Limites D1](https://developers.cloudflare.com/d1/platform/limits/) : requêtes et paramètres bornés ; les limites réellement disponibles sur Sites restent à vérifier.
 - [Accès applicatif à D1 par API Worker](https://developers.cloudflare.com/d1/tutorials/build-an-api-to-access-d1/) : distinguer API de données et API administrative de gestion Cloudflare.
 - [Forks GitHub](https://docs.github.com/en/pull-requests/reference/forks) et [API de création de fork](https://docs.github.com/en/rest/repos/forks) : filiation et contraintes des dépôts privés.
 

@@ -16,6 +16,10 @@ L'accès depuis une application restant dans Docker à des D1/R2 Cloudflare deme
 
 Le code métier, les modèles, les modules et les contrats restent communs. Les adaptateurs encapsulent les différences d'hébergement. Les clés et identités du compte de développement ne sont pas intégrées au code livré à chaque fork.
 
+Le cœur, le SDK et le starter relèvent de la [licence MIT](../LICENSE) approuvée. Le futur dérivé de recette sera le vrai fork public `Creez-io/Creezio-Lab`, créé après structuration et validation du socle ; sa destination est acquise, sa création reste à effectuer. Ses ressources et identifiants d'hébergement seront propres à son déploiement.
+
+Le workspace utilise des panneaux React stables, avec localisation et état propres, séparés du routeur de chaque hébergement. Les modules n'importent aucun contexte privé Next/Vinext ; un éventuel pont interne reste dans l'adaptateur, avec contrôle de version. La résolution d'un import ou le succès du mode dev ne valide pas le comportement des onglets dans le Worker. Qualifier séparément les builds, l'hydratation et la conservation des vues sur les cibles sans réduire leurs fonctions.
+
 Les profils de build Sites et Cloudflare direct partagent une source, un lockfile et l'authentification native Creezio. Leurs conventions de packaging, ressources et limites d'exécution restent distinctes. La planification est externe sur les deux cibles et utilise les mêmes API/MCP autorisés. La présence de D1/R2 sur les deux plateformes ne prouve pas l'équivalence de toutes leurs capacités. Qualifier une tranche fonctionnelle sur chaque cible avant de développer toutes les interfaces ; consulter [Qualification Sites](QUALIFICATION-SITES.md) pour les preuves et limites hébergées.
 
 ## Un couple D1/R2 par application Sites
@@ -86,6 +90,12 @@ Le coffre peut contenir des secrets chiffrés avec une clé locale : copier seul
 
 Le transfert R2 vérifie clé, taille, empreinte du contenu et métadonnées ; un ETag n'est pas supposé être universellement une empreinte du contenu. Le journal de reprise identifie source, destination et capture cohérente. Une ressource cible non vide inattendue provoque un arrêt explicite ; reprendre n'autorise pas à remplacer ses données. La gestion des échecs entre D1, R2, secrets et code n'est pas une transaction unique.
 
+Le transfert D1 prévoit un export logique des tables métier déclarées dans les modèles, par lots bornés, et la reconstruction des index dérivés à destination. Le dump global Wrangler n'est pas une garantie suffisante : Cloudflare documente une incompatibilité d'export avec les tables virtuelles FTS5. Ne jamais supprimer une table source pour réussir un export. Qualifier les volumes, limites de requêtes/import, clés étrangères, valeurs binaires, cohérence de la capture et reprise avant de déclarer ce parcours prêt. [Export D1](https://developers.cloudflare.com/d1/best-practices/import-export-data/).
+
+Le transfert R2 parcourt un inventaire paginé et conserve les métadonnées HTTP et personnalisées. Les commandes Wrangler objet par objet ne couvrent pas tous les volumes : au-delà de leur limite documentée de 315 MB, employer un transport adapté. Prévoir S3 multipart pour les transferts volumineux, avec journal des parties et contrôle final du contenu. Les credentials S3 R2 sont distincts d'une simple session OAuth Wrangler et doivent être qualifiés. L'exécuteur fixe explicitement chemins de persistance Miniflare, configuration et environnement afin de lire l'installation réellement utilisée. [Commandes R2](https://developers.cloudflare.com/r2/reference/wrangler-commands/), [multipart R2](https://developers.cloudflare.com/r2/objects/multipart-objects/).
+
+Figer une chaîne Wrangler/Vinext/Node compatible et ses dépendances ; vérifier poids, mémoire, démarrage et routage assets/API sur les deux profils. La chaîne ne dépend pas d'un Wrangler global ou de l'installation d'un autre projet. La réutilisation temporaire d'un outil déjà présent pour qualification ne remplace pas le lockfile autonome de Creezio.
+
 Ce mécanisme copie une installation Creezio vers son hébergement de production. Il ne transforme pas un autre modèle de données et n'ajoute aucun script de transformation entre versions dans les modules.
 
 ## Première publication et mises à jour
@@ -120,6 +130,7 @@ Sources : [D1 depuis une application externe](https://developers.cloudflare.com/
 - Sécurité fonctionnelle : clés invalides, permissions insuffisantes, ressources déjà existantes, URLs de fichiers privées et absence de fuite entre applications ou contextes d'un même D1/R2. Le mode Docker à ressources distinctes est vérifié séparément.
 - Identités/secrets : sur les Sites publics, accès au front et connexion native Creezio sans compte GPT, puis refus des opérations non autorisées. Sessions locales inutilisables en production, coffre lisible avec la clé de destination et absence d'accès de publication dans le Worker.
 - Chat : module OpenAI activé, clé API serveur configurée, réponse réelle et appel d'outil autorisé raccordés aux conversations/widgets natifs ; comportement explicite si clé absente ou invalide.
+- Workspace : mêmes interactions sur les cibles, deux fiches d'un module conservant chacune brouillon/scroll/historique, transitions interrompues et changement de query sans mélange, portails inactifs neutralisés. Mutation depuis widget ou client externe visible sans effacement silencieux d'un brouillon ; révocation et changement de session purgent les caches. Cette compatibilité avec Vinext et le build Worker reste à vérifier.
 - Automatisation externe : un n8n existant planifie une action Creezio, exécutée navigateur fermé via token API ou MCP, sans module n8n installé dans Creezio. Le résultat ou callback reste consultable après reconnexion. Vérifier refus de mauvais token, portée/contexte non autorisés, révocation et rejeu non autorisé ; une reprise autorisée ne produit aucun effet en double et ne contourne pas une validation humaine.
 
 ## Capacités Sites restant à qualifier
@@ -127,7 +138,7 @@ Sources : [D1 depuis une application externe](https://developers.cloudflare.com/
 - Appels machine sur le Site public : la sonde HMAC signée, le rejeu et le refus d'un corps altéré sont vérifiés sans accès GPT. Les tokens API avec opérations/contextes autorisés, le MCP/OAuth complet, les événements Stripe/n8n réels et l'appel planifié depuis le service externe restent à éprouver. Cette recette porte sur les contrats et intégrations applicatifs ; elle ne recherche pas de scheduler natif Sites.
 - Sessions natives sur le Site public : cookies, bearer applicatif et révocation sont désormais vérifiés par la sonde publique sans jeton Sites. Le parcours navigateur avec comptes complets, cache et expiration reste à éprouver ; aucun compte GPT nécessaire. Conserver séparément les résultats privés initiaux et publics actuels.
 - Matérialisation et évolution des modèles : un ajout SQL généré conservant les données D1/R2 a été qualifié sur la sonde ; la chaîne du produit, les mises à jour de modules et la reprise après échec restent à éprouver. La chaîne SQL centrale est acceptée ; aucun script SQL de transformation n'est confié aux modules.
-- Progression du chat sur le Site public avec le module OpenAI configuré : mesurer le flux réellement reçu par le navigateur, l'annulation et la reprise. Les événements SSE synthétiques arrivent groupés depuis le poste de test sur les chemins privés initiaux puis sur le chemin public sans jeton Sites. Ce constat ne localise pas le composant responsable et ne remplace pas la recette navigateur/LLM réel.
+- Progression du chat sur le Site public : vrai échange OpenAI avec appel d'outil réussi en secret serveur ; regroupement SSE confirmé dans le navigateur. La sonde de lecture concurrente d'événements persistés en D1 réussit avant la fin de l'appel. Intégrer ce transport dans le chat, avec écritures groupées, curseur, droits, annulation et reprise ; ce test borné ne valide pas encore le module complet ni une exécution après fermeture du navigateur. Voir [Qualification Sites](QUALIFICATION-SITES.md).
 
 Les résultats et limites sont détaillés dans [Qualification Sites](QUALIFICATION-SITES.md). Les mesures privées conservées décrivent leur contexte d'origine ; seules les nouvelles mesures publiques servent à qualifier le parcours désormais retenu. Les points restants donnent lieu à des résultats mesurés, pas à des fonctionnalités présumées disponibles. Les identifiants de déploiement ne sont jamais codés dans le starter générique.
 
@@ -139,4 +150,4 @@ Les résultats et limites sont détaillés dans [Qualification Sites](QUALIFICAT
 - [Commandes R2](https://developers.cloudflare.com/r2/reference/wrangler-commands/) : lecture/écriture des objets locaux et distants.
 - [Données locales](https://developers.cloudflare.com/workers/local-development/local-data/) : persistance des ressources de développement.
 
-État : vérification documentaire uniquement. Aucun déploiement, transfert de données ou accès Cloudflare créé au titre de ce document.
+État du parcours Cloudflare personnel : faisabilité documentaire ; aucun déploiement ni transfert vers ce compte réalisé. Les sondes Sites publiées et leurs preuves réelles sont consignées dans Qualification Sites.

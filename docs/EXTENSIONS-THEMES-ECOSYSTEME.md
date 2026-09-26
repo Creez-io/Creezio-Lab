@@ -1,6 +1,6 @@
 # Extensions, thèmes et écosystème Creezio
 
-Proposition d'architecture du 26 septembre 2026, avant implémentation. Les dépôts, paquets, domaines et catalogues supplémentaires décrits ici ne sont pas encore créés ou publiés. L'ouverture publique et open source du cœur, du SDK et du starter d'extension est décidée ; la licence reste à choisir.
+Proposition d'architecture du 26 septembre 2026, avant implémentation. Les dépôts, paquets, domaines et catalogues supplémentaires décrits ici ne sont pas encore créés ou publiés. L'ouverture publique et la [licence MIT](../LICENSE) du cœur, du SDK et du starter d'extension sont décidées et la licence est présente dans ce dépôt.
 
 ## Responsabilités
 
@@ -39,7 +39,7 @@ Le manifeste d'une extension contient son identifiant qualifié par éditeur, sa
 
 Chaque composant a une source effective unique : workspace local ou paquet résolu. Il n'existe pas simultanément une copie source supposée active et une autre version npm exécutée implicitement. La composition et le lockfile fixent les versions et l'intégrité utilisées. Une plage de compatibilité n'autorise pas une résolution différente à chaque démarrage.
 
-Un véritable fork GitHub d'un dépôt public reste public. La première application de test utilise cette filiation publique vérifiable. Pour garder le code d'une application ou d'une extension confidentiel, utiliser un dépôt indépendant privé, avec les versions et l'origine Creezio explicites ; ce dépôt n'est pas présenté comme un fork GitHub privé du socle public. Les mises à jour des composants communs restent possibles par les paquets et contrats versionnés.
+Un véritable fork GitHub d'un dépôt public reste public. La première application de test sera `Creez-io/Creezio-Lab`, véritable fork public de `creezio/Creezio-D1R2`, à créer après structuration et validation du socle. Cette destination est approuvée ; le fork n'est pas encore créé. Pour garder le code d'une application ou d'une extension confidentiel, utiliser un dépôt indépendant privé, avec les versions et l'origine Creezio explicites ; ce dépôt n'est pas présenté comme un fork GitHub privé du socle public. Les mises à jour des composants communs restent possibles par les paquets et contrats versionnés.
 
 La visibilité des sources et les droits applicatifs sont distincts. Tous les Sites de la recette sont publics, avec connexion native Creezio pour les fonctions protégées ; cette audience n'ouvre ni les données privées ni l'administration. Les secrets et données des applications n'entrent jamais dans un paquet ni dans les sources publiées.
 
@@ -108,6 +108,10 @@ Fournir un thème standard, un thème ChatGPT-like et des points de remplacement
 
 Le SDK front fournit sessions, clients d'opérations, gestion des conversations, fichiers, événements, widgets et erreurs. Un développeur peut conserver tout le thème, remplacer seulement des composants ou construire son propre front avec ce SDK. Une prévisualisation de brouillons ou données privées exige toujours une autorisation explicite.
 
+Les écrans d'administration apportés par les extensions se montent dans des panneaux React stables du workspace Creezio. Le SDK fournit identité de vue, localisation propre au panneau, navigation, activité et invalidation ; il n'expose pas les contextes privés Next/Vinext. Les vues utilisent les opérations autorisées pour leurs données. Un changement de route ou de thème ne doit pas mélanger les fiches, perdre un brouillon ou remplacer le chat standard. Les thèmes du front utilisent les contrats publics de conversation et de widgets, sans importer le workspace privé de l'administration.
+
+La compatibilité du workspace avec le routeur et le build hôtes reste à tester sur leurs versions figées. Si un pont de rendu interne est nécessaire, il appartient exclusivement à l'adaptateur d'hébergement, avec contrôle de compatibilité explicite. La recette exerce navigation interrompue, deux objets du même module, portails inactifs, mutation depuis widget et changement de session ; un import qui compile ne constitue pas cette preuve.
+
 Les Sites de la recette sont publics : le front est accessible directement sans compte GPT, puis la connexion native ouvre les fonctions autorisées de l'application. L'identité GPT ne crée aucune session, aucun compte ni aucun droit Creezio implicitement. Le SDK et les thèmes utilisent les sessions applicatives ; ils ne remplacent pas les permissions serveur par un en-tête d'identité GPT. La clé API du module OpenAI reste côté serveur et ne sert pas à identifier les utilisateurs. Voir [Qualification Sites](QUALIFICATION-SITES.md) pour les contraintes de plateforme et les recettes des appels machine.
 
 Le contrat du canal distingue session utilisateur et identité machine autorisée : un client API/MCP externe n'a pas besoin d'un cookie ou d'un navigateur ouvert. Son token détermine les opérations et contextes accordés, avec expiration, révocation et audit ; il ne permet ni d'élargir ses droits depuis les paramètres de la requête ni de contourner les validations humaines. Le SDK front ne reçoit pas les tokens des automatisations externes.
@@ -120,9 +124,13 @@ Livrer une documentation publique, un SDK versionné, le starter public, un exem
 
 Le paquet est vérifié avec ses dépendances transitives pour Workers et Sites. Les extensions incluses dans le Worker restent du code de confiance ; le manifeste de permissions n'isole pas du code malveillant. L'intégrité et, lorsque disponible, la [provenance npm](https://docs.npmjs.com/trusted-publishers/) complètent la revue sans la remplacer. Aucun mécanisme d'exécution arbitraire de code non approuvé n'est implicite.
 
-L'ouverture publique et open source du cœur, du SDK et du starter est actée. Choisir leur licence avant de les distribuer comme tels ; ce choix reste à trancher. Cette ouverture ne rend publics ni les applications privées indépendantes, ni leurs extensions, secrets ou données, et n'implique aucun changement d'offre commerciale.
+Le cœur, le SDK et le starter sont placés sous [licence MIT](../LICENSE), choix approuvé. Les futures distributions de ces composants conservent le texte de licence et les mentions nécessaires ; les dépendances et contributions tierces conservent leurs propres mentions applicables. Cette ouverture ne rend publics ni les applications privées indépendantes, ni leurs extensions, secrets ou données, et n'implique aucun changement d'offre commerciale.
 
 ## Preuves de réussite
+
+Le contrat de distribution sépare explicitement les exports serveur, client React, styles et assets. Le paquet publié déclare ses dépendances et peers ; ses fichiers réellement emballés contiennent les widgets, styles et ressources référencés. Le résolveur produit un manifeste d'assets pour le build hôte : aucun chemin vers le workspace du développeur ni import serveur depuis le navigateur n'est admis. Vérifier l'archive issue du packaging, puis l'installer dans l'application de recette sans lien workspace caché. La présence des sources dans un monorepo ne prouve pas qu'un module distribué fonctionne.
+
+Une mise à jour ciblée sélectionne une version de module et ses dépendances nécessaires, contrôle les compatibilités et reconstruit la livraison complète de l'application. L'activation d'un module déjà présent peut changer une configuration ; ajouter ou remplacer son code demande un build et une publication. L'installation de plugins ne repose pas sur l'écriture de code exécutable dans le système de fichiers du Worker.
 
 1. Un développeur suivant seulement le starter produit son extension avec API, MCP, écran et widget, sans modifier les fichiers internes du CMS.
 2. Il publie sa démo sur Cloudflare ; elle fonctionne après arrêt du local.

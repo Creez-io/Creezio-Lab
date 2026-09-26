@@ -8,7 +8,7 @@ Les Sites du projet et de sa recette sont **publics**, par choix utilisateur. Le
 
 Chaque Site utilise **un couple D1/R2 natif commun à son application**, avec cloisonnement logique par contexte et autorisations serveur. Le provisionnement de plusieurs ressources dans un même Site est abandonné ; ce n'est plus une question ouverte. Docker conserve la possibilité de ressources D1/R2 distinctes, à éprouver dans son propre parcours. Les deux applications de recette sur A et B gardent chacune leurs ressources et secrets indépendants.
 
-Le chat appelle son LLM via le **module OpenAI activé et configuré avec une clé API serveur**. Interface, conversations, outils et widgets restent Creezio. Les tests de transport ci-dessous ne sont pas encore un appel OpenAI ni une recette complète du chat.
+Le chat appelle son LLM via le **module OpenAI activé et configuré avec une clé API serveur**. Interface, conversations, outils et widgets restent Creezio. Une sonde OpenAI réelle a désormais réussi sur Sites avec une clé stockée en secret serveur ; elle ne constitue pas encore le module complet ni la recette du chat.
 
 La planification est **externe** : n8n ou un autre service appelle les opérations Creezio par API token/MCP sans navigateur. Les points à vérifier portent sur ces appels réels, les autorisations, les résultats et les reprises ; aucun scheduler ou Cron Trigger Sites n'est à rechercher. Les API/MCP entrants appartiennent au socle, sans dépendance obligatoire au plugin n8n.
 
@@ -37,7 +37,17 @@ Une continuation `waitUntil` a écrit en D1 après une réponse HTTP 202. Cette 
 
 **L'affichage progressif du chat n'est pas validé.** Lors de la qualification privée initiale, cinq événements SSE espacés d'une seconde ont été reçus groupés après environ 5,4 secondes. Ajouter du remplissage (environ 20 Ko au total) a produit plusieurs fragments réseau, tous reçus en moins de 10 ms vers la fin de la réponse. Les en-têtes de non-transformation et d'encodage `identity` n'ont pas changé ce résultat. Un second client indépendant, `curl --no-buffer`, les a également reçus groupés. Après ouverture publique, le test Node sans jeton Sites reçoit encore le flux groupé en un fragment vers 4 secondes.
 
-Ce constat concerne les trajets testés depuis ce poste, d'abord privés puis publics. Il ne peut plus être attribué à la seule porte GPT privée. La sonde émet les événements espacés côté Worker ; les mesures ne localisent pas le composant qui les regroupe et ne démontrent aucune impossibilité générale de Sites. La recette navigateur avec le module OpenAI réellement configuré doit conserver progression, annulation et reprise du chat avant d'en déclarer la parité. Un éventuel mécanisme de consultation périodique des événements persistés reste une solution à éprouver, pas une capacité déjà livrée.
+Le 26 septembre, le navigateur a lui aussi reçu les cinq événements en un fragment à 4 039 ms, alors que les horodatages serveur sont espacés d'une seconde. Le regroupement est donc confirmé sur ce trajet navigateur. Il ne peut plus être attribué à la seule porte GPT privée ; les mesures ne localisent pas le composant responsable et ne démontrent aucune impossibilité générale de Sites.
+
+## Qualification OpenAI réelle et progression persistée
+
+Deux appels réels à l'API Responses ont réussi depuis le Worker public, sans autorisation GPT/Sites pour le client machine, avec `gpt-4.1-nano-2025-04-14` et une clé en variable d'environnement secrète. Le premier appel impose un outil borné lisant la disponibilité effective des bindings D1/R2 ; le second reçoit son résultat et produit une vraie réponse en français. Un appel sans autorisation applicative est refusé par HTTP 401 avant tout accès payant au fournisseur. La sonde utilise 189 tokens au total selon les compteurs retournés, ne reçoit pas de prompt libre et ne prétend pas fournir les permissions complètes du produit.
+
+Le Worker reçoit 18 fragments textuels du fournisseur entre 3 968 et 4 206 ms, puis la fin à 4 269 ms. Le client machine reçoit les deux fragments réseau ensemble vers 4 560 ms. L'accès au fournisseur et son émission progressive sont établis ; la parité du chat côté utilisateur reste à construire.
+
+Une seconde sonde protégée a vérifié le recours aux événements persistés : un POST borné écrit cinq étapes en D1 ; des GET autorisés concurrents les lisent avant la réponse finale. La première étape est visible à 2 730 ms, puis les suivantes pendant l'appel ; la réponse finale arrive à 7 020 ms. Aucun scheduler, daemon ou tâche autonome n'intervient. La consultation périodique appartient au client actif qui observe une opération déjà déclenchée, pas à un ordonnanceur serveur.
+
+Cette preuve justifie un adaptateur de transport avec événements persistés, curseur et consultation bornée lorsque le streaming est regroupé. Dans le produit, grouper les fragments pour limiter les écritures D1 ; vérifier droits sur chaque lecture, annulation, déconnexion, reconnexion et reprise sans second appel fournisseur involontaire. La sonde ne prouve pas une exécution durable après fermeture du navigateur ni des traitements longs. Le parcours complet OpenAI + conversations + widgets + progression navigateur reste une recette du socle.
 
 ## Capacités non établies par le contrat actuel
 

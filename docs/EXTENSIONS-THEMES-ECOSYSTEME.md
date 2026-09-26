@@ -4,6 +4,8 @@ Proposition d'architecture du 26 septembre 2026, avant implémentation. Les dép
 
 ## Responsabilités
 
+La compatibilité native ChatGPT fait partie du contrat des modules : outils MCP, widgets MCP Apps, skills et paquet distribuable, avec mêmes données D1/R2 et opérations autorisées. Lire [Compatibilité ChatGPT](COMPATIBILITE-CHATGPT.md). Une interface dans le chat Creezio ne prouve pas à elle seule son fonctionnement dans ChatGPT.
+
 | Élément | Responsabilité |
 |---|---|
 | Socle et modules natifs | Backend, administration Creezio, UI du chat, conversations persistantes, widgets et capacités fournies d'origine ; contrats communs et release cohérente pour les composants interdépendants. |
@@ -49,10 +51,11 @@ Sources : [métadonnées de plugins WordPress](https://developer.wordpress.org/p
 
 Prévoir un dépôt distinct, nom proposé **Creezio-Extension-Starter**, utilisable par fork et pouvant aussi être marqué comme template GitHub. Il permet de commencer une extension complète à partir d'un exemple fonctionnel. Le choix fork/template de cet outil de développement ne change pas le jalon imposant un véritable fork de Creezio pour la première application de test.
 
-Le dépôt fournit deux livrables à partir du même code :
+Le dépôt fournit trois livrables à partir du même code :
 
 - **Un paquet d'extension installable** dans une application Creezio, avec manifeste, modèles, relations, opérations, routes/API dérivées, outils MCP, permissions, événements, projection de recherche, configuration, écran d'administration, vue front et widget de chat.
 - **Une application de démonstration**, utilisant une version fixée du vrai socle Creezio et cette même extension. Elle démarre localement avec D1/R2 persistants et peut être publiée entièrement sur Cloudflare : Worker, front, administration, D1/R2 et assets.
+- **Un paquet de plugin ChatGPT/Codex**, contenant manifeste portable, configuration MCP et skills, relié au déploiement de l'application avec ressources UI MCP Apps. Sa publication et sa connexion sont qualifiées séparément ; aucune nouvelle application serveur n'est imposée par ce paquet.
 
 Structure indicative :
 

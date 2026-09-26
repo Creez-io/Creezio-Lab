@@ -4,6 +4,8 @@
 
 ## 1. Résultat attendu
 
+Les modules sont nativement compatibles avec l'écosystème de plugins ChatGPT : outils MCP, widgets MCP Apps, skills et distribution standard, au-dessus des mêmes données et opérations Creezio. Le [contrat ChatGPT](COMPATIBILITE-CHATGPT.md) complète celui des extensions. La recette doit exercer un vrai widget et son skill dans ChatGPT, en plus des interfaces Creezio et des deux Sites.
+
 Un dépôt autonome, prêt à démarrer sur GPT Sites avec un backend, un back-office Creezio et un front de départ. Une application dérivée conserve cette base, remplace son front et ajoute ses extensions. Sur GPT Sites, ses mises à jour sont demandées par l'utilisateur ou une tâche GPT planifiée, exécutées puis vérifiées. Sur un hébergement Docker, elles peuvent être déclenchées depuis son administration. Les deux parcours préservent les personnalisations et les données.
 
 La preuve finale comprend deux GPT Sites distincts réellement utilisables :
@@ -81,6 +83,8 @@ Front de l'application                 Back-office Creezio /admin
 Base proposée : TypeScript, React, routage et build issus du starter GPT Sites actuel, avec Vinext/Vite si ce starter le confirme lors de l'implémentation. API fondée sur les interfaces Web Request/Response ; schémas validés à l'exécution et exposables en JSON Schema ; modèles D1 conçus directement pour le produit et requêtes préparées. Les versions seront figées dans un lockfile et vérifiées sur Sites avant d'accumuler des fonctionnalités.
 
 Le workspace monte les vues administratives dans des **panneaux React stables** identifiés par vue et objet, alimentés par les opérations API Creezio. Chaque panneau possède sa localisation, son historique, son état et son activité ; le routeur hôte assure URL, liens directs, hydratation et navigation entre surfaces. Les modules passent par le SDK de navigation et ne lisent pas l'URL globale pour déterminer l'objet d'un panneau inactif. Distinguer paramètres d'identité d'une fiche et filtres d'une même vue.
+
+La tranche initiale réemploie en priorité les composants et scénarios déjà qualifiés qui satisfont ces contrats. Reprendre conservation des vues, localisation par panneau, activité des sous-vues et tests ; isoler le raccordement au routeur dans l'adaptateur d'hébergement. Les preuves locales existantes servent de base à une recette ciblée sur le runtime figé et le Site cible, sans entraîner une réécriture générale. Un composant incompatible ou défaillant n'est repris qu'après correction et vérification du cas concerné.
 
 La conservation du montage doit préserver brouillons, scroll, focus, panneaux et interactions du chat. Les portails et effets des vues inactives respectent leur état d'activité ; une mutation externe actualise les données sans effacer silencieusement un brouillon. Éviction, restauration après rechargement, révocation et changement de session ont des règles explicites. La mémoire React conservée pendant une navigation ne remplace pas la persistance des conversations ou brouillons à récupérer après rechargement.
 
@@ -237,6 +241,8 @@ Le module OpenAI adapte Responses au contrat fournisseur Creezio : événements 
 Deux interfaces utilisent ces services : le chat administrateur standard de Creezio et le chat applicatif librement dessiné dans le front. Partager un moteur n'implique pas de partager les conversations, les outils accessibles ou les droits. Le contexte d'administration ne doit pas être transmis au chat d'un client. Une app peut personnaliser son rendu sans copier le backend des conversations ni remplacer le chat de l'administration.
 
 Le modèle choisit un type de widget autorisé et des données validées ; il ne produit pas du code exécutable. Le widget appelle l'opération serveur déclarée. Le backend revérifie l'utilisateur, l'espace de données, les droits et la version de l'objet au moment du clic. Une confirmation supplémentaire dépend de l'effet réel de l'action.
+
+Le widget prévoit une ressource MCP Apps portable et son raccordement au chat Creezio ; les particularités ChatGPT restent dans l'adaptateur d'hôte. Les skills du module accompagnent les outils et le paquet de plugin. OAuth délégué relie ChatGPT aux comptes Creezio pour les données protégées ; ne pas remplacer ce parcours par la clé du module OpenAI ou par un token machine demandé au client ChatGPT. Voir le [contrat de compatibilité](COMPATIBILITE-CHATGPT.md) pour les métadonnées, ressources, droits, formats de paquet et critères de publication.
 
 Tester le rafraîchissement, la réouverture d'une ancienne conversation, les droits retirés, les objets supprimés, les clics répétés et les résultats d'action périmés. La version du widget est conservée dans le message ; les versions anciennes ont une compatibilité ou un rendu de repli explicite. WebMCP, si disponible dans le navigateur, est un adaptateur supplémentaire ; il ne remplace pas MCP distant et ne donne aucun droit supplémentaire.
 

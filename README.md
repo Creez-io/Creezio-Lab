@@ -6,6 +6,8 @@ Le [dépôt GitHub](https://github.com/creezio/Creezio-D1R2) est public et distr
 
 Le dossier [Extensions, thèmes et écosystème](docs/EXTENSIONS-THEMES-ECOSYSTEME.md) propose le SDK communautaire, le catalogue, les mises à jour individuelles et un starter produisant une extension installable et sa démonstration Cloudflare.
 
+Les modules sont conçus pour être aussi utilisables depuis ChatGPT : outils MCP, widgets MCP Apps, skills et paquet de plugin standard, sur les mêmes données et opérations autorisées. Le [contrat de compatibilité ChatGPT](docs/COMPATIBILITE-CHATGPT.md) définit cette cible et sa recette réelle, encore à réaliser.
+
 ## Objectif
 
 Un CMS et backend communs, un back-office conservant l'identité Creezio réservé à l'administrateur de l'application, et un front applicatif indépendant utilisant les API avec les permissions de ses utilisateurs.

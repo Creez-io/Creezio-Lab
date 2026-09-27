@@ -1,6 +1,6 @@
 # Qualification de GPT Sites
 
-26 septembre 2026. Vérification du contrat disponible et sonde technique publiée. Le CMS complet, les interfaces à onglets et le fork de recette ne sont pas encore implémentés ; les preuves ci-dessous ne les remplacent pas.
+État au 27 septembre 2026 : le Worker commun Creezio est publié sur une nouvelle cible publique du compte courant, les anciennes cibles restant préservées. La recette du candidat intermédiaire T15 `c133bf1` a vérifié la connexion native au compte installé, le workspace original, le front ChatGPT-like, une vraie réponse OpenAI sur chaque interface, la restauration d'un brouillon et d'une pièce jointe, la relecture R2 avec empreinte identique et le PRD livré. Les API et les deux MCP refusent l'accès anonyme ; la route de l'opérateur temporaire renvoie 404. Un défaut de statut statique OpenAI dans le catalogue est corrigé avant la qualification finale de la PR. Le fork n'est pas encore créé ; la connexion réelle ChatGPT et les widgets restent T16. Les résultats de sonde du 26 septembre ci-dessous gardent leur portée distincte. Voir le [parcours d'installation Sites](INSTALLATION-SITES.md).
 
 ## Périmètre retenu
 

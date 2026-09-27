@@ -11,7 +11,7 @@ const started = new Date().toISOString();
 const evidencePath = resolve(root, '.quality/latest.json');
 mkdirSync(dirname(evidencePath), { recursive: true });
 const write = value => writeFileSync(evidencePath, JSON.stringify(value, null, 2) + '\n');
-const profile = 't14-conversations';
+const profile = 't15-openai-sites';
 write({ schemaVersion: 1, profile, started, state: 'running', success: false, mergeReady: false });
 try {
 const source = sourceIdentity(root);
@@ -31,15 +31,18 @@ execute('module-models', ['scripts/data/prepare-modules-settings.mjs']);
 execute('module-suites', ['extensions/native/modules-settings/gate.mjs']);
 execute('conversations-models', ['scripts/data/prepare-native-module.mjs', 'conversations']);
 execute('conversations-suites', ['extensions/native/conversations/gate.mjs']);
+execute('openai-models', ['scripts/data/prepare-native-module.mjs', 'openai']);
+execute('openai-suites', ['extensions/native/openai/gate.mjs']);
 execute('theme-standard-suites', ['themes/standard/gate.mjs']);
 execute('theme-chatgpt-suites', ['themes/chatgpt-like/gate.mjs']);
 execute('typecheck', ['node_modules/typescript/bin/tsc', '--noEmit']);
 execute('build', ['scripts/run-framework.mjs', 'build']);
-// T11's complete Windows run already used ~230s; keep a bounded margin for the expanded suite.
+// T15's 126-file Windows suite measured 329s, then exceeded 360s under local load.
+// Keep a bounded aggregate margin; per-test deadlines and complete TAP remain required.
 // This harness deadline does not change any product deadline or permit an incomplete TAP result.
 const testStarted = performance.now();
 const result = spawnSync(process.execPath, ['--test', '--test-concurrency=1', '--test-reporter=tap', ...tests],
-  { cwd: root, encoding: 'utf8', timeout: 360_000, maxBuffer: 8 * 1024 * 1024 });
+  { cwd: root, encoding: 'utf8', timeout: 600_000, maxBuffer: 8 * 1024 * 1024 });
 const testDurationMs = Math.round(performance.now() - testStarted);
 // Preserve failing diagnostics before a bounded console tail hides early failures.
 writeFileSync(resolve(root, '.quality/tests-latest.tap'), result.stdout ?? '');

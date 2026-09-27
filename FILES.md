@@ -1,6 +1,6 @@
 # Repères du dépôt
 
-État : PR #1 à #25 intégrées ; main `8736c340` qualifié avec 1 019 tests locaux et CI. Workspace original, documents installés, fronts, conversations, OpenAI et widgets intégrés par tranches. Chantier actif : T-30, SDK et starter, sur `core/t30-sdk-starter`, avec qualification hébergée T16. Le [TODO](docs/TODO.md) distingue acquis, travaux et qualifications restantes.
+État : PR #1 à #26 intégrées ; main `e67636635a526daa544ea3573b271e1822f3f4fe` qualifié par la CI avec 1 039/1 039 tests. SDK `sdk-v1.0.0` et starter `module-v0.1.0` publics ; démo T30 locale qualifiée dans son périmètre. Chantier actif : T-32 sur `core/t32-cloudflare` ; première publication et première mise à jour réelle de l'original qualifiées sur Cloudflare, démo et SDK 1.1.0 encore ouverts. Le [TODO](docs/TODO.md) distingue acquis, travaux et qualifications restantes.
 
 | Emplacement | Responsabilité |
 |---|---|
@@ -30,6 +30,8 @@
 | [docs/INTERACTIONS-WIDGETS.md](docs/INTERACTIONS-WIDGETS.md) | Widgets multiples et trois modes par action ; hôte interne et GPT. |
 | [docs/COMPATIBILITE-CHATGPT.md](docs/COMPATIBILITE-CHATGPT.md) | MCP, widgets, plugins et skills conversationnels. |
 | [docs/STOCKAGE-ET-HEBERGEMENT.md](docs/STOCKAGE-ET-HEBERGEMENT.md) | Local, Sites, Cloudflare et transfert D1/R2. |
+| [docs/IMPLEMENTATION-T30.md](docs/IMPLEMENTATION-T30.md) | Paquets publics SDK/starter, démo indépendante et limites de la recette locale. |
+| [docs/IMPLEMENTATION-T32.md](docs/IMPLEMENTATION-T32.md) | Première publication et premier update réels de l'original sur Cloudflare, preuves, limites et recettes restantes. |
 | [docs/LICENCES-ET-OFFRES.md](docs/LICENCES-ET-OFFRES.md) | Politiques/activation/accompagnement et décisions commerciales différées. |
 | [docs/QUALIFICATION-SITES.md](docs/QUALIFICATION-SITES.md) | Preuves techniques limitées, distinctes du CMS. |
 | [docs/INSTALLATION-LOCALE.md](docs/INSTALLATION-LOCALE.md) | Inspection, premier compte local, configuration commune et reprises sans écrasement. |
@@ -170,3 +172,14 @@ Tout ajout structurel met ce repère à jour. Chaque module construit fournit en
 - [scripts/modules/package-receipt.mjs](scripts/modules/package-receipt.mjs) : vérification du reçu détaché, des archives et de leurs octets installés ; `module-inventory.json` relie explicitement le reçu à son module.
 - [scripts/data/install-composition.mjs](scripts/data/install-composition.mjs) : installation locale du schéma composé complet et du premier compte natif, avec inspection et conservation des états existants.
 - `tests/modules/package-receipt.test.mjs`, `tests/workspace/package-context.test.mjs` et `tests/local/composed-installation.test.mjs` : preuves ciblées ; [réalisation T30](docs/IMPLEMENTATION-T30.md) pour la portée d'intégration.
+
+## Livraison locale T32
+
+- `scripts/cloudflare/{config,composition,build}.mjs` : projection de la composition et build du même code sur le profil Cloudflare ; `scripts/cloudflare/{pipeline,provisioning,sandbox,publisher}.mjs` orchestre les effets et vérifications distants. Le pipeline porte aussi la candidate d'update REQ-3203.
+- `scripts/cloudflare/{local-service,operator-http,local-journal,target-vault}.mjs` : service loopback limité, session et jobs, journaux locaux et clé de coffre de production par transfert ; `scripts/cloudflare/artifact-path.mjs` isole les artefacts d'update par intention ; `scripts/cloudflare/{transfer,remote}/` contient la capture D1/R2 et les ports distants.
+- `scripts/local/{serve,runtime-supervisor,source-manifest}.mjs` : cycle de vie de l'application locale, arrêt cohérent du runtime pendant le transfert et inventaire de la source Docker ; [core/delivery](core/delivery/) garde l'autorisation native fraîche.
+- [admin/delivery/transport.ts](admin/delivery/transport.ts) et [app/workspace/host.tsx](app/workspace/host.tsx) : transport navigateur vers l'opérateur loopback, y compris les appels d'update, et injection dans le workspace.
+- [sdk/delivery](sdk/delivery/) et [extensions/native/delivery](extensions/native/delivery/) : contrat de transport injecté, contrôleurs et modèles de vue de première publication et d'update, vue admin, manifest et suites du module optionnel. `sdk/delivery/update-controller.ts` et `sdk/delivery/update-view-model.ts` portent REQ-3203, exercée sur une première mise à jour réelle ; la distribution SDK 1.1.0 reste à faire.
+- `admin/workspace/workspace-shell.tsx` : la navigation livraison autorisée rejoint le groupe Admin existant ; l'hôte fournit le transport local.
+- [tests/cloudflare](tests/cloudflare/) et [tests/local/docker-source.test.mjs](tests/local/docker-source.test.mjs) : contrôles ciblés du pipeline, du transport, des refus et de l'identité de source embarquée ; `tests/cloudflare/update-pipeline.test.mjs` couvre la candidate d'update.
+- [réalisation T32](docs/IMPLEMENTATION-T32.md) : reçus de première publication et de premier update, et qualifications encore à réaliser.

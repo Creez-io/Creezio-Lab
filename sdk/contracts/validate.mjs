@@ -10,7 +10,7 @@ const schemaDirectory = new URL('./schemas/v1/', import.meta.url);
 const ajv = new Ajv2020({ strict:true, strictRequired:true, allErrors:true, ownProperties:true });
 addFormats(ajv);
 for (const name of readdirSync(schemaDirectory).filter(name=>name.endsWith('.schema.json')).sort()) ajv.addSchema(JSON.parse(readFileSync(new URL(name,schemaDirectory),'utf8')));
-const validators = Object.fromEntries(['module','composition','composition-lock'].map(name=>[name,ajv.getSchema(`urn:creezio:contracts:v1:${name}`)]));
+const validators = Object.fromEntries(['module','composition','composition-lock','artifact-receipt'].map(name=>[name,ajv.getSchema(`urn:creezio:contracts:v1:${name}`)]));
 const schemaCache = new Map();
 const MAX_ERRORS = 128;
 
@@ -51,6 +51,12 @@ function embeddedSchemas(module,ctx) {
 }
 
 /** Pure validation of supplied declarations. It neither reads package files nor executes their handlers or test scripts. */
+export function validateArtifactReceipt(receipt) {
+  const ctx=context(),metrics={scope:'supplied-contracts-only'};
+  shape('artifact-receipt',receipt,ctx);
+  return {errors:ctx.errors,metrics};
+}
+
 export function validateModule(module) {
   const ctx=context(),metrics={scope:'supplied-contracts-only',moduleCount:0,schemaCount:0,operationCount:0,widgetCount:0,references:0};
   if(!shape('module',module,ctx))return {errors:ctx.errors,metrics};
@@ -65,7 +71,9 @@ export function validateComposition(composition, options={}) {
   const ctx=context(),metrics={scope:'supplied-contracts-only',moduleCount:0};
   const compositionValid=shape('composition',composition,ctx);
   const lockValid=options.lock === undefined ? (ctx.report('lock.missing','/lock','A composition lock is required.'),false) : shape('composition-lock',options.lock,ctx,'/lock');
-  const inspected=inspectJson(options.modules);
+  // Inspect the closed set as one inert value. Several individually valid modules can
+  // exceed the single-document node budget; keep a separate bounded aggregate budget.
+  const inspected=inspectJson(options.modules,{maxNodes:100000});
   if(inspected.errors.length || !Array.isArray(options.modules)) { ctx.report('composition.modules','/descriptors','An explicit bounded list of module descriptors is required.'); return {errors:ctx.errors,metrics}; }
   let modulesValid=true;
   options.modules.forEach((module,i)=>{

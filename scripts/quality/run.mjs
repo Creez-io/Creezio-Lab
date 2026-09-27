@@ -2,7 +2,7 @@ import { spawnSync } from 'node:child_process';
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { inspectTap, sourceIdentity, sameSourceIdentity, collectRequiredTests } from './evidence.mjs';
+import { inspectTap, tapFailureExcerpt, sourceIdentity, sameSourceIdentity, collectRequiredTests } from './evidence.mjs';
 import { validateDocs } from './docs.mjs';
 import { measureRuntimeArtifacts } from './runtime.mjs';
 
@@ -11,7 +11,7 @@ const started = new Date().toISOString();
 const evidencePath = resolve(root, '.quality/latest.json');
 mkdirSync(dirname(evidencePath), { recursive: true });
 const write = value => writeFileSync(evidencePath, JSON.stringify(value, null, 2) + '\n');
-const profile = 't16-widgets';
+const profile = 't30-sdk-starter';
 write({ schemaVersion: 1, profile, started, state: 'running', success: false, mergeReady: false });
 try {
 const source = sourceIdentity(root);
@@ -24,6 +24,7 @@ function execute(label, args, timeout = 180_000) {
   commands.push({ label, command: ['node', ...args], exitCode: result.status, durationMs: Math.round(performance.now() - time) });
   if (result.status !== 0) throw new Error(`${label} failed.\n${(result.stdout ?? '').slice(-10000)}\n${(result.stderr ?? '').slice(-6000)}\n${result.error?.message ?? ''}`);
 }
+execute('sdk-build', ['scripts/sdk/build.mjs']);
 execute('compose', ['scripts/build/compose-runtime.mjs']);
 execute('data-models', ['scripts/data/prepare-access.mjs']);
 execute('runtime-models', ['scripts/data/prepare-runtime.mjs']);
@@ -68,7 +69,8 @@ console.log(JSON.stringify({ success, mergeReady: false, source: source.sha256, 
 if (!success) {
   for (const error of docs.errors) console.error(JSON.stringify(error));
   if (!runtimeCurrent) console.error('Missing, failed, stale or changed runtime artifact evidence.');
-  if (!tap.success) console.error((result.stdout ?? '').slice(-12000), result.stderr ?? '', result.error?.message ?? '');
+  if (!tap.success) console.error(tapFailureExcerpt(result.stdout ?? '') || (result.stdout ?? '').slice(-12000),
+    result.stderr ?? '', result.error?.message ?? '');
   process.exitCode = 1;
 }
 } catch (error) {

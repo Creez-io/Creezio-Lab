@@ -1,6 +1,6 @@
 # Repères du dépôt
 
-État : PR #1 à #21 intégrées ; main `20d48fda` qualifié avec 923 tests locaux et CI. Documents installés consultables par UI/API/MCP depuis le Product Hub original. Chantier actif : T-13, fronts, thèmes et headless, sur `core/t13-front-themes`. Le [TODO](docs/TODO.md) distingue acquis, travaux et qualifications restantes.
+État : PR #1 à #25 intégrées ; main `8736c340` qualifié avec 1 019 tests locaux et CI. Workspace original, documents installés, fronts, conversations, OpenAI et widgets intégrés par tranches. Chantier actif : T-30, SDK et starter, sur `core/t30-sdk-starter`, avec qualification hébergée T16. Le [TODO](docs/TODO.md) distingue acquis, travaux et qualifications restantes.
 
 | Emplacement | Responsabilité |
 |---|---|
@@ -113,7 +113,7 @@ Tout ajout structurel met ce repère à jour. Chaque module construit fournit en
 - [services/registry](services/registry/) : service central à déployer séparément ; [état T-08](docs/IMPLEMENTATION-T08.md).
 - [core/registry](core/registry/) : client serveur et contrôle de publication, distincts du runtime métier.
 - [scripts/registry](scripts/registry/) : build indépendant, configuration sans secret et opérateur explicite du D1 dédié.
-- [tests/registry](tests/registry/) et [tests/local](tests/local/) : protocoles et refus du registre, Worker, journal de reprise et adaptateur Docker ; suites obligatoires dans le contrôle global.
+- [tests/registry](tests/registry/) et [tests/local](tests/local/) : protocoles et refus du registre, callback GitHub dans le Worker compilé, journal de reprise et adaptateur Docker ; suites obligatoires dans le contrôle global.
 - [adapters/docker](adapters/docker/) : démarrage local persistant ; [état T-31](docs/IMPLEMENTATION-T31.md).
 
 ## Gestion des modules T-11
@@ -161,3 +161,12 @@ Tout ajout structurel met ce repère à jour. Chaque module construit fournit en
 - `app/approvals/` : entrée native de décision humaine, indépendante du client MCP qui a demandé l'action.
 - [extensions/widgets-witness](extensions/widgets-witness/) : module optionnel de recette avec plusieurs widgets, absent du démarrage standard.
 - [tests/widgets](tests/widgets/) et [réalisation T16](docs/IMPLEMENTATION-T16.md) : contrôles des transports, droits, hôtes et périmètres à qualifier.
+
+## Distribution indépendante T30
+
+- [sdk/package.json](sdk/package.json), `sdk/public-declarations/` et [scripts/sdk](scripts/sdk/) : paquet SDK public compilé, types autonomes, exports contrôlés et licence embarquée.
+- `sdk/workspace/*-impl.tsx` et `sdk/ui/assistant-provider-impl.tsx` : contextes uniques partagés par l'hôte et ses modules installés ; les anciens points d'entrée réexportent le paquet.
+- [tests/runtime/sdk-package-resolution.test.mjs](tests/runtime/sdk-package-resolution.test.mjs) : résolution des imports publics dans le graphe Worker, le chargement de la configuration Vite et la barre d'outils, sans parcours des wrappers source du SDK.
+- [scripts/modules/package-receipt.mjs](scripts/modules/package-receipt.mjs) : vérification du reçu détaché, des archives et de leurs octets installés ; `module-inventory.json` relie explicitement le reçu à son module.
+- [scripts/data/install-composition.mjs](scripts/data/install-composition.mjs) : installation locale du schéma composé complet et du premier compte natif, avec inspection et conservation des états existants.
+- `tests/modules/package-receipt.test.mjs`, `tests/workspace/package-context.test.mjs` et `tests/local/composed-installation.test.mjs` : preuves ciblées ; [réalisation T30](docs/IMPLEMENTATION-T30.md) pour la portée d'intégration.

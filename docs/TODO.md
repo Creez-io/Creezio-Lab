@@ -1,5 +1,5 @@
 # Backlog de réalisation
-Révision 28 — 27 septembre 2026. **Chantier actif : T-16 widgets ; priorité à une première app utilisable.** PR #1 à #24 intégrées ; main `42efa820` qualifié en CI avec 993 tests. Chat OpenAI réel et conservation des données après publication vérifiés sur Sites. Le fournisseur d'identité du registre et la recette ChatGPT restent distincts. Les exigences demeurent inchangées.
+Révision 30 — 27 septembre 2026. **Chantier actif : T-30 SDK/starter et application indépendante.** PR #1 à #25 intégrées ; main `8736c340` qualifié en local et en CI avec 1 019 tests. Chat OpenAI réel et conservation des données après publication vérifiés sur Sites en T15 ; widgets de deux modules qualifiés localement en T16. Le widget natif Modules est également vérifié sur le nouveau Site et dans ChatGPT avec OAuth natif et CSP activée. Les exigences demeurent inchangées.
 
 ## Jalon prioritaire : première app utilisable
 
@@ -20,15 +20,16 @@ Le statut global d'un lot couvre tous ses critères, parfois plusieurs étapes d
 | T-05 — Données | Compilation SQL centrale, accès D1 protégé, fichiers R2 et coffre | Explorateur, recherche, export/restauration, évolutions de modèles restantes et recettes hébergées | Fondations acquises ; autres fonctions à construire |
 | T-06 — Opérations | Registre/exécuteur intégrés PR #15 ; bindings HTTP et suivi par clé PR #16 | Événements, approbations, interopérations et autres transports | Fondations disponibles ; compléments au backlog |
 | T-07 — Workspace | Composants originaux adaptés, panneaux/états/titres et recette navigateur intégrés PR #16 | Qualification Sites et raccordement des modules produit | Livrable local disponible |
-| T-08 — Registre central | PR #17 intégrée ; Worker Cloudflare, service/client/journal et reprise réelle sans redéploiement | Configuration fournisseur GitHub/email, raccords des publishers et onboarding produit | Fournisseur GitHub en attente d'autorisation ; travaux indépendants poursuivis |
-| T-09 — Sites | Worker commun publié ; compte natif, chat admin/front et données D1/R2 conservés après publication finale T15 | Widgets et application dérivée | Première tranche hébergée qualifiée |
-| T-10 — MCP/OAuth | PR #19 : deux catalogues, OAuth natif, PKCE/rotation et clients SDK réels ; 866 tests | Connexion réelle ChatGPT et recette Site public, ressources/widgets T-16 | Fondations locales qualifiées |
+| T-08 — Registre central | PR #17 intégrée ; Worker Cloudflare, service/client/journal et reprise réelle sans redéploiement ; fournisseur GitHub configuré | Qualification du callback GitHub corrigé, raccords des publishers et onboarding produit ; email non configuré | Correction du transport OAuth Worker révélée par la recette réelle |
+| T-09 — Sites | Worker commun publié ; compte natif, chat admin/front et données D1/R2 conservés après publication T15 ; nouvelle cible et widget Modules vérifiés T16 | Module métier et application dérivée | Première tranche hébergée qualifiée |
+| T-10 — MCP/OAuth | Deux catalogues et OAuth natif intégrés ; connexion réelle ChatGPT au MCP admin, consentement limité et widget Modules vérifiés sur le nouveau Site | Recette ChatGPT du MCP applicatif et autres interactions | Première connexion hébergée qualifiée |
 | T-11 — Modules | PR #20 : catalogue, dépendances, plans D1 et UI originale ; recettes locales et CI, 908 tests | Raccords publication et hébergements ; distribution complète T-30 | Livrable local disponible |
 | T-12 — Documentation | PR #21 : README/PRD/changelog exacts, UI/API/MCP et recettes locales/CI, 923 tests | Recettes hébergées transversales ; édition des PRD de travail en T-23 | Documents installés vérifiés localement |
 | T-13 — Fronts et thèmes | PR #22 : deux thèmes, projection native app, headless, recettes navigateur et CI ; 953 tests | Recette Sites | Livrable local disponible |
 | T-14 — Conversations | PR #23 : chat original, historique, brouillons D1, fichiers R2, autorisations ; recette Sites avec T15 | Enrichissement widgets et autres compléments | Livrable local et Sites disponible |
 | T-15 — OpenAI | PR #24 intégrée ; réponses réelles locales/Sites, front/workspace ; reprise et arrêt locaux ; CI 993 tests | Outils widgets T16, compléments fournisseur/voix | Première tranche locale et Sites qualifiée |
-| T-16 — Widgets | Contrats P1 à P5 fixés ; développement partagé API, moteur et UI sur core/t16-widgets | Intégration, tests et recettes Creezio/ChatGPT | **Chantier actif** |
+| T-16 — Widgets | PR #25 intégrée ; hôte MCP Apps, trois modes, trois widgets de deux modules, reprise et droits ; 1 019 tests locaux/CI ; widget natif et lecture directe sur Sites et ChatGPT avec CSP activée | Module métier, autres interactions ChatGPT et approbation humaine en navigateur | Première recette ChatGPT qualifiée ; compléments avec le témoin |
+| T-30 — SDK/starter | Dépôt public, véritable paquet SDK et module témoin avec vues/widgets ; six suites du starter passées (24 tests) sur le candidat documenté | Corriger et qualifier l'installation indépendante, publication SDK/CI starter puis démo | **Développement actif, PR #26 et PR starter #1 ouvertes** |
 | T-31 — Docker local | PR #17 intégrée ; compte/D1/R2, redémarrage/recréation/restauration vérifiés en Docker | Recettes des futurs modules et routes de fichiers | Livrable local disponible |
 | Autres lots T-17 à T-39 | Voir les prérequis déjà fournis ci-dessus | Modules, publications et recette finale | À réaliser selon le jalon prioritaire |
 
@@ -74,8 +75,8 @@ Les droits de distribution sont vérifiés **avant chaque première publication 
 | [T-13](#T-13) | P4 | Fronts, thèmes et headless | [T-07](#T-07), [T-11](#T-11) | En cours |
 | [T-14](#T-14) | P4 | Conversations et progression persistante | [T-06](#T-06), [T-07](#T-07), [T-11](#T-11) | En cours |
 | [T-15](#T-15) | P4 | Module OpenAI et contrat fournisseur | [T-14](#T-14) | En cours — première tranche qualifiée, compléments différés |
-| [T-16](#T-16) | P4 | Widgets et plugins conversationnels compatibles GPT | [T-10](#T-10), [T-13](#T-13), [T-15](#T-15) | En cours — API, moteur et UI |
-| [T-30](#T-30) | P3 | Starter, paquets et extension externe | [T-11](#T-11), [T-12](#T-12), [T-13](#T-13), [T-16](#T-16) | À faire |
+| [T-16](#T-16) | P4 | Widgets et plugins conversationnels compatibles GPT | [T-10](#T-10), [T-13](#T-13), [T-15](#T-15) | Tranche intégrée — qualification hébergée |
+| [T-30](#T-30) | P3 | Starter, paquets et extension externe | [T-11](#T-11), [T-12](#T-12), [T-13](#T-13), [T-16](#T-16) | En cours — SDK, starter et installation indépendante |
 | [T-31](#T-31) | P1 | Docker local persistant | [T-03](#T-03), [T-05](#T-05), [T-07](#T-07) | En cours |
 | [T-32](#T-32) | P6 | Publication complète Cloudflare | [T-08](#T-08), [T-30](#T-30), [T-31](#T-31) | À faire |
 | [T-36](#T-36) | P7 | Version initiale de l’original, puis compléments | Jalon initial : [T-08](#T-08), [T-09](#T-09), [T-10](#T-10), [T-11](#T-11), [T-12](#T-12), [T-13](#T-13), [T-14](#T-14), [T-15](#T-15), [T-16](#T-16), tranche témoin [T-30](#T-30), [T-31](#T-31), [T-32](#T-32) | À faire — tranche initiale prioritaire |
@@ -188,7 +189,7 @@ Les droits de distribution sont vérifiés **avant chaque première publication 
 <a id="T-09"></a>
 ## T-09 — Première tranche sur Sites
 
-- Lot : **P1** ; état : **à faire — publication autorisée** ; responsable : orchestrateur. Si le compte GPT courant ne retrouve plus l'ancien Site (404), créer un nouveau Site public sous ce compte, raccorder le nouveau `project_id` et conserver les identifiants et preuves de l'ancien Site dans l'historique. L'absence de cet ancien Site ne bloque plus la publication de la première app ; la recette produit sur le nouveau Site reste à exécuter.
+- Lot : **P1** ; état : **première tranche hébergée qualifiée, compléments en cours** ; responsable : orchestrateur. Si le compte GPT courant ne retrouve plus l'ancien Site (404), créer un nouveau Site public sous ce compte, raccorder le nouveau `project_id` et conserver les identifiants et preuves de l'ancien Site dans l'historique. Chaque cible conserve ses propres données et preuves.
 - Dépendances : [T-07](#T-07), [T-08](#T-08).
 - Travail/livrables : Site A réutilisé s'il est accessible et adapté, sinon nouveau Site public du compte courant : compte, module témoin, onglets, opération et fichier ; comparaison local/Sites et traçabilité du changement de `project_id`.
 - Besoin : [US-09](USER-STORIES.md#US-09). Acceptation : [REQ-0901](EXIGENCES.md#REQ-0901), [REQ-0902](EXIGENCES.md#REQ-0902).
@@ -261,7 +262,7 @@ Les droits de distribution sont vérifiés **avant chaque première publication 
 <a id="T-16"></a>
 ## T-16 — Widgets et plugins conversationnels compatibles GPT
 
-- Lot : **P4** ; état : **en cours sur core/t16-widgets** ; responsables : orchestrateur et trois agents Sol (catalogue/MCP, moteur/D1, SDK/UI).
+- Lot : **P4** ; état : **tranche intégrée, qualification hébergée en cours** ; responsables : orchestrateur et agents Sol.
 - Dépendances : [T-10](#T-10), [T-13](#T-13), [T-15](#T-15).
 - Travail/livrables : Hôte multiwidgets, ressources MCP Apps, paquet plugin/skills, modes message/contexte/direct par action, adaptateur GPT et recette réelle des trois modes dans les deux chats.
 - Réalisation en cours : [contrats et raccords T16](IMPLEMENTATION-T16.md). Recette locale de trois widgets de deux modules avec OpenAI réel, trois modes et reprise par lecture après réponse perdue ; aucun résultat local ne remplace la recette ChatGPT.
@@ -402,7 +403,7 @@ Les droits de distribution sont vérifiés **avant chaque première publication 
 <a id="T-30"></a>
 ## T-30 — Starter, paquets et extension externe
 
-- Lot : **P3** ; état : **à faire** ; responsable nominatif : à attribuer au démarrage.
+- Lot : **P3** ; état : **en cours — SDK et starter** ; responsables : orchestrateur, agents API/SDK, UI et hôte, sur `core/t30-sdk-starter` et le dépôt public Creezio-Extension-Starter.
 - Dépendances : [T-11](#T-11), [T-12](#T-12), [T-13](#T-13), [T-16](#T-16).
 - Travail/livrables : Première tranche prioritaire : starter, paquet runtime réel, validation autonome, plugin et démo locale d'un seul module métier témoin, installé hors du checkout source. Les comparateurs, dépendances interéditeurs et intégrations facultatives restent dans le lot pour la suite ; ils ne conditionnent pas cette première app. Vérifier les droits avant toute distribution concernée ; publication de la démo qualifiée en T-32.
 - Besoin : [US-30](USER-STORIES.md#US-30). Acceptation : [REQ-3001](EXIGENCES.md#REQ-3001), [REQ-3002](EXIGENCES.md#REQ-3002), [REQ-3003](EXIGENCES.md#REQ-3003), [REQ-3004](EXIGENCES.md#REQ-3004).

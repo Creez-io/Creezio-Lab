@@ -1,5 +1,5 @@
 # Backlog de réalisation
-Révision 34 — 28 septembre 2026. **Chantiers actifs : T-32, livraison Docker local vers Cloudflare, et préparation T-36.** PR #1 à #28 intégrées ; PR #28 fusionnée sur main `f8dc03c6076109479ad87facedc55234a343dcc4`, CI du nouveau main réussie avec 1 152/1 152 tests. SDK `sdk-v1.1.0` et starter `module-v0.1.0` publics, démo T30 réelle qualifiée localement avec limites documentées. Le callback OAuth GitHub du registre a réussi avec l'utilisateur réel. Les exigences demeurent inchangées ; la première publication et la première mise à jour conservatrice de l'application originale sur Cloudflare sont qualifiées dans leur périmètre, tandis que la démo reste ouverte.
+Révision 35 — 28 septembre 2026. **Chantiers actifs : fork Lab T-37 et préparation de mise à jour T-38.** PR #1 à #29 intégrées ; le main `eb97109493b3a945eaa882c216591bc468764014` a réussi 1 152/1 152 tests CI. Le SDK `sdk-v1.1.0`, le starter `module-v0.1.0` et la release source initiale `app/v0.0.0` sont publics. Le Site A a été qualifié dans le périmètre initial ; le vrai fork public Creez-io/Creezio-Lab et son Site B existent, sans publication du Site B à ce stade. Les recettes exhaustives T-36 et la démo Cloudflare restent ouvertes. Les exigences demeurent inchangées.
 
 ## Jalon prioritaire : première app utilisable
 
@@ -486,12 +486,12 @@ Les droits de distribution sont vérifiés **avant chaque première publication 
 <a id="T-38"></a>
 ## T-38 — Adoption des mises à jour et contributions
 
-- Lot : **P8** ; état : **à faire** ; responsable nominatif : à attribuer au démarrage.
+- Lot : **P8** ; état : **en revue pour le raccord d'inventaire, recette non commencée** ; responsable : Codex et agents de revue ; branche `core/t38-package-updates`, PR #30.
 - Dépendances : fork initial utilisable de [T-37](#T-37).
 - Travail/livrables : Pour la première app, installation du vrai paquet témoin puis adoption, par le fork B, d'une nouvelle version issue de l'original A et mise à jour du module/thème sans perte des données ni du front, avec refus d'une mise à jour incompatible ; publication Cloudflare du fork via le parcours T-32. Les contributions amont et intégrations facultatives restantes gardent leurs preuves propres dans T-38.
 - Besoin : [US-38](USER-STORIES.md#US-38). Acceptation : [REQ-3801](EXIGENCES.md#REQ-3801), [REQ-3802](EXIGENCES.md#REQ-3802), [REQ-3803](EXIGENCES.md#REQ-3803).
 - Validation : implémenter puis exécuter les recettes liées, sur **A/B, Cloudflare, tarballs et GitHub** ; inclure les cas négatifs et les contrôles communs appropriés.
-- Preuves : aucune preuve produit acquise ; renseigner PR/commit, version, profil, résultats et limites avant changement d’état.
+- Preuves : le Starter `module-v0.1.2` est public depuis son main `3aa49c97a0802fa383c44588f835326f89bb006e`, avec les trois fichiers runtime/validation/reçu retéléchargés et vérifiés. Le préflight vérifie leurs trois empreintes ; le build expose uniquement les métadonnées candidates au gestionnaire existant. La mise en cache de la validation détachée pour l'adoption est explicite et préserve les verrous antérieurs. Le Lab conserve le module installé 0.1.0 ; affichage du plan, adoption et conservation des données après mise à jour restent à qualifier.
 
 <a id="T-39"></a>
 ## T-39 — Recette finale et validation utilisateur

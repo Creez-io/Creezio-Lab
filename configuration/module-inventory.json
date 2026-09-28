@@ -7,5 +7,24 @@
   "available": [],
   "validationReceipts": {
     "creezio.purchase-requests": ".creezio/packages/manifest.json"
-  }
+  },
+  "externalPackages": [
+    {
+      "moduleId": "creezio.purchase-requests",
+      "packageName": "@creezio/purchase-requests",
+      "version": "0.1.2",
+      "runtime": {
+        "path": ".creezio/packages/creezio-purchase-requests-0.1.2.tgz",
+        "integrity": "sha256-e73d9767ea3e361ed635e91cf2d73b8a0037ee5db17503b2c45100e32fdb14ea"
+      },
+      "validation": {
+        "path": ".creezio/packages/creezio-purchase-requests-0.1.2-validation.tgz",
+        "integrity": "sha256-4d981a292862cd61b7025362ea934d11a85b9d46af9ffe31d6ef372a3b0add6f"
+      },
+      "receipt": {
+        "path": ".creezio/packages/manifest-0.1.2.json",
+        "integrity": "sha256-3386c7877b9970f9a743dc59cee2258f770cb8cd0877314bb5f31ae2bbbb50ad"
+      }
+    }
+  ]
 }

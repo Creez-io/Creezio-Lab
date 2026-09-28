@@ -2,11 +2,11 @@
   "schemaVersion": "1.0.0",
   "application": {
     "id": "creezio.lab",
-    "version": "0.0.0",
+    "version": "0.0.1",
     "provenance": {
       "kind": "git",
-      "revision": "eb97109493b3a945eaa882c216591bc468764014",
-      "integrity": "sha256-097a7eb02e5c955a048d014cd120f95672fac5e501c1e960998f13da18a717fb",
+      "revision": "a911e4d924b9acb3a33aeb6b57c47ae6d0e3bd06",
+      "integrity": "sha256-133bb222818971b90f08675b37646e8e2a08784801c6381aaa079e6cab785679",
       "repository": "https://github.com/creezio/Creezio-D1R2"
     }
   },

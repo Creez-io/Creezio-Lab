@@ -36,6 +36,8 @@ execute('openai-models', ['scripts/data/prepare-native-module.mjs', 'openai']);
 execute('openai-suites', ['extensions/native/openai/gate.mjs']);
 execute('messaging-models', ['scripts/data/prepare-native-module.mjs', 'messaging']);
 execute('messaging-suites', ['extensions/native/messaging/gate.mjs']);
+execute('crm-models', ['scripts/data/prepare-native-module.mjs', 'crm']);
+execute('crm-suites', ['extensions/native/crm/gate.mjs']);
 execute('delivery-suites', ['extensions/native/delivery/gate.mjs']);
 execute('widgets-witness-suites', ['extensions/widgets-witness/gate.mjs']);
 execute('theme-standard-suites', ['themes/standard/gate.mjs']);
@@ -68,7 +70,12 @@ const report = { schemaVersion: 1, profile, started, finished: new Date().toISOS
     'This aggregate does not certify all native modules, hosted CMS parity, provider onboarding or remote CI provenance'] };
 write(report);
 console.log(JSON.stringify({ success, mergeReady: false, source: source.sha256, docs: docs.metrics,
-  tests: tap, runtimeEvidenceCurrent: runtimeCurrent, sourceUnchanged: unchanged, evidence: '.quality/latest.json' }, null, 2));
+  tests: tap, testDurationMs,
+  commands: commands.map(({label, exitCode, durationMs}) => ({label, exitCode, durationMs})),
+  runtime: runtime ? {status: runtime.status, artifact: runtime.artifact ? {
+    digest: runtime.artifact.digest, worker: runtime.artifact.worker, assets: runtime.artifact.assets
+  } : null, durationsMs: runtime.durationsMs} : null,
+  runtimeEvidenceCurrent: runtimeCurrent, sourceUnchanged: unchanged, evidence: '.quality/latest.json' }, null, 2));
 if (!success) {
   for (const error of docs.errors) console.error(JSON.stringify(error));
   if (!runtimeCurrent) console.error('Missing, failed, stale or changed runtime artifact evidence.');

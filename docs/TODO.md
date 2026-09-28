@@ -1,12 +1,12 @@
 # Backlog de réalisation
 
-Révision 39 — 28 septembre 2026. **Release initiale de l’original publiée ; jalon première app en cours.** Core main `0078fc7defc22d27e8caf22ac3b967f36fc30fbc` après PR #39 porte le correctif T32 d'historique incertain (CI candidate 1 183/1 183). Lab main `fc1ddc02d5c6e8f1a336e8f5e51d7ce397bc354b` après PR #5 a passé 1 177/1 177 tests CI ; son SDK public 1.1.0, son module d'achat 0.1.2, son front et ses compositions sont conservés. Le Site B version 5 est publié depuis `1a93fa85a3c1c44794b0e82dfc5eda4c409eba12` ; les anciens widgets y sont restaurés sans recréer leurs messages. Docker Linux a conservé trois tours terminés et clos deux anciens plans par annulation motivée après ajout de `plan-outcomes`, sans confirmation rétroactive. La capture initiale Cloudflare Lab s'est arrêtée en `capturing` avec `active_effect` ; la branche actuelle prépare l'adoption du correctif source, sans artefact, import ou publication Lab. Aucun lot partiel n’est déclaré entièrement vérifié. Voir [T40](IMPLEMENTATION-T40.md) et [T32](IMPLEMENTATION-T32.md).
+Révision 40 — 28 septembre 2026. **Release initiale de l’original publiée ; jalon première app en cours.** Les révisions fonctionnelles Core `0078fc7defc22d27e8caf22ac3b967f36fc30fbc` (PR #39, CI main 1 183/1 183) et Lab `949f028dbbe99ab586c02c42c82e51f145379b23` (PR #6, CI main 1 186/1 186) portent le correctif T32. Le SDK public 1.1.0, le module d'achat 0.1.2, le front et les compositions Lab sont conservés. Les deux Sites publics servent leur version 5 ; les anciens widgets, demandes, fichiers et brouillon sont préservés sur B. Le MCP app a réellement lu `get/list` dans ChatGPT ; un widget historique APP répond 200, la même route ADMIN avec seul cookie APP refuse 401, puis APP répond encore 200. Docker Linux a conservé trois tours terminés et clos deux anciens plans par annulation motivée sans confirmation rétroactive. La première capture Cloudflare Lab reste interrompue en `capturing` avec `active_effect`, avant artefact/import/publication ; le transfert distinct a vérifié 2 265 lignes D1 et un objet R2 ; sa publication du même artefact est confirmée (71 modules, 41 assets, registre synchronisé). Après arrêt Docker, les données et l'ancien tour incertain ont été relus sur Cloudflare ; une nouvelle réponse OpenAI réelle est persistée ; le navigateur confirme trois widgets historiques après rechargement, mais un ancien texte IA surestime un montant par cent. Aucun lot partiel n’est déclaré entièrement vérifié. Voir [T40](IMPLEMENTATION-T40.md), [T39](IMPLEMENTATION-T39.md) et [T32](IMPLEMENTATION-T32.md).
 
 ## Jalon prioritaire : première app utilisable
 
-T-14/T-15, le SDK et le paquet témoin sont consommables. Les anciens widgets ont été restaurés sur le Site B version 5 et les anciens plans clos dans le volume Linux Lab ; le prochain vrai cycle de plan reste à qualifier. La priorité immédiate est la capture conservatrice puis la publication de Lab sur Cloudflare, suivies des interactions et refus restants dans ChatGPT. T-39 rassemble cette recette ciblée ; les lots différés gardent leurs exigences.
+T-14/T-15, le SDK et le paquet témoin sont consommables. Les anciens widgets ont été restaurés sur le Site B version 5 et les anciens plans clos dans le volume Linux Lab ; le prochain vrai cycle de plan reste à qualifier. La capture conservatrice et la publication de Lab sur Cloudflare sont confirmées ; la priorité immédiate est de terminer la recette applicative hébergée. Les lectures MCP ChatGPT et le refus d'audience du widget natif sont déjà prouvés dans leur périmètre ; T-39 attend encore la consolidation et le retour utilisateur. Les lots différés gardent leurs exigences.
 
-Après ce jalon viennent T-17 à T-29 (dont le catalogue métier complet T-25), T-33 à T-35, puis les compléments et la recette exhaustive de T-36/T-39. Cela conserve leurs exigences et leurs preuves futures. Une tranche initiale livrée ne fait pas passer automatiquement le lot entier à « vérifié » ; seuls les critères et profils réellement exercés le sont.
+Après ce jalon, avancer d'abord les parties indépendantes de T-18 à T-22, T-25 à T-29 et T-33, puis les parties indépendantes de T-36/T-39 et leurs recettes propres ; compléter T-36/T-39 exhaustifs après les lots dont ils dépendent. T-17 Work est dans le dernier bloc, suivi de T-23/T-24 et des raccords dépendants. T-23/T-24 exigent un plan expliqué et une validation explicite préalable. T-34 premium et T-35 accompagnement avec accès au code exigent aussi une validation explicite future ; reconstruction WinHub/TempoFlow interdite avant un tel accord. Les compléments T-04/T-05/T-06/T-10 hors première app sont reportés, à expliquer en détail avant reprise. L'ancien GO est restreint par ces priorités du 28 septembre ; les exigences et preuves futures demeurent.
 
 ## Avancement lisible
 
@@ -20,24 +20,24 @@ Le statut global d'un lot couvre tous ses critères, parfois plusieurs étapes d
 | T-04 — Comptes et droits | Comptes, sessions, rôles, tokens machine, impersonation, connexion/installation et écrans Access originaux locaux | Autres parcours d'administration, remise des liens, OAuth et recettes hébergées | Raccordement OAuth avec T-10 |
 | T-05 — Données | Compilation SQL centrale, accès D1 protégé, fichiers R2 et coffre | Explorateur, recherche, export/restauration, évolutions de modèles restantes et recettes hébergées | Fondations acquises ; autres fonctions à construire |
 | T-06 — Opérations | Registre/exécuteur intégrés PR #15 ; bindings HTTP et suivi par clé PR #16 | Événements, approbations, interopérations et autres transports | Fondations disponibles ; compléments au backlog |
-| T-07 — Workspace | Composants originaux adaptés, panneaux/états/titres et recette navigateur intégrés PR #16 | Qualification Sites et raccordement des modules produit | Livrable local disponible |
-| T-08 — Registre central | Registre publié ; propriétaire vérifié, projet Lab et installations Sites/Cloudflare créés ; jetons chiffrés ; publication Sites Lab synchronisée | Première déclaration de Lab Cloudflare et parcours email | Sites Lab raccordé ; Cloudflare prêt à qualifier |
+| T-07 — Workspace | Composants originaux adaptés ; panneaux observés sur A/B et vues métier sur B, avec conservation ciblée après mise à jour Lab | Autres modules et comportements workspace non exercés sur Sites | Tranche locale et Sites A/B qualifiée dans ce périmètre |
+| T-08 — Registre central | Registre publié ; propriétaire vérifié, projet Lab et installations Sites/Cloudflare créés ; jetons chiffrés ; publication Sites Lab synchronisée | Parcours email et autres raccords | Sites et Cloudflare Lab déclarés |
 | T-09 — Sites | Original A et Lab B publiés sur le compte courant ; Lab 0.1.2 version 5, même Site, D1/R2, témoins et widgets historiques conservés | Recettes complémentaires, dont interactions et refus | Deux Sites publiés ; update qualifiée dans le périmètre T40 |
 | T-10 — MCP/OAuth | Catalogues admin/app distincts ; admin ChatGPT qualifié historiquement ; MCP app Lab 0.1.2 connecté, carte/liste et modes direct/contexte/message exercés | Approbations et parcours de refus hébergés ; limite du picker documentée en T40 | Recette MCP app réalisée dans ce périmètre |
 | T-11 — Modules | Catalogue, dépendances, plans D1 et UI originale ; adoption réelle 0.1.2 sur Lab Sites et Docker ; deux anciens plans clos par annulation motivée | Nouveau cycle de plan avec publication et confirmation réelles ; autres critères du lot | Correctif T40 intégré et clôture historique qualifiée |
 | T-12 — Documentation | PR #21 : README/PRD/changelog exacts, UI/API/MCP et recettes locales/CI, 923 tests | Recettes hébergées transversales ; édition des PRD de travail en T-23 | Documents installés vérifiés localement |
-| T-13 — Fronts et thèmes | PR #22 : deux thèmes, projection native app, headless, recettes navigateur et CI ; 953 tests | Recette Sites | Livrable local disponible |
+| T-13 — Fronts et thèmes | PR #22 : deux thèmes, projection native app, headless et CI ; front Lab ChatGPT-like et vues du module 0.1.2 conservés sur Site B version 5 | Autres profils et interactions de thèmes/fronts | Tranche locale et Site B qualifiée dans ce périmètre |
 | T-14 — Conversations | PR #23 : chat original, historique, brouillons D1, fichiers R2, autorisations ; recette Sites avec T15 | Enrichissement widgets et autres compléments | Livrable local et Sites disponible |
-| T-15 — OpenAI | PR #24 intégrée ; réponses réelles locales/Sites, front/workspace ; reprise et arrêt locaux ; CI 993 tests | Outils widgets T16, compléments fournisseur/voix | Première tranche locale et Sites qualifiée |
-| T-16 — Widgets | Hôte MCP Apps ; trois modes exercés en Linux Lab ; deux rendus app réels dans ChatGPT ; anciens widgets restaurés sur Site B version 5 | Interactions restantes et approbations | Correction T40 qualifiée dans son périmètre |
-| T-30 — SDK/starter | SDK `sdk-v1.1.0` et starter `module-v0.1.2` publics ; démo locale initiale et actions internes des widgets Lab Linux exercées par Tab/Return | Publication Cloudflare de la démo et critères du lot au-delà du témoin ; clic pointeur iframe non observé | Distribution acquise dans ce périmètre, lot incomplet |
+| T-15 — OpenAI | PR #24 intégrée ; réponses réelles locales/Sites A/B, front/workspace ; reprise et arrêt locaux ; témoin Site A post-correction | Autres modèles, fournisseurs et voix non exercés | Première tranche locale et Sites qualifiée |
+| T-16 — Widgets | Hôte MCP Apps ; trois modes exercés en Linux Lab ; deux rendus app réels dans ChatGPT ; anciens widgets restaurés sur B ; lecture APP 200/refus ADMIN 401 du widget historique | Interactions restantes et approbations | Correction T40 et frontière d'audience qualifiées dans ce périmètre |
+| T-30 — SDK/starter | SDK `sdk-v1.1.0` et starter `module-v0.1.2` publics ; démo locale, module réel 0.1.2 sur Site B et widgets de lecture dans ChatGPT ; actions Linux par Tab/Return | Démo Cloudflare et autres critères du lot ; clic pointeur iframe non observé | Distribution et adoption du témoin qualifiées, lot incomplet |
 | T-31 — Docker local | PR #17 intégrée ; compte/D1/R2, redémarrage/recréation/restauration vérifiés ; évolution Lab additive `plan-outcomes` sans perte | Futurs modules et cycles applicatifs | Raccord du moteur central qualifié sur le volume Lab |
-| T-32 — Cloudflare direct | Original publié et mis à jour avec D1/R2 conservés ; correctif source Core main `0078fc7` pour historique quiescent | Reprendre explicitement la capture Lab sous nouveau plan, puis import/publication/recette ; démo Cloudflare et autres reprises | Premier transfert Lab arrêté en `capturing`, aucun artefact publié |
+| T-32 — Cloudflare direct | Original publié et mis à jour avec D1/R2 conservés ; correctif de capture intégré sur Core/Lab | Démo, autres reprises et exactitude de la prose IA historique | Publication Lab, conservation, réponse OpenAI et widgets navigateur confirmés |
 | Autres lots T-17 à T-39 | Voir les prérequis déjà fournis ci-dessus | Modules, publications et recette finale | À réaliser selon le jalon prioritaire |
 
 ## Règles de suivi
 États autorisés : à faire, en cours, bloqué (raison/prérequis), en revue, vérifié, livré. Enregistrer responsable réel, branche/issue ou tâche locale, PR, SHA, tests/profils et preuves à chaque transition. « Livré » exige version et livraison vérifiée ; fusionner ne suffit pas. Une dépendance fournisseur manquante bloque sa recette, pas toutes les tâches indépendantes.
-Après GO, commencer P0 puis les fondations P1/P2 consommables par la première app ; les dépendances ci-dessous priment sur le numéro du lot. Qualifier Sites et Cloudflare dès que leurs accès respectifs le permettent, sans bloquer les travaux locaux ni l'un par l'autre. P3/P4 avancent par tranches couplées : achever chat/widgets, installer un module métier témoin et valider son paquet. Le jalon initial T-36/T-39 exige les capacités et preuves de cette première app ; le périmètre complet des lots reste ouvert jusqu'à ses propres recettes.
+Après GO, commencer P0 puis les fondations P1/P2 consommables par la première app ; les dépendances ci-dessous priment sur le numéro du lot. Qualifier Sites et Cloudflare dès que leurs accès respectifs le permettent, sans bloquer les travaux locaux ni l'un par l'autre. P3/P4 avancent par tranches couplées : achever chat/widgets, installer un module métier témoin et valider son paquet. Le jalon initial T-36/T-39 exige les capacités et preuves de cette première app ; le périmètre complet des lots reste ouvert jusqu'à ses propres recettes. Ce GO historique est soumis aux restrictions de priorité du 28 septembre ci-dessus.
 Chaque ligne constitue un lot de PR de taille révisable, pas une autorisation de tout coder dans une seule branche. Avant son exécution, décomposer les sous-tâches dans le PRD/TODO du module avec critères hérités ; enregistrer leurs liens ici. Cette décomposition ne peut ni retirer une exigence ni faire passer un lot partiel à « vérifié ».
 ## Jalons de dépendance et qualifications différées
 
@@ -80,27 +80,27 @@ Les droits de distribution sont vérifiés **avant chaque première publication 
 | [T-16](#T-16) | P4 | Widgets et plugins conversationnels compatibles GPT | [T-10](#T-10), [T-13](#T-13), [T-15](#T-15) | Tranche intégrée — anciens widgets requalifiés sur B, interactions restantes |
 | [T-30](#T-30) | P3 | Starter, paquets et extension externe | [T-11](#T-11), [T-12](#T-12), [T-13](#T-13), [T-16](#T-16) | En cours — distribution initiale publique et recette locale acquises, autres critères ouverts |
 | [T-31](#T-31) | P1 | Docker local persistant | [T-03](#T-03), [T-05](#T-05), [T-07](#T-07) | En cours — évolution additive Lab qualifiée |
-| [T-32](#T-32) | P6 | Publication complète Cloudflare | [T-08](#T-08), [T-30](#T-30), [T-31](#T-31) | En cours — original publié ; capture Lab refusée, correctif source intégré Core |
+| [T-32](#T-32) | P6 | Publication complète Cloudflare | [T-08](#T-08), [T-30](#T-30), [T-31](#T-31) | En cours — original et Lab publiés ; conservation et nouveau tour OpenAI vérifiés, autres recettes ouvertes |
 | [T-36](#T-36) | P7 | Version initiale de l’original, puis compléments | Jalon initial : [T-08](#T-08), [T-09](#T-09), [T-10](#T-10), [T-11](#T-11), [T-12](#T-12), [T-13](#T-13), [T-14](#T-14), [T-15](#T-15), [T-16](#T-16), tranche témoin [T-30](#T-30), [T-31](#T-31), [T-32](#T-32) | En cours — jalon `app/v0.0.0` public et Site A qualifié, recette complète ouverte |
-| [T-37](#T-37) | P7 | Vrai fork Creezio Lab et Site B | Version initiale publiée de [T-36](#T-36) | En cours — fork, Sites et Docker publiés ; Cloudflare Lab reste à qualifier |
+| [T-37](#T-37) | P7 | Vrai fork Creezio Lab et Site B | Version initiale publiée de [T-36](#T-36) | En cours — fork, Sites et Docker publiés ; la recette Cloudflare Lab reste à compléter |
 | [T-38](#T-38) | P8 | Adoption des mises à jour et contributions | Fork initial de [T-37](#T-37) | En cours — module 0.1.2 adopté, widgets et anciens plans qualifiés ; Cloudflare ouvert |
-| [T-39](#T-39) | P9 | Recette ciblée puis exhaustive | Preuves initiales de [T-38](#T-38) | En cours — A/B version 5 et T40 qualifiés dans leur périmètre, Cloudflare Lab ouvert |
-| [T-17](#T-17) | P5 | Tâches humaines et travail | [T-11](#T-11), [T-14](#T-14) | À faire — après première app |
+| [T-39](#T-39) | P9 | Recette ciblée puis exhaustive | Preuves initiales de [T-38](#T-38) | En cours — A/B version 5 et T40 qualifiés dans leur périmètre, recette Cloudflare Lab ouverte |
+| [T-17](#T-17) | P5 | Tâches humaines et travail | [T-11](#T-11), [T-14](#T-14) | À faire — dernier bloc |
 | [T-18](#T-18) | P5 | Messagerie native | [T-11](#T-11), [T-14](#T-14) | À faire — après première app |
 | [T-19](#T-19) | P5 | Support | [T-11](#T-11), [T-17](#T-17), [T-18](#T-18) | À faire — après première app |
 | [T-20](#T-20) | P5 | CRM | [T-11](#T-11) | À faire — après première app |
 | [T-21](#T-21) | P5 | Pages et navigation | [T-11](#T-11), [T-13](#T-13) | À faire — après première app |
 | [T-22](#T-22) | P5 | Analytics et diagnostics | [T-11](#T-11), [T-17](#T-17) | À faire — après première app |
-| [T-23](#T-23) | P5 | Intentions et développement piloté | [T-12](#T-12), [T-17](#T-17) | À faire — après première app |
-| [T-24](#T-24) | P5 | Règles et automatisation sans scheduler | [T-11](#T-11), [T-17](#T-17) | À faire — après première app |
+| [T-23](#T-23) | P5 | Intentions et développement piloté | [T-12](#T-12), [T-17](#T-17) | À faire — dernier bloc, plan et accord explicite préalables |
+| [T-24](#T-24) | P5 | Règles et automatisation sans scheduler | [T-11](#T-11), [T-17](#T-17) | À faire — dernier bloc, plan et accord explicite préalables |
 | [T-25](#T-25) | P5 | Catalogue métier réutilisable complet | [T-11](#T-11), [T-13](#T-13), [T-16](#T-16) | À faire — après module témoin |
 | [T-26](#T-26) | P5 | Connecteur n8n | [T-10](#T-10), [T-11](#T-11), [T-16](#T-16), [T-24](#T-24) | À faire — après première app |
 | [T-27](#T-27) | P5 | Connecteur Stripe | [T-11](#T-11), [T-16](#T-16) | À faire — après première app |
 | [T-28](#T-28) | P5 | Connecteur Meili | [T-05](#T-05), [T-11](#T-11) | À faire — après première app |
 | [T-29](#T-29) | P5 | Autres connecteurs et frontières externes | [T-11](#T-11), [T-16](#T-16), [T-18](#T-18), [T-23](#T-23) | À faire — après première app |
 | [T-33](#T-33) | P6 | Stockages distincts hors Sites | [T-32](#T-32) | À faire — après première app |
-| [T-34](#T-34) | P6 | Éditions, politiques et activation | [T-08](#T-08), [T-11](#T-11), [T-27](#T-27) | À faire — après première app |
-| [T-35](#T-35) | P6 | Accompagnement avec accès consenti | [T-23](#T-23), [T-34](#T-34) | À faire — après première app |
+| [T-34](#T-34) | P6 | Éditions, politiques et activation | [T-08](#T-08), [T-11](#T-11), [T-27](#T-27) | À faire — accord explicite futur préalable |
+| [T-35](#T-35) | P6 | Accompagnement avec accès consenti | [T-23](#T-23), [T-34](#T-34) | À faire — accord explicite futur préalable |
 
 <a id="T-01"></a>
 ## T-01 — Gouvernance effective et revue indépendante
@@ -278,6 +278,8 @@ Les droits de distribution sont vérifiés **avant chaque première publication 
 <a id="T-17"></a>
 ## T-17 — Tâches humaines et travail
 
+Priorité : dernier bloc après les travaux indépendants ; aucune nouvelle approbation imposée pour ce lot.
+
 - Lot : **P5** ; état : **à faire** ; responsable nominatif : à attribuer au démarrage.
 - Dépendances : [T-11](#T-11), [T-14](#T-14).
 - Travail/livrables : Module tasks-work avec PRD/docs/CI et parcours de travail humain.
@@ -338,6 +340,8 @@ Les droits de distribution sont vérifiés **avant chaque première publication 
 <a id="T-23"></a>
 ## T-23 — Intentions et développement piloté
 
+Priorité : dernier bloc après T-17. Expliquer fonctions, effets, limites, plan et recette puis obtenir la validation explicite de l'utilisateur avant implémentation.
+
 - Lot : **P5** ; état : **à faire** ; responsable nominatif : à attribuer au démarrage.
 - Dépendances : [T-12](#T-12), [T-17](#T-17).
 - Travail/livrables : Module intentions-development, révisions/validation PRD, tâches, artefacts et historique de livraison.
@@ -347,6 +351,8 @@ Les droits de distribution sont vérifiés **avant chaque première publication 
 
 <a id="T-24"></a>
 ## T-24 — Règles et automatisation sans scheduler
+
+Priorité : dernier bloc après T-17. Expliquer fonctions, effets, limites, plan et recette puis obtenir la validation explicite de l'utilisateur avant implémentation.
 
 - Lot : **P5** ; état : **à faire** ; responsable nominatif : à attribuer au démarrage.
 - Dépendances : [T-11](#T-11), [T-17](#T-17).
@@ -367,6 +373,8 @@ Les droits de distribution sont vérifiés **avant chaque première publication 
 
 <a id="T-26"></a>
 ## T-26 — Connecteur n8n
+
+La partie API/MCP du connecteur n8n peut avancer avant T-24 ; son raccord aux règles d'automatisation attend T-24 et sa validation.
 
 - Lot : **P5** ; état : **à faire** ; responsable nominatif : à attribuer au démarrage.
 - Dépendances : [T-10](#T-10), [T-11](#T-11), [T-16](#T-16), [T-24](#T-24).
@@ -435,7 +443,7 @@ Les droits de distribution sont vérifiés **avant chaque première publication 
 - Besoin : [US-32](USER-STORIES.md#US-32). Acceptation : [REQ-3201](EXIGENCES.md#REQ-3201), [REQ-3202](EXIGENCES.md#REQ-3202), [REQ-3203](EXIGENCES.md#REQ-3203).
 - Validation : implémenter puis exécuter les recettes liées, sur **compte Cloudflare autorisé réel** ; inclure les cas négatifs et les contrôles communs appropriés.
 - Preuves : CI des candidats 39a9ec5 à 1 124/1 124, 9ba8025 à 1 132/1 132 et de l'opérateur 5320845 à 1 134/1 134 ; les échecs initiaux EXDEV, `_cf_KV` et métadonnée R2 restent documentés. La reprise Linux du transfert `d76cdcf6-3203-4ef9-a2d5-0c19c042a90a` a publié l'original source `3542c5663cd4cfb3e0998e93f57cbacc53d4b1e1` sur [Cloudflare](https://creezio-cloudflare-linux.fidusia.workers.dev/) : 67 modules/35 assets vérifiés, journal `delivered`, registre `synchronized`, compte/brouillon/fichier conservés et réponse OpenAI réelle ; Docker arrêté avec code zéro. La première mise à jour réelle REQ-3203 depuis la vue Livraison, source `27ad87770e7270ab6e082fa92f03b12062a6e056`, est `delivered` avec registre synchronisé, 67 modules/35 assets vérifiés et témoins D1/R2 conservés ; une nouvelle réponse OpenAI a été obtenue après rechargement. La CI Linux du merge d'essai a réussi 1 152/1 152 ; le global Windows local est incomplet après timeout au test 837. Démo et autres reprises restent ouvertes ; SDK `sdk-v1.1.0` public depuis le main qualifié `f8dc03c`. [Réalisation T32](IMPLEMENTATION-T32.md).
-- Capture Lab : le premier `start` s'est arrêté en `capturing` avec `active_effect` sur un graphe `turn.start` / outbox OpenAI sans reçu / conversation liée, avant artefact, import ou publication. Le journal et le répertoire partiel sont conservés. Core main `0078fc7defc22d27e8caf22ac3b967f36fc30fbc` (PR #39, CI candidate 1 183/1 183) apporte le correctif source borné pour l'historique quiescent ; son adoption source est présente dans cette candidate Lab ; un nouveau plan puis la recette restent à faire. [Diagnostic T32](IMPLEMENTATION-T32.md).
+- Capture Lab : le premier `start` s'est arrêté en `capturing` avec `active_effect` sur un graphe `turn.start` / outbox OpenAI sans reçu / conversation liée, avant artefact, import ou publication. Le journal et le répertoire partiel sont conservés. Core main `0078fc7` (PR #39, CI main 1 183/1 183) et Lab main `949f028` (PR #6, CI 1 186/1 186) intègrent le correctif source borné. Le transfert distinct `a4ea2615` a vérifié 2 265 lignes D1 et un objet R2 ; l'upload Worker était d'abord sans confirmation après `RangeError` dans l'inspecteur, plan `delivery-unknown` et publication `prepared`. Core PR #40 et Lab PR #7 ont corrigé l'inspection ; le même transfert est `delivered`, registre `synchronized`, avec 71 modules/41 assets vérifiés et une nouvelle réponse OpenAI réelle. Le navigateur confirme trois widgets historiques après rechargement ; un ancien texte IA surestime un montant par cent. Le reste de la recette demeure ouvert. [Diagnostic T32](IMPLEMENTATION-T32.md).
 
 <a id="T-33"></a>
 ## T-33 — Stockages distincts hors Sites
@@ -450,6 +458,8 @@ Les droits de distribution sont vérifiés **avant chaque première publication 
 <a id="T-34"></a>
 ## T-34 — Éditions, politiques et activation
 
+Implémentation des éditions et fonctions premium uniquement après validation explicite future de l'utilisateur ; le GO historique ne suffit pas.
+
 - Lot : **P6** ; état : **à faire** ; responsable nominatif : à attribuer au démarrage.
 - Dépendances : [T-08](#T-08), [T-11](#T-11), [T-27](#T-27).
 - Travail/livrables : Politiques versionnées, justificatifs signés, états de facturation/activation et tests Community/Enterprise.
@@ -459,6 +469,8 @@ Les droits de distribution sont vérifiés **avant chaque première publication 
 
 <a id="T-35"></a>
 ## T-35 — Accompagnement avec accès consenti
+
+Implémentation de l'accompagnement avec accès au code uniquement après validation explicite future de l'utilisateur ; le GO historique ne suffit pas.
 
 - Lot : **P6** ; état : **à faire** ; responsable nominatif : à attribuer au démarrage.
 - Dépendances : [T-23](#T-23), [T-34](#T-34).
@@ -477,7 +489,7 @@ Les droits de distribution sont vérifiés **avant chaque première publication 
 - Besoin : [US-36](USER-STORIES.md#US-36). Acceptation : [REQ-3601](EXIGENCES.md#REQ-3601), [REQ-3602](EXIGENCES.md#REQ-3602).
 - Validation : implémenter puis exécuter les recettes liées, sur **CI, Site A et artefacts publiés** ; inclure les cas négatifs et les contrôles communs appropriés.
 - Version initiale : [`app/v0.0.0`](https://github.com/creezio/Creezio-D1R2/releases/tag/app/v0.0.0) reste la preuve historique du jalon T36 ; [`app/v0.0.1`](https://github.com/creezio/Creezio-D1R2/releases/tag/app/v0.0.1) est la release originale publique actuelle, issue du main qualifié `a911e4d`. Voir [preuves, usage et limites T36](IMPLEMENTATION-T36.md).
-- Preuves : archives source et notices publiées ; Core main actuel `e51928f`, CI 1 163/1 163. L’ancien Site A a été qualifié avant le changement de compte. Le Site A original courant `appgprj_6aba07912a888191b9dfbee5b65f2448` est publié depuis `cb716aa35933acd0831ca1bb2504a95bd98427e1` (déploiement `appgdep_6aba1b16ac588191ae322f6e47974b92`, registre synchronisé). Le premier tour interrompu reste une preuve historique ; un tour post-correction a ensuite réussi avec un seul `turn.drive` et une réponse persistée de 933 octets. Le widget sur ce Site n’est pas qualifié par ce tour. Le nouveau Site B est construit mais non publié ; la recette applicative courante et T36 complet restent ouverts.
+- Preuves : archives source et notices publiées. Le Site A courant `appgprj_6aba07912a888191b9dfbee5b65f2448` sert sa version 5 depuis `833701dd15e6fa81b2f329169a99b7aeb0270412`. Le témoin de chat sur A version 4 depuis `cb716aa` (un seul `turn.drive`, 933 octets persistés) reste historique. Le Site B courant sert aussi sa version 5 depuis `1a93fa85a3c1c44794b0e82dfc5eda4c409eba12` ; T36 complet et ses autres profils restent ouverts.
 
 <a id="T-37"></a>
 ## T-37 — Vrai fork Creezio Lab et Site B
@@ -487,17 +499,17 @@ Les droits de distribution sont vérifiés **avant chaque première publication 
 - Travail/livrables : Vrai fork public Creez-io/Creezio-Lab de la version initiale, Site B et **un module métier témoin** avec thème/front propre ; les modules supplémentaires et le parcours complet de validation de budget suivent après la première app.
 - Besoin : [US-37](USER-STORIES.md#US-37). Acceptation : [REQ-3701](EXIGENCES.md#REQ-3701), [REQ-3702](EXIGENCES.md#REQ-3702).
 - Validation : implémenter puis exécuter les recettes liées, sur **GitHub et deux Sites publics** ; inclure les cas négatifs et les contrôles communs appropriés.
-- Preuves : vrai fork public `Creez-io/Creezio-Lab`, main initial `abcd1f21f957729a811b32238584c835b5f66860` après PR #3 (CI 1 165/1 165) ; projet enregistré dans le registre sous `7234b2de-e2a1-4eec-a2ce-a7f18426f200`. La provenance de l’ancien Site B est conservée ; le nouveau Site B `appgprj_6aba07af3a248191912848628c94b92d` existe sur le compte courant. Son build initial depuis `abcd1f2` avait été qualifié avant publication ; la même cible a ensuite été publiée jusqu'à la version 5 depuis `1a93fa85a3c1c44794b0e82dfc5eda4c409eba12`. Les installations registre Lab ont été créées après autorisation et leurs jetons sont conservés dans un coffre DPAPI hors dépôt ; la déclaration de publication Sites a été synchronisée. Cloudflare Lab reste ouvert.
+- Preuves : vrai fork public `Creez-io/Creezio-Lab`, main initial `abcd1f21f957729a811b32238584c835b5f66860` après PR #3 (CI 1 165/1 165) ; projet enregistré dans le registre sous `7234b2de-e2a1-4eec-a2ce-a7f18426f200`. La provenance de l’ancien Site B est conservée ; le nouveau Site B `appgprj_6aba07af3a248191912848628c94b92d` existe sur le compte courant. Son build initial depuis `abcd1f2` avait été qualifié avant publication ; la même cible a ensuite été publiée jusqu'à la version 5 depuis `1a93fa85a3c1c44794b0e82dfc5eda4c409eba12`. Les installations registre Lab ont été créées après autorisation et leurs jetons sont conservés dans un coffre DPAPI hors dépôt ; la déclaration de publication Sites a été synchronisée. Cloudflare Lab est publié ; la recette applicative reste à compléter.
 
 <a id="T-38"></a>
 ## T-38 — Adoption des mises à jour et contributions
 
-- Lot : **P8** ; état : **en cours** ; adoption réelle 0.1.2 et correction T40 qualifiées dans leur périmètre, transfert Cloudflare Lab ouvert ; Lab main `fc1ddc02d5c6e8f1a336e8f5e51d7ce397bc354b`.
+- Lot : **P8** ; état : **en cours** ; adoption réelle 0.1.2 et correction T40 qualifiées dans leur périmètre, publication Cloudflare Lab confirmée, recette navigateur partielle, prose IA historique erronée ; artefact source `949f028dbbe99ab586c02c42c82e51f145379b23`.
 - Dépendances : fork initial utilisable de [T-37](#T-37).
 - Travail/livrables : Pour la première app, installation du vrai paquet témoin puis adoption, par le fork B, d'une nouvelle version issue de l'original A et mise à jour du module/thème sans perte des données ni du front, avec refus d'une mise à jour incompatible ; publication Cloudflare du fork via le parcours T-32. Les contributions amont et intégrations facultatives restantes gardent leurs preuves propres dans T-38.
 - Besoin : [US-38](USER-STORIES.md#US-38). Acceptation : [REQ-3801](EXIGENCES.md#REQ-3801), [REQ-3802](EXIGENCES.md#REQ-3802), [REQ-3803](EXIGENCES.md#REQ-3803).
 - Validation : implémenter puis exécuter les recettes liées, sur **A/B, Cloudflare, tarballs et GitHub** ; inclure les cas négatifs et les contrôles communs appropriés.
-- Preuves : Starter `module-v0.1.2` public ; Lab PR #2 à #5 fusionnées ; main `fc1ddc02d5c6e8f1a336e8f5e51d7ce397bc354b`, CI 1 177/1 177. Le module actif 0.1.2, le front Lab et les données sont conservés sur le même Site B version 5 et Docker Linux. Les anciens widgets sont restaurés ; les deux plans acceptés avant la correction ont été annulés avec motif révision 2, sans confirmation rétroactive. Le nouveau cycle réel et la publication Cloudflare du fork restent ouverts. Voir [T40](IMPLEMENTATION-T40.md), [T32](IMPLEMENTATION-T32.md), la [note TLS Docker](IMPLEMENTATION-T38.md) et les preuves hors dépôt.
+- Preuves : Starter `module-v0.1.2` public ; Lab PR #2 à #6 fusionnées, main `949f028` et CI 1 186/1 186. Le module actif 0.1.2, le front Lab et les données sont conservés sur le même Site B version 5 et Docker Linux. Les anciens widgets sont restaurés ; les deux plans acceptés avant la correction ont été annulés avec motif révision 2, sans confirmation rétroactive. Le nouveau cycle réel et la recette Cloudflare restante et exactitude de la prose IA historique restent ouvertes. Voir [T40](IMPLEMENTATION-T40.md), [T32](IMPLEMENTATION-T32.md) et la [note TLS Docker](IMPLEMENTATION-T38.md).
 
 <a id="T-39"></a>
 ## T-39 — Recette finale et validation utilisateur
@@ -507,7 +519,7 @@ Les droits de distribution sont vérifiés **avant chaque première publication 
 - Travail/livrables : **Recette ciblée de la première app** : deux Sites publics, chat OpenAI, widget/outil autorisé et refusé, module témoin issu du paquet, mise à jour original→fork, publication Cloudflare et retour utilisateur, avec versions/SHA/profils et limites. La **recette exhaustive** de tous les modules, fournisseurs et profils suit les lots différés ; le jalon ciblé ne vaut pas clôture de T-39.
 - Besoin : [US-39](USER-STORIES.md#US-39). Acceptation : [REQ-3901](EXIGENCES.md#REQ-3901).
 - Validation : implémenter puis exécuter les recettes liées, sur **deux Sites, Cloudflare et clients GPT/MCP** ; inclure les cas négatifs et les contrôles communs appropriés.
-- Preuves : Core main `e51928f` a passé 1 163/1 163 tests CI avec le regroupement des checkpoints. Sur le Site A original publié depuis `cb716aa`, un tour OpenAI réel post-correction a réussi avec un seul `turn.drive` (14 161 ms), sans reprise manuelle, et a persisté une réponse de 933 octets. Il s’agit d’un témoin unique, pas d’une garantie générale de latence ou de fluidité. Site A et Site B version 5 sont publiés ; le périmètre de conservation T40 sur Lab a été qualifié. La capture Cloudflare Lab, les interactions/refus restants et le retour utilisateur restent ouverts avec leurs versions, SHA et profils. Voir [T40](IMPLEMENTATION-T40.md), [T32](IMPLEMENTATION-T32.md) et la [note des checkpoints](IMPLEMENTATION-T39.md).
+- Preuves : le tour OpenAI réel du Site A version 4 depuis `cb716aa` a réussi avec un seul `turn.drive` (14 161 ms) et 933 octets persistés ; témoin unique, sans garantie générale de latence. A/B version 5 sont publiés et la conservation T40 sur Lab est qualifiée. Dans ChatGPT, le MCP app 0.1.2 a exécuté `purchase_request_get/list` et rendu fiche/liste, sans mutation. Sur B, le widget historique APP a répondu 200, la même route ADMIN avec seul cookie APP a refusé 401 `authentication_required`, puis APP a relu et s'est déconnecté. Ce refus concerne le transport widget natif, pas `tools/call` ChatGPT. La publication Cloudflare Lab, sa conservation native et une nouvelle réponse OpenAI sont confirmées ; trois widgets historiques sont confirmés par navigateur après rechargement, mais la prose IA historique contient un montant erroné et le retour utilisateur reste ouvert. Les autres critères T39 suivent les lots différés. Voir [T39](IMPLEMENTATION-T39.md), [T40](IMPLEMENTATION-T40.md) et [T32](IMPLEMENTATION-T32.md).
 
 ## Sous-tâches initiales obligatoires du lot des connecteurs
 
@@ -528,7 +540,7 @@ Ces sous-tâches sont toutes à faire, sous la responsabilité et les dépendanc
 
 | Prérequis | Lot concerné | Conduite |
 |---|---|---|
-| GO de développement | T-01 et suivants | GO complet reçu le 26 septembre 2026 ; poursuivre selon les priorités et limites documentées. |
+| GO de développement | T-01 et suivants | GO du 26 septembre désormais restreint par les priorités du 28 septembre : accords explicites futurs pour T-23/T-24, T-34/T-35 et toute reconstruction WinHub/TempoFlow ; compléments T-04/T-05/T-06/T-10 différés et expliqués avant reprise. |
 | Revue technique et règles GitHub | T-01 ; première fusion | Compte unique creezio autorisé ; revue d’un autre agent liée au SHA, origine du workflow vérifiée et protections qualifiées. Aucune approbation GitHub indépendante inventée. |
 | Site public du compte courant | T-09 | Réutiliser le Site de qualification s'il est accessible et adapté ; si l'ancien renvoie 404 après changement de compte GPT, créer un nouveau Site public, mettre à jour le `project_id` courant et conserver l'ancien identifiant et ses preuves. Éviter les Sites de test dupliqués. |
 | Docker fonctionnel | T-31 | Docker Linux utilisé pour la recette T31, puis pour la première publication et le premier update T32 de l'original ; arrêts propres avec code zéro. La démo conserve sa recette propre. Ne pas lancer de service utilisateur implicitement. |

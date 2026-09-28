@@ -1,14 +1,18 @@
 # T38 — Adoption amont et mise à jour du module métier
 
+## État après la publication du module 0.1.2
+
+Lab main `26180ed6c2409ae85944f33b1909e7d076c661aa` a passé 1 165/1 165 tests CI. Le module 0.1.2 est actif sur le même Site B et sur Docker Linux ; comptes, demandes, fichiers, messages et brouillon ont été conservés. La correction des anciens widgets et le cycle durable des plans sont adoptés en source depuis Core `a8130407d5bd54261d56755a4db2949932a94d1b` dans la présente branche Lab, sans publication ni recette des corrections. Voir [T40](IMPLEMENTATION-T40.md). Les paragraphes suivants conservent les étapes et limites observées avant la publication 0.1.2.
+
 ## Adoption 0.1.2 après la première publication de Lab
 
 La branche `module/purchase-requests/t40-adoption` part du main Lab `abcd1f21f957729a811b32238584c835b5f66860`, qualifié par 1 165 tests CI. Elle installe le paquet public 0.1.2, sélectionne son reçu `manifest-0.1.2.json` et retire la candidate externe devenue version installée. Les trois compositions utilisent `versionRange: "0.1.2"` exactement, comme le solveur du plan accepté ; une plage avec `^` changerait son digest. Les trois verrous sont générés par `scripts/modules/lock.mjs` avec `--cache-validation creezio.purchase-requests`. Le cache de validation est comparé aux octets liés par le reçu public. Aucun schéma de table métier, thème, front ou module natif n'est modifié par cette adoption.
 
 Le Site B public `https://creezio-lab.fiduciaire615016.chatgpt.site` a été publié en 0.1.0, avec synchronisation du registre, compte natif et droits admin/app. Les parcours API ont vérifié deux demandes, leur idempotence, leur révision 5 et leurs pièces jointes R2 octet exact. Le navigateur a vérifié le front, les fiches, deux tours OpenAI donnant `request-card` et `request-picker`, leurs relectures directes et la conservation du brouillon entre onglets et après rechargement. Ces preuves constituent la base avant mise à jour ; elles ne qualifient pas la publication 0.1.2.
 
-Avant publication, comparer les empreintes des compositions/verrous générés aux cibles natives acceptées, séparément pour Sites et Docker. Le plan local Sites donne composition `sha256-315b9a965ec29e42e72d2b93ee7eb9beaee2441abd56f997d54d0d34e78eb9d6` et verrou `sha256-0f42527d89767bfec161dd0e9fdb3bcc01e89125fcfa0944a8b946b45a956a50`. Le plan Linux antérieur conserve sa propre référence ci-dessous. La conservation après déploiement, le statut effectif des plans, Cloudflare Lab et le MCP applicatif ChatGPT restent à qualifier.
+Le contrôle préalable prévoyait de comparer les empreintes des compositions/verrous générés aux cibles natives acceptées, séparément pour Sites et Docker. Le plan local Sites donnait composition `sha256-315b9a965ec29e42e72d2b93ee7eb9beaee2441abd56f997d54d0d34e78eb9d6` et verrou `sha256-0f42527d89767bfec161dd0e9fdb3bcc01e89125fcfa0944a8b946b45a956a50`. Le plan Linux antérieur conserve sa propre référence ci-dessous. Ces empreintes décrivent la cible 0.1.2 d'alors, pas les nouveaux verrous de la branche T40.
 
-Le cycle natif actuel calcule l'état effectif depuis les empreintes courantes, sans constat durable de publication ni annulation explicite. Une modification indépendante ultérieure du verrou peut donc bloquer un ancien plan ; ce raccord reste à compléter avant une telle mise à jour. Ne jamais effacer les plans ou leur tête D1 pour contourner cette limite.
+Avant le correctif T40, le cycle natif calculait l'état effectif depuis les empreintes courantes, sans constat durable de publication ni annulation explicite. Une modification indépendante ultérieure du verrou pouvait donc bloquer un ancien plan. Le correctif adopté en source fournit confirmation et annulation motivée ; son application réelle dans Lab reste à qualifier. Ne jamais effacer les plans ou leur tête D1 pour contourner cette limite.
 
 ## Historique de préparation et qualification initiale
 

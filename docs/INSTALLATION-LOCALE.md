@@ -2,7 +2,7 @@
 
 Ce parcours initialise explicitement une installation locale neuve. Il fonctionne hors ligne, sans compte Cloudflare ni fournisseur externe. Le développement local reste distinct de la publication officielle et de son enregistrement Creezio.
 
-Avec Node 24, installer les dépendances verrouillées par `npm ci --ignore-scripts`, puis exécuter `npm run sdk:build` dans un checkout neuf avant `dev`, `build` ou `start`. Le Dockerfile officiel effectue déjà cette préparation. Ensuite :
+Dans un checkout Lab neuf sous Node 24, restaurer les sept fichiers publics épinglés avec `node scripts/lab/bootstrap-public-packages.mjs`, puis installer les dépendances verrouillées par `npm ci --ignore-scripts`. Lab consomme le SDK public 1.1.0 et le module métier 0.1.2 ; aucune compilation du SDK workspace n’est nécessaire. Le Dockerfile Lab effectue déjà cette préparation. Une fois ces dépendances disponibles, le développement local peut fonctionner hors ligne. Ensuite :
 
 1. Arrêter le serveur local de cette installation.
 2. Exécuter `npm run access:inspect` pour connaître l'état de sa base.
@@ -30,6 +30,16 @@ L'inspection ne modifie ni schéma ni données applicatives ; l'ouverture de Min
 La création du schéma composé courant et celle du compte sont deux étapes distinctes. Le plan central couvre les modèles de tous les modules sélectionnés et les tables techniques du moteur ; aucun module ne fournit de migration. Le schéma et son reçu sont appliqués atomiquement avant le compte. Un arrêt après cette première étape laisse un schéma conforme sans compte, que la commande peut reprendre explicitement après inspection. Il n'y a ni `IF NOT EXISTS` masquant une dérive, ni réparation implicite, ni transformation d'une autre architecture. Une base étrangère, partielle ou contenant déjà des données sans installation complète est refusée et conservée.
 
 La création du premier administrateur réutilise les services natifs, sous garde du schéma et du reçu central dans chaque lot D1. Ils n'attribuent que le droit initial explicite de gestion des accès, sans wildcard ou droit d'impersonation. Une capacité de création encore vivante ne peut pas être remplacée ; si le processus l'a perdue, attendre son expiration puis relancer explicitement. Le marqueur consommé ferme définitivement l'installation, même si les droits du compte ont ensuite été modifiés. Une relance ne remplace ni compte ni mot de passe.
+
+## Évolution additive d'une base installée
+
+Après avoir arrêté le serveur local et sélectionné la nouvelle composition et son verrou, exécuter `npm run schema:inspect`. La commande relit le plan central, le reçu D1 et les objets existants ; elle affiche la destination, les empreintes et les seuls noms des tables/index à ajouter. Une base sans reçu géré, partielle, étrangère ou incompatible est refusée. L'inspection ne modifie ni schéma ni données applicatives.
+
+Si l'état est `additive`, exécuter `npm run schema:apply` dans un terminal interactif. Relire la destination et les ajouts, puis saisir exactement l'empreinte complète `planDigest` affichée. L'outil recharge la source et vérifie les empreintes avant d'appeler le moteur central : créations et nouveau reçu sont dans le même batch D1. Il ne demande ni ne recrée de compte, ne prend aucun SQL en entrée et ne transforme pas les anciennes tables. L'état `ready` n'écrit rien ; `access:install` reste réservé au premier compte et refuse une base déjà initialisée.
+
+Une composition ou un verrou changé peut demander un nouveau reçu même si la liste d'objets à ajouter est vide ; l'inspection affiche alors zéro ajout. Vérifier le nouveau plan avant de confirmer ce reçu.
+
+Si le résultat de l'application ou de la fermeture du stockage est incertain, conserver la base et relancer uniquement `schema:inspect` pour vérifier le reçu et les ajouts. Ne pas répéter `schema:apply` sans cette inspection. Le même verrou local exclut `dev`, `start`, l'installation et l'export pendant l'évolution ; un verrou inconnu n'est jamais supprimé automatiquement.
 
 Une erreur de réponse ne prouve pas qu'aucune écriture n'a eu lieu. L'outil distingue son résultat de l'état observé et ne réessaie pas automatiquement une mutation. Si l'état ne peut pas être établi, conserver la base et refaire une inspection ; aucune suppression compensatoire.
 

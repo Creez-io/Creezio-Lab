@@ -2,7 +2,7 @@
 
 Ce parcours initialise explicitement une installation locale neuve. Il fonctionne hors ligne, sans compte Cloudflare ni fournisseur externe. Le développement local reste distinct de la publication officielle et de son enregistrement Creezio.
 
-Dans un checkout Lab neuf sous Node 24, restaurer les sept fichiers publics épinglés avec `node scripts/lab/bootstrap-public-packages.mjs`, puis installer les dépendances verrouillées par `npm ci --ignore-scripts`. Lab consomme le SDK public 1.1.0 et le module métier 0.1.2 ; aucune compilation du SDK workspace n’est nécessaire. Le Dockerfile Lab effectue déjà cette préparation. Une fois ces dépendances disponibles, le développement local peut fonctionner hors ligne. Ensuite :
+Dans un checkout Lab neuf de la candidate T41 sous Node 24, restaurer les onze fichiers publics épinglés avec `node scripts/lab/bootstrap-public-packages.mjs`, puis installer les dépendances verrouillées par `npm ci --ignore-scripts`. Cette source consomme le SDK public 1.2.0 et le module métier public 0.1.3 ; aucune compilation du SDK workspace n’est nécessaire. Le Dockerfile Lab effectue déjà cette préparation. Une fois ces dépendances disponibles, le développement local peut fonctionner hors ligne. Les installations Lab déjà publiées restent sur leurs versions historiques jusqu’à une mise à jour et une recette distinctes. Ensuite :
 
 1. Arrêter le serveur local de cette installation.
 2. Exécuter `npm run access:inspect` pour connaître l'état de sa base.

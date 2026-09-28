@@ -1,5 +1,9 @@
 # Changelog
 
+## 29 septembre 2026 — candidate source Lab T41
+
+Lab adopte en source Core main `7b343782`, le SDK public 1.2.0 et le module achats public 0.1.3 avec leurs intégrités vérifiées. Les compositions Docker/Sites conservent `creezio.lab`, le front ChatGPT-like et leurs six ou sept modules sélectionnés ; les autres modules Core restent disponibles dans la source sans activation. Le build, le typage et les contrôles ciblés passent. Aucun serveur, schéma D1, publication ou recette du nouveau code n'a été exécuté ; les hôtes publiés restent sur les versions historiques. Voir [T41](docs/IMPLEMENTATION-T41.md).
+
 ## 28 septembre 2026 — vérification des modules Cloudflare volumineux (T32)
 
 La confirmation d'une publication vérifie le base64 des modules sans expression régulière récursive : un module de plusieurs mégaoctets ne provoque plus de dépassement de pile. L'alphabet, le padding, les bits terminaux, les limites de taille et la comparaison exacte des fichiers restent exigés. Cette correction de l'opérateur ne relance ni l'upload ni les opérations applicatives ; la publication Lab a ensuite été vérifiée séparément sur le même artefact et le même transfert.

@@ -1,6 +1,8 @@
 # Repères du dépôt
 
-État : fork Lab issu de la release source `app/v0.0.0` ; corrections T40 qualifiées sur le Site B version 5 et Docker Linux dans le périmètre documenté. Lab main `949f028dbbe99ab586c02c42c82e51f145379b23` (PR #6, CI 1 186/1 186) adopte Core main `0078fc7defc22d27e8caf22ac3b967f36fc30fbc` pour l'historique incertain. Les deux Sites publics sont publiés ; Lab 0.1.2 est actif sur Sites et Docker. La frontière d'audience du widget historique APP/ADMIN est vérifiée sur B. Lab Cloudflare est publié depuis l'artefact source `949f028` (71 modules/41 assets, registre synchronisé) par le transfert distinct `a4ea2615` ; le code opérateur corrigé est Lab main `6e06182` (PR #7, CI main 1 188/1 188). Conservation D1/R2, ancien tour incertain et nouvelle réponse OpenAI sont vérifiés après arrêt Docker ; le navigateur a retrouvé trois widgets historiques après rechargement ; un ancien texte IA surestime un montant par cent, limite de prose ouverte. Le [TODO](docs/TODO.md) porte l’état courant et les preuves détaillées.
+La [candidate source T41](docs/IMPLEMENTATION-T41.md) adopte Core `7b343782`, SDK public 1.2.0 et achats 0.1.3. Les nouveaux dossiers natifs et connecteurs Core sont présents sans sélection dans les compositions Lab actives ; les profils, le front et les paquets historiques restent décrits ci-dessous comme état des hôtes déjà publiés.
+
+État des hôtes publiés : fork Lab issu de la release source `app/v0.0.0` ; corrections T40 qualifiées sur le Site B version 5 et Docker Linux dans le périmètre documenté. Lab main `949f028dbbe99ab586c02c42c82e51f145379b23` (PR #6, CI 1 186/1 186) adopte Core main `0078fc7defc22d27e8caf22ac3b967f36fc30fbc` pour l'historique incertain. Les deux Sites publics sont publiés ; Lab 0.1.2 est actif sur Sites et Docker. La frontière d'audience du widget historique APP/ADMIN est vérifiée sur B. Lab Cloudflare est publié depuis l'artefact source `949f028` (71 modules/41 assets, registre synchronisé) par le transfert distinct `a4ea2615` ; le code opérateur corrigé est Lab main `6e06182` (PR #7, CI main 1 188/1 188). Conservation D1/R2, ancien tour incertain et nouvelle réponse OpenAI sont vérifiés après arrêt Docker ; le navigateur a retrouvé trois widgets historiques après rechargement ; un ancien texte IA surestime un montant par cent, limite de prose ouverte. Le [TODO](docs/TODO.md) porte l’état courant et les preuves détaillées.
 
 | Emplacement | Responsabilité |
 |---|---|
@@ -37,6 +39,7 @@
 | [docs/IMPLEMENTATION-T38.md](docs/IMPLEMENTATION-T38.md) | Contribution amont des certificats TLS du Docker local, cause et qualification bornée. |
 | [docs/IMPLEMENTATION-T39.md](docs/IMPLEMENTATION-T39.md) | Checkpoints du flux OpenAI, observation Site A et limites de la recette T39. |
 | [docs/IMPLEMENTATION-T40.md](docs/IMPLEMENTATION-T40.md) | Mise à jour Lab 0.1.2, réparation qualifiée des widgets historiques et clôture conservatrice des anciens plans. |
+| [docs/IMPLEMENTATION-T41.md](docs/IMPLEMENTATION-T41.md) | Adoption source Core/SDK/achats, tests de source et limites avant recette des hôtes. |
 | [docs/LICENCES-ET-OFFRES.md](docs/LICENCES-ET-OFFRES.md) | Politiques/activation/accompagnement et décisions commerciales différées. |
 | [docs/QUALIFICATION-SITES.md](docs/QUALIFICATION-SITES.md) | Preuves techniques limitées, distinctes du CMS. |
 | [docs/INSTALLATION-LOCALE.md](docs/INSTALLATION-LOCALE.md) | Inspection, premier compte local, configuration commune et reprises sans écrasement. |

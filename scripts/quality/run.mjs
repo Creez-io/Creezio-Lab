@@ -1,4 +1,5 @@
 import { spawnSync } from 'node:child_process';
+import { createHash } from 'node:crypto';
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -34,6 +35,27 @@ execute('conversations-models', ['scripts/data/prepare-native-module.mjs', 'conv
 execute('conversations-suites', ['extensions/native/conversations/gate.mjs']);
 execute('openai-models', ['scripts/data/prepare-native-module.mjs', 'openai']);
 execute('openai-suites', ['extensions/native/openai/gate.mjs']);
+execute('messaging-models', ['scripts/data/prepare-native-module.mjs', 'messaging']);
+execute('messaging-suites', ['extensions/native/messaging/gate.mjs']);
+execute('crm-models', ['scripts/data/prepare-native-module.mjs', 'crm']);
+execute('crm-suites', ['extensions/native/crm/gate.mjs']);
+for (const name of ['support', 'pages-navigation', 'analytics']) {
+  execute(`${name}-models`, ['scripts/data/prepare-native-module.mjs', name]);
+}
+execute('catalog-models', ['scripts/data/prepare-native-module.mjs', 'catalog', '--family=common']);
+execute('n8n-models', ['scripts/data/prepare-native-module.mjs', 'n8n', '--family=connectors']);
+// Lab validates module archives against the immutable public SDK selected by
+// its npm lock. It never packs the local SDK workspace in place of that SDK.
+const sdkSpec=JSON.parse(readFileSync(resolve(root,'package.json'),'utf8')).devDependencies?.['@creezio/sdk'];
+if(sdkSpec!=='file:.creezio/packages/creezio-sdk-1.2.0.tgz')
+  throw new Error('Lab public SDK pin differs from the qualified archive.');
+const sdkArchive=resolve(root,sdkSpec.slice('file:'.length));
+const sdkSha=createHash('sha256').update(readFileSync(sdkArchive)).digest('hex');
+if(sdkSha!=='34eb5e1a8ff5b2937cdc9e8fe0a41697705208e708f85a90e0308802b430eda8')
+  throw new Error('Lab public SDK archive integrity differs.');
+execute('module-archive-suites',['scripts/modules/validate-archives.mjs','--sdk-archive',sdkArchive,
+  '--sdk-sha256',sdkSha,'extensions/native/support','extensions/native/pages-navigation',
+  'extensions/native/analytics','extensions/common/catalog','extensions/connectors/n8n'],180_000);
 execute('delivery-suites', ['extensions/native/delivery/gate.mjs']);
 execute('widgets-witness-suites', ['extensions/widgets-witness/gate.mjs']);
 execute('theme-standard-suites', ['themes/standard/gate.mjs']);
@@ -66,7 +88,12 @@ const report = { schemaVersion: 1, profile, started, finished: new Date().toISOS
     'This aggregate does not certify all native modules, hosted CMS parity, provider onboarding or remote CI provenance'] };
 write(report);
 console.log(JSON.stringify({ success, mergeReady: false, source: source.sha256, docs: docs.metrics,
-  tests: tap, runtimeEvidenceCurrent: runtimeCurrent, sourceUnchanged: unchanged, evidence: '.quality/latest.json' }, null, 2));
+  tests: tap, testDurationMs,
+  commands: commands.map(({label, exitCode, durationMs}) => ({label, exitCode, durationMs})),
+  runtime: runtime ? {status: runtime.status, artifact: runtime.artifact ? {
+    digest: runtime.artifact.digest, worker: runtime.artifact.worker, assets: runtime.artifact.assets
+  } : null, durationsMs: runtime.durationsMs} : null,
+  runtimeEvidenceCurrent: runtimeCurrent, sourceUnchanged: unchanged, evidence: '.quality/latest.json' }, null, 2));
 if (!success) {
   for (const error of docs.errors) console.error(JSON.stringify(error));
   if (!runtimeCurrent) console.error('Missing, failed, stale or changed runtime artifact evidence.');

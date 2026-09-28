@@ -16,12 +16,19 @@ Le même contrat s'applique aux emplacements suivants :
 |---|---|
 | `extensions/native/` | Capacités natives livrées avec Creezio. Leur découpage ne les rend pas facultatives dans la recette de parité. |
 | `extensions/common/` | Modules communs installables et versionnés individuellement, dont les connecteurs externes. |
+| `extensions/connectors/` | Connecteurs communs optionnels vers des services externes ; même contrat et mêmes suites. |
 | `application/extensions/` | Modules appartenant à l'application dérivée. |
 | Paquet d'un éditeur tiers | Même contrat, avec éditeur, origine, version, dépendances et intégrité vérifiables. |
 
 Un module n'impose pas un Worker, un conteneur ou une base physique supplémentaire. L'application assemble les modules sélectionnés dans son déploiement commun. Une démo d'éditeur peut être une application distincte, mais elle ne devient pas une dépendance du paquet consommé.
 
 Un connecteur reçoit les accès d'un service déjà disponible. Il fournit l'intégration prête à configurer ; Creezio n'installe, n'héberge, ne met à jour et ne sauvegarde pas le service fournisseur. La planification reste extérieure à Creezio : les opérations bornées et leurs reprises sont appelées par un client autorisé.
+
+La première surface exécutable est `contracts.connectors` (facultatif), validée par `sdk/contracts/schemas/v1/connectors.schema.json`. Chaque déclaration appartient au module et nomme ses modèles privés de configuration/coffre, leurs champs, le mode `bearer` ou `api-key-header` et les ressources GET fixes autorisées. Le compilateur les enregistre automatiquement ; aucun import spécial du module n'est ajouté dans le Worker. Le handler utilise `context.connector` du SDK public, sélectionné par son effet fournisseur déclaré. Il ne reçoit ni clé déchiffrée ni client HTTP arbitraire. La configuration de clé expose seulement le port natif de scellement/révocation aux opérations prévues. Les paquets utilisent les imports `@creezio/sdk/*` publiés.
+
+La CI des nouveaux modules Support, Pages, Analytics, Catalogue et n8n assemble leurs véritables archives runtime/validation avec le SDK empaqueté, puis y exécute les six suites. Le générateur relit uniquement le manifeste propre livré ; il ne dépend pas du dossier d'un autre module. Le compilateur SQL central est testé dans les intégrations du socle, sans devenir un import privé des suites distribuées. `scripts/modules/validate-archives.mjs` réalise ce contrôle sur le code approuvé du dépôt ; il ne constitue pas une sandbox pour une extension tierce inconnue.
+
+Cette surface GET ne prétend pas couvrir toutes les API externes. Ajouter une mutation ou un callback exige son contrat d'effet et ses tests, notamment résultat incertain, non-répétition et authentification fournisseur. Déclarer les limites du connecteur, sa disponibilité réelle et les suites non applicables ; ne jamais simuler un service tiers absent. Voir [T26](IMPLEMENTATION-T26.md).
 
 ## 2. Structure canonique des sources
 
@@ -133,6 +140,8 @@ Un thème personnalise le front, ses composants et sa présentation. Il ne rempl
 
 Le plugin est une projection du module vers les conversations. Son manifeste, ses outils/ressources MCP, ses skills et ses widgets suivent le [contrat ChatGPT](COMPATIBILITE-CHATGPT.md). Les opérations restent exploitables sans widget ; l'absence d'UI dans un client ne rend pas les résultats inutilisables.
 
+Décrire les unités et conventions des données dans les `description` de leurs champs JSON Schema, notamment quand un entier représente un montant en unité mineure. Ces annotations restent distinctes des titres affichés à l'utilisateur. Le cœur peut projeter un résumé borné des descriptions de sortie vers le fournisseur du chat ; MCP conserve le schéma de sortie. Aucune unité, devise ou conversion n'est déduite d'un nom de champ, et une annotation ne garantit pas à elle seule l'exactitude de la réponse du modèle.
+
 Les contributions précisent leur audience : MCP/plugin d'administration ou MCP/plugin applicatif. Il s'agit de catalogues et droits distincts dans le même backend, sans exposition administrative automatique. Un site public ne rend aucune opération protégée anonyme.
 
 Les appels utilisent une session utilisateur, une identité machine ou une délégation OAuth vérifiée selon le canal. Les outils, le front et les widgets appellent le même exécuteur autorisé. Un jeton ne remplace pas une approbation humaine exigée et une identité GPT ne crée aucun droit Creezio.
@@ -205,6 +214,12 @@ Le parcours de livraison respecte le [cycle Git](GIT-FLOW.md) et le [stockage/h�
 Le [contrat des dépendances](DEPENDANCES-MODULES.md) est obligatoire. Le manifeste distingue required/optional, origine/version attendues, ports publics versionnés et contributions conditionnelles ; le verrou fixe la résolution transitive. Une dépendance npm ne suffit pas à enregistrer ou activer un module. Le cycle de vie contrôle les consommateurs directs/transitifs avant update, désactivation ou suppression, avec données préservées. Les six suites qualifient absence, incompatibilité, désactivation, intégration facultative et même opération par les différents canaux. Le starter et les AGENTS de chaque module renvoient à ce contrat.
 
 Le point public d'écriture d'un handler est `sdk/operations/handler.ts` : il reçoit des lectures et plans bornés, pas une transaction SQL ni un credential. Le runtime compose les références statiques et conserve le commit. Un module tiers ne reçoit pas l'inventaire administratif réservé à l'implémentation native Modules. Les choix de cycle de vie ciblent les candidats vérifiés de l'hôte ; ils n'envoient pas de manifeste ou de code depuis le navigateur. Une nouvelle présence ou activation précise ses audiences sans attribuer de permission. Voir [la réalisation T-11](IMPLEMENTATION-T11.md) pour les contrôles disponibles et les qualifications encore ouvertes.
+
+## Mutations de panneau et reprise
+
+Les vues ciblant le SDK 1.2 utilisent l'export public `@creezio/sdk/operations/command-journal` pour suivre leurs mutations avec clé de demande. Déclarer les métadonnées `pending` dans le schéma de panneau et les conserver dans **chaque** sauvegarde de sélection ou d'onglet. La persistance synchrone doit réussir avant l'envoi. Les résultats inconnus et refus de lookup restent en attente ; seule l'inspection de statut est proposée, sans replay. Une erreur d'effacement local ne transforme pas le résultat serveur confirmé.
+
+Lier l'état sauvegardé à la session native vérifiée, l'audience et le contexte. Ne pas le consommer pendant l'état anonyme ou non résolu de l'accès ; attendre l'hydratation puis restaurer uniquement le scope exact. Lors d'un vrai changement de scope, masquer immédiatement les anciennes données, invalider les réponses tardives et réinitialiser les états concernés. Un simple changement d'objet client ou l'inactivité d'un onglet ne doit pas perdre un brouillon. Tester restauration, refus de persistance, réponse incertaine, lecture de statut et changement de scope. La disponibilité de cet export dans une candidate source ne prouve pas sa présence dans une archive SDK antérieure.
 
 ## Thèmes de front T13
 

@@ -1,14 +1,14 @@
 {
   "schemaVersion": "1.0.0",
   "applicationId": "creezio.lab",
-  "sdkVersion": "1.1.0",
+  "sdkVersion": "1.2.0",
   "coreVersion": "0.0.0",
   "policy": {
     "id": "creezio.local-contracts",
     "version": "1.0.0",
     "integrity": "sha256-469b93af15a6dd7066e767f45af8587e613ee2f080d142ed076b00613acb5dfd"
   },
-  "compositionIntegrity": "sha256-315b9a965ec29e42e72d2b93ee7eb9beaee2441abd56f997d54d0d34e78eb9d6",
+  "compositionIntegrity": "sha256-3c0e7be47b3f9f4c53e17be59d01a595e154aa50c3dc7798a1cd453c72fed9ce",
   "modules": [
     {
       "moduleId": "creezio.access",
@@ -78,17 +78,17 @@
       },
       "contractIntegrity": "sha256-aab3242cd349c79c77f896fc3eea6cb00a8db807a5a40035ae4871c332c7b57f",
       "runtime": {
-        "integrity": "sha256-39c822ae189c2b21e67c5cea13d662e2089e78e8dfa312d7240002988bb22fa9",
+        "integrity": "sha256-70fac42bb9f10be2f31c84db0eed4a16caf5fe1112e4d61e0eda37488f599613",
         "location": {
           "kind": "local",
-          "path": ".creezio/module-artifacts/creezio.conversations/runtime-39c822ae189c2b21e67c5cea13d662e2089e78e8dfa312d7240002988bb22fa9.tgz"
+          "path": ".creezio/module-artifacts/creezio.conversations/runtime-70fac42bb9f10be2f31c84db0eed4a16caf5fe1112e4d61e0eda37488f599613.tgz"
         }
       },
       "validation": {
-        "integrity": "sha256-94a2ed615c5373591b959d89c8543393cced03307612ee28dc9be7d6d6635146",
+        "integrity": "sha256-2ac6dba18aa5583ec87a087ef2b6604c8d5323009795c3baa837898a58ca4600",
         "location": {
           "kind": "local",
-          "path": ".creezio/module-artifacts/creezio.conversations/validation-94a2ed615c5373591b959d89c8543393cced03307612ee28dc9be7d6d6635146.tgz"
+          "path": ".creezio/module-artifacts/creezio.conversations/validation-2ac6dba18aa5583ec87a087ef2b6604c8d5323009795c3baa837898a58ca4600.tgz"
         }
       },
       "dependencies": [
@@ -158,26 +158,26 @@
     {
       "moduleId": "creezio.purchase-requests",
       "origin": "https://github.com/creezio/Creezio-Extension-Starter",
-      "version": "0.1.2",
+      "version": "0.1.3",
       "source": {
         "kind": "git",
         "repository": "https://github.com/creezio/Creezio-Extension-Starter",
-        "revision": "3aa49c97a0802fa383c44588f835326f89bb006e",
-        "integrity": "sha256-f227f7caa9ad2bf3ddaae48cd07ce2216fc6c806833c0feaef63219ddfcbedd6"
+        "revision": "25144f306d59a81077daf8ab4f07a4a1ddc0951d",
+        "integrity": "sha256-07d5d3b0a3d4a2b360adc7362224eeb18456cb9d50abcc1628d8f701a76f3780"
       },
-      "contractIntegrity": "sha256-c4d6c2608fab9cd820645beef3fac3d4b4547dd29c9f37bd95de6962d8d523fc",
+      "contractIntegrity": "sha256-ea52b1505073af8c94915b0367230400ce84c22724c1e6cfeb4f5b12a88d81d6",
       "runtime": {
-        "integrity": "sha256-dd4b000ed7138c0ba084c4ccc7999c9294881ab422ec1928947f3f7285cfd351",
+        "integrity": "sha256-74b686a1556a6198daad8e03c0e5ab7ade42c35eb106a369ca09e4ce54e53946",
         "location": {
           "kind": "local",
-          "path": ".creezio/module-artifacts/creezio.purchase-requests/runtime-dd4b000ed7138c0ba084c4ccc7999c9294881ab422ec1928947f3f7285cfd351.tgz"
+          "path": ".creezio/module-artifacts/creezio.purchase-requests/runtime-74b686a1556a6198daad8e03c0e5ab7ade42c35eb106a369ca09e4ce54e53946.tgz"
         }
       },
       "validation": {
-        "integrity": "sha256-4d981a292862cd61b7025362ea934d11a85b9d46af9ffe31d6ef372a3b0add6f",
+        "integrity": "sha256-fda2bab507a5d7ec7ac58d6360bd720d5b95039872be4f822bd738d8fe21383f",
         "location": {
           "kind": "local",
-          "path": ".creezio/module-artifacts/creezio.purchase-requests/validation-4d981a292862cd61b7025362ea934d11a85b9d46af9ffe31d6ef372a3b0add6f.tgz"
+          "path": ".creezio/module-artifacts/creezio.purchase-requests/validation-fda2bab507a5d7ec7ac58d6360bd720d5b95039872be4f822bd738d8fe21383f.tgz"
         }
       },
       "dependencies": []

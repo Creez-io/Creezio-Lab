@@ -6,6 +6,6 @@
   ],
   "available": [],
   "validationReceipts": {
-    "creezio.purchase-requests": ".creezio/packages/manifest-0.1.2.json"
+    "creezio.purchase-requests": ".creezio/packages/manifest-0.1.3.json"
   }
 }

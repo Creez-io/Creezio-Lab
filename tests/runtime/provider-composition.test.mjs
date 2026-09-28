@@ -4,6 +4,7 @@ import {copyFileSync,mkdirSync,readFileSync,writeFileSync} from 'node:fs';
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {composeRuntime} from '../../scripts/build/compose-runtime.mjs';
+import {providerOutputDescription} from '../../scripts/build/provider-output-description.mjs';
 import {contractIntegrity} from '../../sdk/contracts/validate.mjs';
 import {temporaryDirectory} from '../quality/temporary.mjs';
 
@@ -14,6 +15,22 @@ const catalog=JSON.parse(generated.match(/export const toolCatalog: readonly Pro
 const widgetsSource=readFileSync(path.join(repository,'.creezio/generated/widget-catalog.ts'),'utf8');
 const widgets=JSON.parse(widgetsSource.match(/export const widgetCatalog: CompiledWidgetCatalog = freeze\((\{[^\n]+\})\);/)?.[1]??'null');
 
+test('output descriptions preserve declared field meaning in read and list schemas without copying schema data',()=>{
+  const request={type:'object',properties:{amountMinor:{type:'integer',minimum:0,
+    description:'Amount in the minor unit of currency, not a major-unit amount.'},
+    currency:{type:'string',description:'Three-letter currency code.'}}};
+  const read={type:'object',properties:{request:{anyOf:[request,{type:'null'}]}}};
+  const list={type:'object',properties:{items:{type:'array',items:request,maxItems:50}}};
+  assert.equal(providerOutputDescription(read),
+    'request.amountMinor: Amount in the minor unit of currency, not a major-unit amount.; request.currency: Three-letter currency code.');
+  assert.equal(providerOutputDescription(list),
+    'items[].amountMinor: Amount in the minor unit of currency, not a major-unit amount.; items[].currency: Three-letter currency code.');
+  const oversized={type:'object',properties:{secret:{type:'string',description:'x'.repeat(2000)},
+    valid:{type:'string',description:'Declared meaning.'}}};
+  assert.equal(providerOutputDescription(oversized),'valid: Declared meaning.');
+  assert.equal(providerOutputDescription({type:'object',properties:{amountMinor:{type:'integer'}}}),'');
+});
+
 test('provider tool schemas are the exact canonical inputs of selected operations',()=>{
   assert.ok(Array.isArray(catalog)&&catalog.length>0);
   assert.ok(widgets&&Array.isArray(widgets.widgets));
@@ -21,8 +38,8 @@ test('provider tool schemas are the exact canonical inputs of selected operation
   const selected=new Set(composition.modules.filter(item=>item.enabled).map(item=>item.moduleId));
   const seen=new Set(),widgetAliases=[];
   for(const item of catalog){
-    assert.deepEqual(Object.keys(item).sort(),['audiences','inputSchema','moduleId','operationId','schemaDigest',
-      ...(item.widget?['widget']:[])]);
+    assert.deepEqual(Object.keys(item).sort(),['audiences','inputSchema','moduleId','operationId',
+      ...(item.outputDescription?['outputDescription']:[]),'schemaDigest',...(item.widget?['widget']:[])]);
     assert.ok(selected.has(item.moduleId));
     const label=`${item.moduleId}:${item.operationId}`;
     const identity=item.widget?`${label}:${item.widget.toolName}`:label;
@@ -37,6 +54,9 @@ test('provider tool schemas are the exact canonical inputs of selected operation
     const schema=manifest.contracts.schemas.find(entry=>entry.id===operation.input.schemaId)?.schema;
     assert.deepEqual(item.inputSchema,schema,label);
     assert.equal(item.schemaDigest,contractIntegrity(schema),label);
+    const output=manifest.contracts.schemas.find(entry=>entry.id===operation.output.schemaId)?.schema;
+    const description=operation.kind==='query'?providerOutputDescription(output):'';
+    assert.equal(item.outputDescription,description||undefined,label);
     if(item.widget){
       widgetAliases.push(`${label}:${item.widget.toolName}`);
       assert.deepEqual(Object.keys(item.widget).sort(),

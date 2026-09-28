@@ -19,7 +19,7 @@
     ]
   },
   "sdk": {
-    "version": "1.1.0",
+    "version": "1.2.0",
     "coreVersion": "0.0.0",
     "policy": {
       "id": "creezio.local-contracts",
@@ -87,6 +87,66 @@
       "enabled": true,
       "configuration": [],
       "integrations": []
+    },
+    {
+      "moduleId": "creezio.messaging",
+      "origin": "https://github.com/creezio/Creezio-D1R2",
+      "versionRange": "^0.0.0",
+      "source": {
+        "kind": "workspace",
+        "path": "extensions/native/messaging"
+      },
+      "enabled": true,
+      "configuration": [],
+      "integrations": []
+    },
+    {
+      "moduleId": "creezio.crm",
+      "origin": "https://github.com/creezio/Creezio-D1R2",
+      "versionRange": "^0.0.0",
+      "source": {
+        "kind": "workspace",
+        "path": "extensions/native/crm"
+      },
+      "enabled": true,
+      "configuration": [],
+      "integrations": []
+    },
+    {
+      "moduleId": "creezio.support",
+      "origin": "https://github.com/creezio/Creezio-D1R2",
+      "versionRange": "^0.0.0",
+      "source": {
+        "kind": "workspace",
+        "path": "extensions/native/support"
+      },
+      "enabled": true,
+      "configuration": [],
+      "integrations": []
+    },
+    {
+      "moduleId": "creezio.pages-navigation",
+      "origin": "https://github.com/creezio/Creezio-D1R2",
+      "versionRange": "^0.0.0",
+      "source": {
+        "kind": "workspace",
+        "path": "extensions/native/pages-navigation"
+      },
+      "enabled": true,
+      "configuration": [],
+      "integrations": []
+    },
+    {
+      "moduleId": "creezio.analytics",
+      "origin": "https://github.com/creezio/Creezio-D1R2",
+      "versionRange": "^0.0.0",
+      "source": {
+        "kind": "workspace",
+        "path": "extensions/native/analytics"
+      },
+      "enabled": true,
+      "configuration": [],
+      "integrations": []
     }
   ],
   "front": {
@@ -100,7 +160,12 @@
         "creezio.access",
         "example.workspace-witness",
         "creezio.conversations",
-        "creezio.openai"
+        "creezio.openai",
+        "creezio.messaging",
+        "creezio.crm",
+        "creezio.support",
+        "creezio.pages-navigation",
+        "creezio.analytics"
       ]
     },
     "app": {
@@ -109,7 +174,12 @@
         "example.workspace-witness",
         "creezio.theme-chatgpt",
         "creezio.conversations",
-        "creezio.openai"
+        "creezio.openai",
+        "creezio.messaging",
+        "creezio.crm",
+        "creezio.support",
+        "creezio.pages-navigation",
+        "creezio.analytics"
       ]
     }
   }

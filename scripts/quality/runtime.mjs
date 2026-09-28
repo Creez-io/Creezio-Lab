@@ -6,10 +6,10 @@ import { gzipSync } from 'node:zlib';
 const hash = bytes => createHash('sha256').update(bytes).digest('hex');
 
 // Lab adds the public purchase-requests package, its views and widgets to the
-// native composition. T40 (67bdcdc) measures 7,005,819 raw / 1,319,459 gzip
-// bytes across the same 71 Worker files, versus 6,910,139 / 1,308,025 before
-// the native plan/widget contracts. The raw ceiling preserves about 2% margin;
-// the gzip, graph and timing ceilings are unchanged.
+// native composition. The T41 source build with public SDK 1.2.0 and purchase
+// requests 0.1.3 measures 7,046,827 raw / 1,327,438 gzip bytes across 71
+// Worker files. The existing raw and gzip ceilings still bound this profile;
+// no local runtime, browser or hosted behavior is inferred from this build.
 // Other compositions still require explicit measurements.
 // They are neither provider quotas nor production latency guarantees.
 export const RUNTIME_BUDGETS = Object.freeze({ workerBytes: 7_150_000, workerGzipBytes: 1_350_000,

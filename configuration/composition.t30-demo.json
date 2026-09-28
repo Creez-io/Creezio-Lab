@@ -19,7 +19,7 @@
     ]
   },
   "sdk": {
-    "version": "1.1.0",
+    "version": "1.2.0",
     "coreVersion": "0.0.0",
     "policy": {
       "id": "creezio.local-contracts",
@@ -91,7 +91,7 @@
     {
       "moduleId": "creezio.purchase-requests",
       "origin": "https://github.com/creezio/Creezio-Extension-Starter",
-      "versionRange": "0.1.2",
+      "versionRange": "0.1.3",
       "source": {
         "kind": "package",
         "name": "@creezio/purchase-requests"

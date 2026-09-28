@@ -16,9 +16,9 @@ export async function verifyPublicPackageProjection(root=defaultRoot){
   const pack=json(path.join(root,'package.json'));
   const lock=json(path.join(root,'package-lock.json'));
   const selected=[
-    {name:'@creezio/sdk',version:'1.1.0',file:pins[0][0],section:'devDependencies',
-      exports:['./delivery/context','./delivery/transport']},
-    {name:'@creezio/purchase-requests',version:'0.1.2',file:pins[4][0],section:'dependencies',
+    {name:'@creezio/sdk',version:'1.2.0',file:pins[7][0],section:'devDependencies',
+      exports:['./delivery/context','./delivery/transport','./operations/command-journal']},
+    {name:'@creezio/purchase-requests',version:'0.1.3',file:pins[8][0],section:'dependencies',
       exports:['./dist/module/entry.server.js','./dist/ui/contributions.js']},
   ];
   for(const item of selected){

@@ -5,12 +5,14 @@ import { compileOperationSchemas } from '../operations/schemas.mjs';
 import { compileHttpBindings } from '../operations/http-bindings.mjs';
 import { compileMcpBindings } from '../mcp/bindings.mjs';
 import { compileWidgetCatalog, compileWidgetContextValidators, projectWidgetProviderTools } from '../widgets/compile.mjs';
+import {providerOutputDescription} from './provider-output-description.mjs';
 import { serializeMcpCatalogWithWidgetResources } from '../widgets/serialize.mjs';
 import { createOperationRegistry } from '../../core/operations/registry.ts';
 import { compileModuleInventoryWithDocuments } from '../../sdk/modules/inventory.mjs';
 import { packageExports, verifyCandidatePackageReceipt } from '../modules/package-receipt.mjs';
 import { captureHostInventory } from '../../core/operations/host-inventory.ts';
 import {captureFileCategory} from '../../core/files/mapping.ts';
+import {captureConnectorDescriptor} from '../../core/connectors/host.ts';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { loadJson } from '../../sdk/contracts/load.mjs';
@@ -292,13 +294,23 @@ export async function composeRuntime({ root = process.cwd(), compositionPath = '
   // A provider receives the exact input contracts, never schemas reconstructed from UI labels.
   // Runtime discovery still checks operation exposure, effects and the caller's current rights.
   const toolCatalog = operationPlan.catalog.modules.flatMap(module => module.operations.filter(entry => entry.active).map(entry => {
-    const reference = entry.operation.input;
-    const inputSchema = indexes.get(module.moduleId)?.descriptor.contracts.schemas.find(schema => schema.id === reference.schemaId)?.schema;
+    const schemas=indexes.get(module.moduleId)?.descriptor.contracts.schemas;
+    const inputSchema=schemas?.find(schema=>schema.id===entry.operation.input.schemaId)?.schema;
+    const outputSchema=schemas?.find(schema=>schema.id===entry.operation.output.schemaId)?.schema;
     if (!inputSchema) fail('provider.input-schema', 'An active operation has no canonical input schema.');
+    if (!outputSchema) fail('provider.output-schema', 'An active operation has no canonical output schema.');
+    const outputDescription=entry.operation.kind==='query'?providerOutputDescription(outputSchema):'';
     return {moduleId: module.moduleId, operationId: entry.operation.id, inputSchema, schemaDigest: contractIntegrity(inputSchema),
-      audiences: ['admin','app'].filter(audience => composition.exposure[audience].moduleIds.includes(module.moduleId))};
+      audiences: ['admin','app'].filter(audience => composition.exposure[audience].moduleIds.includes(module.moduleId)),
+      ...(outputDescription?{outputDescription}:{})};
   }));
   const providerImports = [];
+  const connectors=located.flatMap(item=>{
+    const moduleId=item.descriptor.identity.id;
+    if(!composition.modules.some(selection=>selection.moduleId===moduleId&&selection.enabled))return [];
+    return (item.descriptor.contracts.connectors??[]).map(captureConnectorDescriptor);
+  });
+  if(connectors.length>16)fail('connector.limit','An application supports at most sixteen declared connectors.');
   let providerDefinition = 'null';
   const openAi = indexes.get('creezio.openai');
   if (openAi && composition.modules.some(selection => selection.moduleId === 'creezio.openai' && selection.enabled)) {
@@ -472,7 +484,7 @@ export async function composeRuntime({ root = process.cwd(), compositionPath = '
     .map(name => `export declare const ${name}: (value:unknown)=>boolean;`).join('\n') || 'export {};';
   const rendered = {
     'widget-catalog.ts': `${banner}import {widgetKey, type CompiledWidgetCatalog, type WidgetValidatorMap} from ${JSON.stringify(importSpecifier(output, path.join(root, 'sdk/widgets/catalog.ts')))};\nimport * as compiledValidators from './operation-validators.mjs';\nimport * as contextValidators from './widget-context-validators.mjs';\n${freezeSource}export const widgetCatalog: CompiledWidgetCatalog = freeze(${JSON.stringify(widgetCatalog)});\nexport const widgetValidators: WidgetValidatorMap = new Map([${widgetValidatorEntries}]);\n`,
-    'provider-catalog.ts': `${banner}import type {ProviderOperationSchema} from ${JSON.stringify(importSpecifier(output, path.join(root,'core/providers/tools.ts')))};\n${providerImports.join('\n')}\n${freezeSource}export const toolCatalog: readonly ProviderOperationSchema[] = freeze(${JSON.stringify(providerToolCatalog)});\nexport const openAiProvider = ${providerDefinition};\n`,
+    'provider-catalog.ts': `${banner}import type {ProviderOperationSchema} from ${JSON.stringify(importSpecifier(output, path.join(root,'core/providers/tools.ts')))};\nimport type {ConnectorDescriptor} from ${JSON.stringify(importSpecifier(output,path.join(root,'sdk/connectors/types.ts')))};\n${providerImports.join('\n')}\n${freezeSource}export const toolCatalog: readonly ProviderOperationSchema[] = freeze(${JSON.stringify(providerToolCatalog)});\nexport const openAiProvider = ${providerDefinition};\nexport const connectors: readonly ConnectorDescriptor[] = freeze(${JSON.stringify(connectors)});\n`,
     'file-catalog.ts': `${banner}import type {RuntimeFileCatalog} from ${JSON.stringify(importSpecifier(output, path.join(root, 'core/files/catalog.ts')))};\n${freezeSource}export const fileCatalog: RuntimeFileCatalog = freeze(${JSON.stringify(fileCatalog)});\n`,
     'module-inventory.ts': `${banner}import type { ModuleSettingsHostInventory } from ${JSON.stringify(importSpecifier(output, path.join(root, 'sdk/module-settings/types.ts')))};\n${freezeSource}${runtimeInventory
       ? `const inventory: ModuleSettingsHostInventory['inventory'] = freeze(${JSON.stringify(runtimeInventory.inventory)});\nexport const runtimeInventory: ModuleSettingsHostInventory = freeze({current: {composition: ${JSON.stringify(composition)}, lock: ${JSON.stringify(lock)}, descriptors: ${JSON.stringify(currentModuleCandidateKeys(composition,lock,runtimeInventory.inventory))}.map(key => inventory.candidates.find(candidate => candidate.candidateKey === key)!.descriptor)}, inventory, currentInstalledDocuments: ${JSON.stringify(runtimeInventory.currentInstalledDocuments)}});\n`

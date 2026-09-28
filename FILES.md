@@ -1,6 +1,6 @@
 # Repères du dépôt
 
-État : fork Lab issu de la release source `app/v0.0.0` ; Core PR #38 (`a8130407d5bd54261d56755a4db2949932a94d1b`) adopté dans cette branche. Les deux Sites du compte courant sont publiés ; Lab 0.1.2 est actif sur Sites et Docker. Les corrections des widgets historiques et du cycle durable des plans sont ici adoptées en source, sans publication Lab de ces corrections ; Lab Cloudflare reste à publier. Le [TODO](docs/TODO.md) porte l’état courant et les preuves détaillées.
+État : fork Lab issu de la release source `app/v0.0.0` ; corrections T40 de Core PR #38 adoptées sur Lab main `fc1ddc02d5c6e8f1a336e8f5e51d7ce397bc354b`, puis qualifiées sur le Site B version 5 et Docker Linux dans le périmètre documenté. Les deux Sites du compte courant sont publiés ; Lab 0.1.2 est actif sur Sites et Docker. Cette branche prépare le correctif source Core main `0078fc7defc22d27e8caf22ac3b967f36fc30fbc` (PR #39) pour l'historique incertain ; Lab Cloudflare reste à publier. Le [TODO](docs/TODO.md) porte l’état courant et les preuves détaillées.
 
 | Emplacement | Responsabilité |
 |---|---|
@@ -32,11 +32,11 @@
 | [docs/COMPATIBILITE-CHATGPT.md](docs/COMPATIBILITE-CHATGPT.md) | MCP, widgets, plugins et skills conversationnels. |
 | [docs/STOCKAGE-ET-HEBERGEMENT.md](docs/STOCKAGE-ET-HEBERGEMENT.md) | Local, Sites, Cloudflare et transfert D1/R2. |
 | [docs/IMPLEMENTATION-T30.md](docs/IMPLEMENTATION-T30.md) | Paquets publics SDK/starter, démo indépendante et limites de la recette locale. |
-| [docs/IMPLEMENTATION-T32.md](docs/IMPLEMENTATION-T32.md) | Première publication et premier update réels de l'original sur Cloudflare, preuves, limites et recettes restantes. |
+| [docs/IMPLEMENTATION-T32.md](docs/IMPLEMENTATION-T32.md) | Première publication et premier update réels de l'original sur Cloudflare ; capture Lab interrompue par historique incertain, preuves, limites et recettes restantes. |
 | [docs/IMPLEMENTATION-T36.md](docs/IMPLEMENTATION-T36.md) | Préparation de la release initiale de l’original : versions, usage, preuves et limites. |
 | [docs/IMPLEMENTATION-T38.md](docs/IMPLEMENTATION-T38.md) | Contribution amont des certificats TLS du Docker local, cause et qualification bornée. |
 | [docs/IMPLEMENTATION-T39.md](docs/IMPLEMENTATION-T39.md) | Checkpoints du flux OpenAI, observation Site A et limites de la recette T39. |
-| [docs/IMPLEMENTATION-T40.md](docs/IMPLEMENTATION-T40.md) | Mise à jour Lab 0.1.2, régression des widgets historiques et correction du cycle durable des plans. |
+| [docs/IMPLEMENTATION-T40.md](docs/IMPLEMENTATION-T40.md) | Mise à jour Lab 0.1.2, réparation qualifiée des widgets historiques et clôture conservatrice des anciens plans. |
 | [docs/LICENCES-ET-OFFRES.md](docs/LICENCES-ET-OFFRES.md) | Politiques/activation/accompagnement et décisions commerciales différées. |
 | [docs/QUALIFICATION-SITES.md](docs/QUALIFICATION-SITES.md) | Preuves techniques limitées, distinctes du CMS. |
 | [docs/INSTALLATION-LOCALE.md](docs/INSTALLATION-LOCALE.md) | Inspection, premier compte local, configuration commune et reprises sans écrasement. |
@@ -183,6 +183,7 @@ Tout ajout structurel met ce repère à jour. Chaque module construit fournit en
 
 - `scripts/cloudflare/{config,composition,build}.mjs` : projection de la composition et build du même code sur le profil Cloudflare ; `scripts/cloudflare/{pipeline,provisioning,sandbox,publisher}.mjs` orchestre les effets et vérifications distants. Le pipeline porte aussi la candidate d'update REQ-3203.
 - `scripts/cloudflare/{local-service,operator-http,local-journal,target-vault}.mjs` : service loopback limité, session et jobs, journaux locaux et clé de coffre de production par transfert ; `scripts/cloudflare/artifact-path.mjs` isole les artefacts d'update par intention ; `scripts/cloudflare/{transfer,remote}/` contient la capture D1/R2 et les ports distants.
+- `scripts/cloudflare/transfer/{source,types}.ts` : reconnaissance bornée du graphe historique incertain lors de la capture D1 ; seules les lignes cohérentes et quiescentes sont conservées, sans nouveau droit de reprise. [tests/cloudflare/transfer-source.test.mjs](tests/cloudflare/transfer-source.test.mjs) couvre les cas admis et les refus.
 - `scripts/local/{serve,runtime-supervisor,source-manifest}.mjs` : cycle de vie de l'application locale, arrêt cohérent du runtime pendant le transfert et inventaire de la source Docker ; [core/delivery](core/delivery/) garde l'autorisation native fraîche.
 - [admin/delivery/transport.ts](admin/delivery/transport.ts) et [app/workspace/host.tsx](app/workspace/host.tsx) : transport navigateur vers l'opérateur loopback, y compris les appels d'update, et injection dans le workspace.
 - [sdk/delivery](sdk/delivery/) et [extensions/native/delivery](extensions/native/delivery/) : contrat de transport injecté, contrôleurs et modèles de vue de première publication et d'update, vue admin, manifest et suites du module optionnel. `sdk/delivery/update-controller.ts` et `sdk/delivery/update-view-model.ts` portent REQ-3203, exercée sur une première mise à jour réelle ; la distribution SDK 1.1.0 est publique.

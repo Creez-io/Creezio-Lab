@@ -1,6 +1,6 @@
 # Repères du dépôt
 
-État : fork Lab issu de la release source `app/v0.0.0` ; corrections T40 de Core PR #38 adoptées sur Lab main `fc1ddc02d5c6e8f1a336e8f5e51d7ce397bc354b`, puis qualifiées sur le Site B version 5 et Docker Linux dans le périmètre documenté. Les deux Sites du compte courant sont publiés ; Lab 0.1.2 est actif sur Sites et Docker. Cette branche prépare le correctif source Core main `0078fc7defc22d27e8caf22ac3b967f36fc30fbc` (PR #39) pour l'historique incertain ; Lab Cloudflare reste à publier. Le [TODO](docs/TODO.md) porte l’état courant et les preuves détaillées.
+État : fork Lab issu de la release source `app/v0.0.0` ; corrections T40 qualifiées sur le Site B version 5 et Docker Linux dans le périmètre documenté. Lab main `949f028dbbe99ab586c02c42c82e51f145379b23` (PR #6, CI 1 186/1 186) adopte Core main `0078fc7defc22d27e8caf22ac3b967f36fc30fbc` pour l'historique incertain. Les deux Sites publics sont publiés ; Lab 0.1.2 est actif sur Sites et Docker. La frontière d'audience du widget historique APP/ADMIN est vérifiée sur B. Lab Cloudflare est publié depuis l'artefact source `949f028` (71 modules/41 assets, registre synchronisé) par le transfert distinct `a4ea2615` ; le code opérateur corrigé est Lab main `6e06182` (PR #7, CI main 1 188/1 188). Conservation D1/R2, ancien tour incertain et nouvelle réponse OpenAI sont vérifiés après arrêt Docker ; le navigateur a retrouvé trois widgets historiques après rechargement ; un ancien texte IA surestime un montant par cent, limite de prose ouverte. Le [TODO](docs/TODO.md) porte l’état courant et les preuves détaillées.
 
 | Emplacement | Responsabilité |
 |---|---|
@@ -32,7 +32,7 @@
 | [docs/COMPATIBILITE-CHATGPT.md](docs/COMPATIBILITE-CHATGPT.md) | MCP, widgets, plugins et skills conversationnels. |
 | [docs/STOCKAGE-ET-HEBERGEMENT.md](docs/STOCKAGE-ET-HEBERGEMENT.md) | Local, Sites, Cloudflare et transfert D1/R2. |
 | [docs/IMPLEMENTATION-T30.md](docs/IMPLEMENTATION-T30.md) | Paquets publics SDK/starter, démo indépendante et limites de la recette locale. |
-| [docs/IMPLEMENTATION-T32.md](docs/IMPLEMENTATION-T32.md) | Première publication et premier update réels de l'original sur Cloudflare ; capture Lab interrompue par historique incertain, preuves, limites et recettes restantes. |
+| [docs/IMPLEMENTATION-T32.md](docs/IMPLEMENTATION-T32.md) | Première publication et premier update de l'original ; premier essai Lab refusé, puis transfert distinct publié sur Cloudflare avec conservation et limites des recettes. |
 | [docs/IMPLEMENTATION-T36.md](docs/IMPLEMENTATION-T36.md) | Préparation de la release initiale de l’original : versions, usage, preuves et limites. |
 | [docs/IMPLEMENTATION-T38.md](docs/IMPLEMENTATION-T38.md) | Contribution amont des certificats TLS du Docker local, cause et qualification bornée. |
 | [docs/IMPLEMENTATION-T39.md](docs/IMPLEMENTATION-T39.md) | Checkpoints du flux OpenAI, observation Site A et limites de la recette T39. |

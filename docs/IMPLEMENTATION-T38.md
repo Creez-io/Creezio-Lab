@@ -1,5 +1,17 @@
 # T38 — Adoption amont et mise à jour du module métier
 
+## Adoption 0.1.2 après la première publication de Lab
+
+La branche `module/purchase-requests/t40-adoption` part du main Lab `abcd1f21f957729a811b32238584c835b5f66860`, qualifié par 1 165 tests CI. Elle installe le paquet public 0.1.2, sélectionne son reçu `manifest-0.1.2.json` et retire la candidate externe devenue version installée. Les trois compositions utilisent `versionRange: "0.1.2"` exactement, comme le solveur du plan accepté ; une plage avec `^` changerait son digest. Les trois verrous sont générés par `scripts/modules/lock.mjs` avec `--cache-validation creezio.purchase-requests`. Le cache de validation est comparé aux octets liés par le reçu public. Aucun schéma de table métier, thème, front ou module natif n'est modifié par cette adoption.
+
+Le Site B public `https://creezio-lab.fiduciaire615016.chatgpt.site` a été publié en 0.1.0, avec synchronisation du registre, compte natif et droits admin/app. Les parcours API ont vérifié deux demandes, leur idempotence, leur révision 5 et leurs pièces jointes R2 octet exact. Le navigateur a vérifié le front, les fiches, deux tours OpenAI donnant `request-card` et `request-picker`, leurs relectures directes et la conservation du brouillon entre onglets et après rechargement. Ces preuves constituent la base avant mise à jour ; elles ne qualifient pas la publication 0.1.2.
+
+Avant publication, comparer les empreintes des compositions/verrous générés aux cibles natives acceptées, séparément pour Sites et Docker. Le plan local Sites donne composition `sha256-315b9a965ec29e42e72d2b93ee7eb9beaee2441abd56f997d54d0d34e78eb9d6` et verrou `sha256-0f42527d89767bfec161dd0e9fdb3bcc01e89125fcfa0944a8b946b45a956a50`. Le plan Linux antérieur conserve sa propre référence ci-dessous. La conservation après déploiement, le statut effectif des plans, Cloudflare Lab et le MCP applicatif ChatGPT restent à qualifier.
+
+Le cycle natif actuel calcule l'état effectif depuis les empreintes courantes, sans constat durable de publication ni annulation explicite. Une modification indépendante ultérieure du verrou peut donc bloquer un ancien plan ; ce raccord reste à compléter avant une telle mise à jour. Ne jamais effacer les plans ou leur tête D1 pour contourner cette limite.
+
+## Historique de préparation et qualification initiale
+
 La branche de travail reprend le main Lab `e6e6001254442ddf272355c5dcde754f2b0a1393`, qualifié par 1 155 tests CI, puis fusionne explicitement le Core `a911e4d924b9acb3a33aeb6b57c47ae6d0e3bd06`. Cette source correspond à la release publique `app/v0.0.1` : archive de 1 539 015 octets, SHA-256 `133bb222818971b90f08675b37646e8e2a08784801c6381aaa079e6cab785679`.
 
 L'identité `creezio.lab`, le thème, le front, les dépendances publiques et les modules métier sont conservés. Les conflits de fusion portent sur les métadonnées et documents ; les verrous Lab sont régénérés avec le reçu public du module installé. Aucun workspace SDK local n'est réintroduit : SDK 1.1.0 public, contrat Core 0.0.0 et module d'achat 0.1.0 restent les versions consommées à cette étape. La version applicative devient 0.0.1 pour cette adoption.

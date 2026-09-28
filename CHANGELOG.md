@@ -1,5 +1,9 @@
 # Changelog
 
+## En cours — installation du module d'achat 0.1.2 dans Lab (T38)
+
+Le fork adopte le paquet public 0.1.2 qui sépare la création `/purchase-requests/new` du détail `/requests/{id}`. Npm, les trois compositions et leurs verrous sélectionnent cette version exacte ; la validation détachée est conservée dans le cache adressé par empreinte et comparée au reçu public. Le SDK 1.1.0, le front, le thème et les modules natifs sont conservés. Le Site B 0.1.0 a été publié et qualifié avant cette adoption ; conservation après publication 0.1.2 et livraison Cloudflare restent à vérifier. Voir [T38](docs/IMPLEMENTATION-T38.md).
+
 ## En cours — synchronisation Core pour la recette chat (T39)
 
 La branche Lab fusionne Core `cb08876689315897ca6a9ff387cb68ec3d863988` : les fragments du chat sont regroupés avant les checkpoints D1, avec reprise durable et annulation conservées. Elle reprend aussi l'interface navigateur du registre, sans changer l'identité, le front ni les paquets installés du Lab. La qualification réelle du Site B et l'adoption de 0.1.2 restent des étapes distinctes. Voir [T39](docs/IMPLEMENTATION-T39.md) et [T38](docs/IMPLEMENTATION-T38.md).

@@ -91,7 +91,7 @@
     {
       "moduleId": "creezio.purchase-requests",
       "origin": "https://github.com/creezio/Creezio-Extension-Starter",
-      "versionRange": "^0.1.0",
+      "versionRange": "0.1.2",
       "source": {
         "kind": "package",
         "name": "@creezio/purchase-requests"

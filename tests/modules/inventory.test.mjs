@@ -37,8 +37,11 @@ test('every shipped Conversations composition locks the current module artifacts
           const verified=verifyPackageReceipt({root,receiptPath,moduleDirectory:directory,descriptor});
           assert.equal(node.validation.integrity,verified.validation.integrity,
             `${name}: ${selection.moduleId} detached validation mismatch`);
-          assert.deepEqual(node.validation.location,{kind:'local',path:verified.validation.path},
+          const cachedPath=`.creezio/module-artifacts/${selection.moduleId}/validation-${verified.validation.integrity.slice(7)}.tgz`;
+          assert.deepEqual(node.validation.location,{kind:'local',path:cachedPath},
             `${name}: ${selection.moduleId} detached validation location mismatch`);
+          assert.deepEqual(readFileSync(path.join(root,cachedPath)),readFileSync(path.join(root,verified.validation.path)),
+            `${name}: ${selection.moduleId} cached validation bytes differ from the public receipt`);
           continue;
         }
         const files=descriptor.packaging[kind].files.map(relative=>{

@@ -2,7 +2,7 @@
 
 L'adoption du Core public 0.0.1, la correction du module externe et celle des certificats Docker sont suivies dans [IMPLEMENTATION-T38](docs/IMPLEMENTATION-T38.md), séparément de l'installation initiale [T37](docs/IMPLEMENTATION-T37.md).
 
-État : vrai fork Lab T37 issu de la release source `app/v0.0.0` de l'original ; synchronisation du Core amont `cb08876689315897ca6a9ff387cb68ec3d863988` en cours sur une branche dédiée. Le SDK public reste en 1.1.0 et le module d'achat installé en 0.1.0 ; 0.1.2 est une candidate d'inventaire. Le nouveau Site B est créé et construit depuis un ancien main Lab, mais sa publication et sa recette restent ouvertes. Le [TODO](docs/TODO.md) distingue acquis, travaux et qualifications restantes.
+État : vrai fork Lab T37 issu de la release source `app/v0.0.0` de l'original ; Core `cb08876689315897ca6a9ff387cb68ec3d863988` intégré dans le main Lab `abcd1f2`. Le SDK public reste en 1.1.0 ; cette branche adopte le module d'achat 0.1.2 avec ses reçus publics et trois verrous natifs. Le Site B 0.1.0 est publié et qualifié ; la mise à jour du même Site et sa conservation restent à vérifier. Le [TODO](docs/TODO.md) distingue acquis, travaux et qualifications restantes.
 
 | Emplacement | Responsabilité |
 |---|---|

@@ -1,11 +1,11 @@
 # T37 — Première application Creezio Lab
 
-État : sources Lab préparées dans le checkout de démonstration persistant ; CI et publication Site B restent à qualifier. Ce document distingue la provenance du fork et les recettes de l'original.
+État : sources Lab candidates committées sur la PR #1 en brouillon au commit `6a3a10e60cf2caa363b14071c004b33c05f423ad` ; contrôle global local réussi sur ce SHA. Sa première CI a échoué sur un test workspace ; le correctif, la nouvelle CI et la publication de Site B restent à qualifier. Ce document distingue la provenance du fork et les recettes de l'original.
 
 ## Origines et versions
 
 - Original A : `creezio/Creezio-D1R2`, main `eb97109493b3a945eaa882c216591bc468764014`, arbre `f5fe2e413944bfadeb907c1d9515ab3d927b187b`. La release source publique [`app/v0.0.0`](https://github.com/creezio/Creezio-D1R2/releases/tag/app/v0.0.0) porte une archive de 1 532 513 octets, SHA-256 `097a7eb02e5c955a048d014cd120f95672fac5e501c1e960998f13da18a717fb`. Le Site A a été qualifié sur cette base ; sa recette ne qualifie pas Site B.
-- Fork B : vrai fork GitHub public [`Creez-io/Creezio-Lab`](https://github.com/Creez-io/Creezio-Lab), ID 1391532328, parent `creezio/Creezio-D1R2`, créé depuis ce main. Le commit propre, la PR et le Site B du Lab restent à établir. Les compositions portent l'archive de l'original comme provenance de leur base, tandis que le dépôt Git du Lab identifie le dérivé.
+- Fork B : vrai fork GitHub public [`Creez-io/Creezio-Lab`](https://github.com/Creez-io/Creezio-Lab), ID 1391532328, parent `creezio/Creezio-D1R2`, créé depuis ce main. Le commit Lab candidat est `6a3a10e60cf2caa363b14071c004b33c05f423ad` sur la PR #1 en brouillon ; la CI de ce SHA et le Site B restent à qualifier. Les compositions portent l'archive de l'original comme provenance de leur base, tandis que le dépôt Git du Lab identifie le dérivé.
 - Version applicative et `sdk.coreVersion` : `0.0.0`. SDK de composition et paquet installé : `1.1.0`, archive publique `sdk-v1.1.0` SHA-256 `f874f0ed29a41ec45b8f686884b5e2260b9600d9045588174fff8a7fcdd5eeec`. Module métier : `@creezio/purchase-requests` `0.1.0` de `module-v0.1.0`, archive SHA-256 `800c8e0e9eb61c3b8abeb04d98b4c6eea343bc4af9cc1cfe0be3f633dbafb85c`, validation détachée `4010b8a59ef9e8a02dc5b4f15e87ed3c24f97eca0e6ef65978996dbc730736ba`, reçu `a0cb2cdb16ba87d007cbdc21db1d209023af94c8d8758a08018ae42ed875b418`.
 
 ## Profils et installation
@@ -25,4 +25,4 @@ La démo conserve ses données `.wrangler`, dépendances installées et fichiers
 
 ## Qualification restante
 
-Relire les changements Lab, obtenir un commit propre et une CI liée à ce SHA, vérifier l'installation fraîche et les parcours ciblés localement, puis publier et exercer Site B avec ses propres données, droits, URL et preuves. Le manifeste de source Docker portable doit être préparé depuis le commit Lab propre avant la construction de son image. Le présent état ne prouve ni cette image, ni le build Sites, ni une recette publique du Lab.
+Qualifier en CI le correctif du test workspace, vérifier l'installation fraîche et les parcours ciblés localement, puis publier et exercer Site B avec ses propres données, droits, URL et preuves. Le manifeste de source Docker portable doit être préparé depuis le commit Lab propre avant la construction de son image. Le présent état ne prouve ni cette image, ni le build Sites, ni une recette publique du Lab.

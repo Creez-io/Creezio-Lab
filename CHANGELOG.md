@@ -2,6 +2,8 @@
 
 ## En cours — adoption source Core T40 dans Lab
 
+Le budget brut du Worker propre à Lab est recalé à 7 150 000 octets après mesure du build T40 : 7 005 819 octets, contre 6 910 139 précédemment, toujours 71 fichiers. La marge reste proche de 2 %. Le budget gzip de 1 350 000 octets, le graphe et les temps de réponse restent inchangés.
+
 La branche Lab fusionne Core main `a8130407d5bd54261d56755a4db2949932a94d1b` (PR #38, arbre `5cc8ff1d2bb4bf52bec1b1ab852ec00b7b45c493`). Les compositions et verrous Lab conservent `creezio.lab`, le thème ChatGPT-like, le SDK public 1.1.0 et le module d'achat 0.1.2. Les corrections des widgets historiques, du cycle durable des plans et la commande locale de schéma sont disponibles dans la source ; leur déploiement et leur recette sur Lab restent à faire. Voir [T40](docs/IMPLEMENTATION-T40.md).
 
 ## En cours — conservation des widgets et cycle des plans (T40)

@@ -6,12 +6,13 @@ import { gzipSync } from 'node:zlib';
 const hash = bytes => createHash('sha256').update(bytes).digest('hex');
 
 // Lab adds the public purchase-requests package, its views and widgets to the
-// native composition. Its first complete build measured 6,859,156 raw /
-// 1,301,729 gzip bytes (T37 c1d95d2). These fork-owned ceilings allow a bounded
-// margin for that composition; graph and timing ceilings are unchanged.
+// native composition. T40 (67bdcdc) measures 7,005,819 raw / 1,319,459 gzip
+// bytes across the same 71 Worker files, versus 6,910,139 / 1,308,025 before
+// the native plan/widget contracts. The raw ceiling preserves about 2% margin;
+// the gzip, graph and timing ceilings are unchanged.
 // Other compositions still require explicit measurements.
 // They are neither provider quotas nor production latency guarantees.
-export const RUNTIME_BUDGETS = Object.freeze({ workerBytes: 7_000_000, workerGzipBytes: 1_350_000,
+export const RUNTIME_BUDGETS = Object.freeze({ workerBytes: 7_150_000, workerGzipBytes: 1_350_000,
   selectedGraphInputs: 32, startupMs: 15_000, routeMs: 3_000 });
 
 export function assertRuntimeBudgets(report) {

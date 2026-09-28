@@ -18,7 +18,7 @@ export async function verifyPublicPackageProjection(root=defaultRoot){
   const selected=[
     {name:'@creezio/sdk',version:'1.1.0',file:pins[0][0],section:'devDependencies',
       exports:['./delivery/context','./delivery/transport']},
-    {name:'@creezio/purchase-requests',version:'0.1.0',file:pins[1][0],section:'dependencies',
+    {name:'@creezio/purchase-requests',version:'0.1.2',file:pins[4][0],section:'dependencies',
       exports:['./dist/module/entry.server.js','./dist/ui/contributions.js']},
   ];
   for(const item of selected){

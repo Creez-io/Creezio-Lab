@@ -95,6 +95,6 @@
     "sonner": "2.0.8",
     "tailwind-merge": "2.6.0",
     "zod": "4.6.5",
-    "@creezio/purchase-requests": "file:.creezio/packages/creezio-purchase-requests-0.1.0.tgz"
+    "@creezio/purchase-requests": "file:.creezio/packages/creezio-purchase-requests-0.1.2.tgz"
   }
 }

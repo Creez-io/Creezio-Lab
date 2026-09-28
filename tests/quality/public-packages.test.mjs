@@ -33,6 +33,6 @@ test('npm projects both public file packages selected by the lock',async()=>{
   const report=await verifyPublicPackageProjection(root);
   assert.deepEqual(report.packages,[
     {name:'@creezio/sdk',version:'1.1.0'},
-    {name:'@creezio/purchase-requests',version:'0.1.0'},
+    {name:'@creezio/purchase-requests',version:'0.1.2'},
   ]);
 });

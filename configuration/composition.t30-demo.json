@@ -1,12 +1,12 @@
 {
   "schemaVersion": "1.0.0",
   "application": {
-    "id": "creezio.lab",
+    "id": "creezio.app",
     "version": "0.0.0",
     "provenance": {
       "kind": "git",
-      "revision": "eb97109493b3a945eaa882c216591bc468764014",
-      "integrity": "sha256-097a7eb02e5c955a048d014cd120f95672fac5e501c1e960998f13da18a717fb",
+      "revision": "72c7f3faca3df68beea64b50c2ddc51fd103a433",
+      "integrity": "sha256-0329f9c00c8cb7b9008487c4da44fd98ef9bfc9d866bd7212d62e1413cc18c54",
       "repository": "https://github.com/creezio/Creezio-D1R2"
     }
   },
@@ -99,18 +99,6 @@
       "enabled": true,
       "configuration": [],
       "integrations": []
-    },
-    {
-      "moduleId": "creezio.delivery",
-      "origin": "https://github.com/creezio/Creezio-D1R2",
-      "versionRange": "^0.0.0",
-      "source": {
-        "kind": "workspace",
-        "path": "extensions/native/delivery"
-      },
-      "enabled": true,
-      "configuration": [],
-      "integrations": []
     }
   ],
   "front": {
@@ -125,8 +113,7 @@
         "creezio.modules-settings",
         "creezio.conversations",
         "creezio.openai",
-        "creezio.purchase-requests",
-        "creezio.delivery"
+        "creezio.purchase-requests"
       ]
     },
     "app": {

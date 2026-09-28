@@ -1,5 +1,9 @@
 # Changelog
 
+## En cours — premier fork Creezio Lab (T37)
+
+Fork public `Creez-io/Creezio-Lab` créé depuis la release source `app/v0.0.0` de l’original (`eb97109`). Compositions Lab séparées pour Docker local et Sites, thème ChatGPT-like et module public 0.1.0 ; Sites exclut Delivery. La CI restaure et vérifie les quatre archives publiques avant `npm ci`, puis contrôle la projection des paquets installés. Les verrous des deux profils sont générés avec le reçu de validation détaché. Publication et recette Site B à qualifier séparément. Voir [T37](docs/IMPLEMENTATION-T37.md).
+
 ## En cours — release initiale `app/v0.0.0` (T36)
 
 Préparation depuis le main `f8dc03c` : version applicative et modules natifs conservés à `0.0.0`, SDK de composition à `1.1.0`. Le build commun demande à Vite de produire `dist/client/licenses.md` pour les dépendances embarquées ; contenu et service sur chaque hébergement restent à vérifier. Le tag applicatif, son archive exacte et la preuve Site A restent à établir après qualification du main final. Le SDK [`sdk-v1.1.0`](https://github.com/creezio/Creezio-D1R2/releases/tag/sdk-v1.1.0) est public ; voir [préparation et limites T36](docs/IMPLEMENTATION-T36.md).

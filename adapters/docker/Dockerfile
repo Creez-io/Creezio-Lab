@@ -6,9 +6,11 @@ USER node
 
 COPY --chown=node:node package.json package-lock.json ./
 COPY --chown=node:node sdk/package.json ./sdk/package.json
+COPY --chown=node:node scripts/lab/bootstrap-public-packages.mjs ./scripts/lab/bootstrap-public-packages.mjs
+RUN node scripts/lab/bootstrap-public-packages.mjs
 RUN npm ci --ignore-scripts --no-audit --no-fund
 COPY --chown=node:node . .
-RUN node scripts/sdk/build.mjs
+# The fork resolves @creezio/sdk from its verified public file: archive.
 RUN node scripts/local/source-manifest.mjs verify
 
 # The local runtime binds 127.0.0.1:5173 inside this container. The TCP

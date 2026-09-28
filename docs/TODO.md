@@ -80,8 +80,8 @@ Les droits de distribution sont vérifiés **avant chaque première publication 
 | [T-30](#T-30) | P3 | Starter, paquets et extension externe | [T-11](#T-11), [T-12](#T-12), [T-13](#T-13), [T-16](#T-16) | En cours — distribution initiale publique et recette locale acquises, autres critères ouverts |
 | [T-31](#T-31) | P1 | Docker local persistant | [T-03](#T-03), [T-05](#T-05), [T-07](#T-07) | En cours |
 | [T-32](#T-32) | P6 | Publication complète Cloudflare | [T-08](#T-08), [T-30](#T-30), [T-31](#T-31) | En cours — original publié et mis à jour, SDK 1.1.0 public, démo ouverte |
-| [T-36](#T-36) | P7 | Version initiale de l’original, puis compléments | Jalon initial : [T-08](#T-08), [T-09](#T-09), [T-10](#T-10), [T-11](#T-11), [T-12](#T-12), [T-13](#T-13), [T-14](#T-14), [T-15](#T-15), [T-16](#T-16), tranche témoin [T-30](#T-30), [T-31](#T-31), [T-32](#T-32) | En cours — préparation du jalon initial `app/v0.0.0` |
-| [T-37](#T-37) | P7 | Vrai fork Creezio Lab et Site B | Version initiale publiée de [T-36](#T-36) | À faire |
+| [T-36](#T-36) | P7 | Version initiale de l’original, puis compléments | Jalon initial : [T-08](#T-08), [T-09](#T-09), [T-10](#T-10), [T-11](#T-11), [T-12](#T-12), [T-13](#T-13), [T-14](#T-14), [T-15](#T-15), [T-16](#T-16), tranche témoin [T-30](#T-30), [T-31](#T-31), [T-32](#T-32) | En cours — jalon initial `app/v0.0.0` publié et Site A qualifié ; compléments différés |
+| [T-37](#T-37) | P7 | Vrai fork Creezio Lab et Site B | Version initiale publiée de [T-36](#T-36) | En cours — fork créé, Site B à qualifier |
 | [T-38](#T-38) | P8 | Adoption des mises à jour et contributions | Fork initial de [T-37](#T-37) | À faire — preuve installation/update prioritaire |
 | [T-39](#T-39) | P9 | Recette ciblée puis exhaustive | Preuves initiales de [T-38](#T-38) | À faire — recette ciblée prioritaire |
 | [T-17](#T-17) | P5 | Tâches humaines et travail | [T-11](#T-11), [T-14](#T-14) | À faire — après première app |
@@ -185,7 +185,7 @@ Les droits de distribution sont vérifiés **avant chaque première publication 
 - Travail/livrables : Service central séparé, vérification GitHub/email, token d’installation et contrôle de publication ; bootstrap documenté.
 - Besoin : [US-08](USER-STORIES.md#US-08). Acceptation : [REQ-0801](EXIGENCES.md#REQ-0801), [REQ-0802](EXIGENCES.md#REQ-0802), [REQ-0803](EXIGENCES.md#REQ-0803).
 - Validation : implémenter puis exécuter les recettes liées, sur **service central et app cliente** ; inclure les cas négatifs et les contrôles communs appropriés.
-- Preuves : aucune preuve produit acquise ; renseigner PR/commit, version, profil, résultats et limites avant changement d’état.
+- Preuves : vrai fork GitHub créé (`Creez-io/Creezio-Lab`, ID 1391532328) depuis le main `eb97109` de la release `app/v0.0.0` ; compositions Lab et verrous en préparation. Renseigner PR/commit Lab, CI, Site B, résultats et limites avant qualification. Voir [la réalisation T37](IMPLEMENTATION-T37.md).
 
 <a id="T-09"></a>
 ## T-09 — Première tranche sur Sites
@@ -195,7 +195,7 @@ Les droits de distribution sont vérifiés **avant chaque première publication 
 - Travail/livrables : Site A réutilisé s'il est accessible et adapté, sinon nouveau Site public du compte courant : compte, module témoin, onglets, opération et fichier ; comparaison local/Sites et traçabilité du changement de `project_id`.
 - Besoin : [US-09](USER-STORIES.md#US-09). Acceptation : [REQ-0901](EXIGENCES.md#REQ-0901), [REQ-0902](EXIGENCES.md#REQ-0902).
 - Validation : implémenter puis exécuter les recettes liées, sur **Site public réel** ; inclure les cas négatifs et les contrôles communs appropriés.
-- Preuves : aucune preuve produit acquise ; renseigner PR/commit, version, profil, résultats et limites avant changement d’état.
+- Preuves : vrai fork GitHub créé (`Creez-io/Creezio-Lab`, ID 1391532328) depuis le main `eb97109` de la release `app/v0.0.0` ; compositions Lab et verrous en préparation. Renseigner PR/commit Lab, CI, Site B, résultats et limites avant qualification. Voir [la réalisation T37](IMPLEMENTATION-T37.md).
 
 <a id="T-10"></a>
 ## T-10 — MCP, OAuth et accès machine
@@ -248,7 +248,7 @@ Les droits de distribution sont vérifiés **avant chaque première publication 
 - Travail/livrables : Module conversations, états partagés SDK, historique/recherche/archive et transport adapté ; OpenAI indépendant.
 - Besoin : [US-14](USER-STORIES.md#US-14). Acceptation : [REQ-1401](EXIGENCES.md#REQ-1401), [REQ-1402](EXIGENCES.md#REQ-1402).
 - Validation : implémenter puis exécuter les recettes liées, sur **navigateur local et Sites** ; inclure les cas négatifs et les contrôles communs appropriés.
-- Preuves : aucune preuve produit acquise ; renseigner PR/commit, version, profil, résultats et limites avant changement d’état.
+- Preuves : vrai fork GitHub créé (`Creez-io/Creezio-Lab`, ID 1391532328) depuis le main `eb97109` de la release `app/v0.0.0` ; compositions Lab et verrous en préparation. Renseigner PR/commit Lab, CI, Site B, résultats et limites avant qualification. Voir [la réalisation T37](IMPLEMENTATION-T37.md).
 
 <a id="T-15"></a>
 ## T-15 — Module OpenAI et contrat fournisseur
@@ -279,7 +279,7 @@ Les droits de distribution sont vérifiés **avant chaque première publication 
 - Travail/livrables : Module tasks-work avec PRD/docs/CI et parcours de travail humain.
 - Besoin : [US-17](USER-STORIES.md#US-17). Acceptation : [REQ-1701](EXIGENCES.md#REQ-1701).
 - Validation : implémenter puis exécuter les recettes liées, sur **workspace, API et MCP** ; inclure les cas négatifs et les contrôles communs appropriés.
-- Preuves : aucune preuve produit acquise ; renseigner PR/commit, version, profil, résultats et limites avant changement d’état.
+- Preuves : vrai fork GitHub créé (`Creez-io/Creezio-Lab`, ID 1391532328) depuis le main `eb97109` de la release `app/v0.0.0` ; compositions Lab et verrous en préparation. Renseigner PR/commit Lab, CI, Site B, résultats et limites avant qualification. Voir [la réalisation T37](IMPLEMENTATION-T37.md).
 
 <a id="T-18"></a>
 ## T-18 — Messagerie native
@@ -289,7 +289,7 @@ Les droits de distribution sont vérifiés **avant chaque première publication 
 - Travail/livrables : Module messaging : boîtes/messages/brouillons/pièces jointes et port de transport.
 - Besoin : [US-18](USER-STORIES.md#US-18). Acceptation : [REQ-1801](EXIGENCES.md#REQ-1801).
 - Validation : implémenter puis exécuter les recettes liées, sur **workspace et API/MCP** ; inclure les cas négatifs et les contrôles communs appropriés.
-- Preuves : aucune preuve produit acquise ; renseigner PR/commit, version, profil, résultats et limites avant changement d’état.
+- Preuves : vrai fork GitHub créé (`Creez-io/Creezio-Lab`, ID 1391532328) depuis le main `eb97109` de la release `app/v0.0.0` ; compositions Lab et verrous en préparation. Renseigner PR/commit Lab, CI, Site B, résultats et limites avant qualification. Voir [la réalisation T37](IMPLEMENTATION-T37.md).
 
 <a id="T-19"></a>
 ## T-19 — Support
@@ -299,7 +299,7 @@ Les droits de distribution sont vérifiés **avant chaque première publication 
 - Travail/livrables : Module support et relations autorisées avec contacts/messages/tâches.
 - Besoin : [US-19](USER-STORIES.md#US-19). Acceptation : [REQ-1901](EXIGENCES.md#REQ-1901).
 - Validation : implémenter puis exécuter les recettes liées, sur **workspace et API/MCP** ; inclure les cas négatifs et les contrôles communs appropriés.
-- Preuves : aucune preuve produit acquise ; renseigner PR/commit, version, profil, résultats et limites avant changement d’état.
+- Preuves : vrai fork GitHub créé (`Creez-io/Creezio-Lab`, ID 1391532328) depuis le main `eb97109` de la release `app/v0.0.0` ; compositions Lab et verrous en préparation. Renseigner PR/commit Lab, CI, Site B, résultats et limites avant qualification. Voir [la réalisation T37](IMPLEMENTATION-T37.md).
 
 <a id="T-20"></a>
 ## T-20 — CRM
@@ -309,7 +309,7 @@ Les droits de distribution sont vérifiés **avant chaque première publication 
 - Travail/livrables : Module crm, entités/relations/recherche et vues.
 - Besoin : [US-20](USER-STORIES.md#US-20). Acceptation : [REQ-2001](EXIGENCES.md#REQ-2001).
 - Validation : implémenter puis exécuter les recettes liées, sur **workspace et API/MCP** ; inclure les cas négatifs et les contrôles communs appropriés.
-- Preuves : aucune preuve produit acquise ; renseigner PR/commit, version, profil, résultats et limites avant changement d’état.
+- Preuves : vrai fork GitHub créé (`Creez-io/Creezio-Lab`, ID 1391532328) depuis le main `eb97109` de la release `app/v0.0.0` ; compositions Lab et verrous en préparation. Renseigner PR/commit Lab, CI, Site B, résultats et limites avant qualification. Voir [la réalisation T37](IMPLEMENTATION-T37.md).
 
 <a id="T-21"></a>
 ## T-21 — Pages et navigation
@@ -319,7 +319,7 @@ Les droits de distribution sont vérifiés **avant chaque première publication 
 - Travail/livrables : Module pages-navigation, médias/SEO/édition et reset contrôlé.
 - Besoin : [US-21](USER-STORIES.md#US-21). Acceptation : [REQ-2101](EXIGENCES.md#REQ-2101).
 - Validation : implémenter puis exécuter les recettes liées, sur **front, workspace et API/MCP** ; inclure les cas négatifs et les contrôles communs appropriés.
-- Preuves : aucune preuve produit acquise ; renseigner PR/commit, version, profil, résultats et limites avant changement d’état.
+- Preuves : vrai fork GitHub créé (`Creez-io/Creezio-Lab`, ID 1391532328) depuis le main `eb97109` de la release `app/v0.0.0` ; compositions Lab et verrous en préparation. Renseigner PR/commit Lab, CI, Site B, résultats et limites avant qualification. Voir [la réalisation T37](IMPLEMENTATION-T37.md).
 
 <a id="T-22"></a>
 ## T-22 — Analytics et diagnostics
@@ -329,7 +329,7 @@ Les droits de distribution sont vérifiés **avant chaque première publication 
 - Travail/livrables : Module analytics, consultation de l’audit, productivité/usage et exports limités.
 - Besoin : [US-22](USER-STORIES.md#US-22). Acceptation : [REQ-2201](EXIGENCES.md#REQ-2201).
 - Validation : implémenter puis exécuter les recettes liées, sur **workspace et API/MCP** ; inclure les cas négatifs et les contrôles communs appropriés.
-- Preuves : aucune preuve produit acquise ; renseigner PR/commit, version, profil, résultats et limites avant changement d’état.
+- Preuves : vrai fork GitHub créé (`Creez-io/Creezio-Lab`, ID 1391532328) depuis le main `eb97109` de la release `app/v0.0.0` ; compositions Lab et verrous en préparation. Renseigner PR/commit Lab, CI, Site B, résultats et limites avant qualification. Voir [la réalisation T37](IMPLEMENTATION-T37.md).
 
 <a id="T-23"></a>
 ## T-23 — Intentions et développement piloté
@@ -339,7 +339,7 @@ Les droits de distribution sont vérifiés **avant chaque première publication 
 - Travail/livrables : Module intentions-development, révisions/validation PRD, tâches, artefacts et historique de livraison.
 - Besoin : [US-23](USER-STORIES.md#US-23). Acceptation : [REQ-2301](EXIGENCES.md#REQ-2301), [REQ-2302](EXIGENCES.md#REQ-2302).
 - Validation : implémenter puis exécuter les recettes liées, sur **workspace et API/MCP** ; inclure les cas négatifs et les contrôles communs appropriés.
-- Preuves : aucune preuve produit acquise ; renseigner PR/commit, version, profil, résultats et limites avant changement d’état.
+- Preuves : vrai fork GitHub créé (`Creez-io/Creezio-Lab`, ID 1391532328) depuis le main `eb97109` de la release `app/v0.0.0` ; compositions Lab et verrous en préparation. Renseigner PR/commit Lab, CI, Site B, résultats et limites avant qualification. Voir [la réalisation T37](IMPLEMENTATION-T37.md).
 
 <a id="T-24"></a>
 ## T-24 — Règles et automatisation sans scheduler
@@ -349,7 +349,7 @@ Les droits de distribution sont vérifiés **avant chaque première publication 
 - Travail/livrables : Module automation-rules, événements, conditions/actions et journal.
 - Besoin : [US-24](USER-STORIES.md#US-24). Acceptation : [REQ-2401](EXIGENCES.md#REQ-2401).
 - Validation : implémenter puis exécuter les recettes liées, sur **API/MCP externe et workspace** ; inclure les cas négatifs et les contrôles communs appropriés.
-- Preuves : aucune preuve produit acquise ; renseigner PR/commit, version, profil, résultats et limites avant changement d’état.
+- Preuves : vrai fork GitHub créé (`Creez-io/Creezio-Lab`, ID 1391532328) depuis le main `eb97109` de la release `app/v0.0.0` ; compositions Lab et verrous en préparation. Renseigner PR/commit Lab, CI, Site B, résultats et limites avant qualification. Voir [la réalisation T37](IMPLEMENTATION-T37.md).
 
 <a id="T-25"></a>
 ## T-25 — Catalogue métier réutilisable
@@ -359,7 +359,7 @@ Les droits de distribution sont vérifiés **avant chaque première publication 
 - Travail/livrables : Module catalogue, données produit et ports publics de référence.
 - Besoin : [US-25](USER-STORIES.md#US-25). Acceptation : [REQ-2501](EXIGENCES.md#REQ-2501).
 - Validation : implémenter puis exécuter les recettes liées, sur **app fraîche et widgets** ; inclure les cas négatifs et les contrôles communs appropriés.
-- Preuves : aucune preuve produit acquise ; renseigner PR/commit, version, profil, résultats et limites avant changement d’état.
+- Preuves : vrai fork GitHub créé (`Creez-io/Creezio-Lab`, ID 1391532328) depuis le main `eb97109` de la release `app/v0.0.0` ; compositions Lab et verrous en préparation. Renseigner PR/commit Lab, CI, Site B, résultats et limites avant qualification. Voir [la réalisation T37](IMPLEMENTATION-T37.md).
 
 <a id="T-26"></a>
 ## T-26 — Connecteur n8n
@@ -369,7 +369,7 @@ Les droits de distribution sont vérifiés **avant chaque première publication 
 - Travail/livrables : Module n8n : connexion, workflows autorisés, déclenchements/suivi/widgets et callbacks.
 - Besoin : [US-26](USER-STORIES.md#US-26). Acceptation : [REQ-2601](EXIGENCES.md#REQ-2601), [REQ-2602](EXIGENCES.md#REQ-2602).
 - Validation : implémenter puis exécuter les recettes liées, sur **n8n réel + Site public** ; inclure les cas négatifs et les contrôles communs appropriés.
-- Preuves : aucune preuve produit acquise ; renseigner PR/commit, version, profil, résultats et limites avant changement d’état.
+- Preuves : vrai fork GitHub créé (`Creez-io/Creezio-Lab`, ID 1391532328) depuis le main `eb97109` de la release `app/v0.0.0` ; compositions Lab et verrous en préparation. Renseigner PR/commit Lab, CI, Site B, résultats et limites avant qualification. Voir [la réalisation T37](IMPLEMENTATION-T37.md).
 
 <a id="T-27"></a>
 ## T-27 — Connecteur Stripe
@@ -379,7 +379,7 @@ Les droits de distribution sont vérifiés **avant chaque première publication 
 - Travail/livrables : Module Stripe : produits/prix/clients/checkout/abonnements selon PRD, webhooks et widgets.
 - Besoin : [US-27](USER-STORIES.md#US-27). Acceptation : [REQ-2701](EXIGENCES.md#REQ-2701).
 - Validation : implémenter puis exécuter les recettes liées, sur **Stripe en mode test** ; inclure les cas négatifs et les contrôles communs appropriés.
-- Preuves : aucune preuve produit acquise ; renseigner PR/commit, version, profil, résultats et limites avant changement d’état.
+- Preuves : vrai fork GitHub créé (`Creez-io/Creezio-Lab`, ID 1391532328) depuis le main `eb97109` de la release `app/v0.0.0` ; compositions Lab et verrous en préparation. Renseigner PR/commit Lab, CI, Site B, résultats et limites avant qualification. Voir [la réalisation T37](IMPLEMENTATION-T37.md).
 
 <a id="T-28"></a>
 ## T-28 — Connecteur Meili
@@ -389,7 +389,7 @@ Les droits de distribution sont vérifiés **avant chaque première publication 
 - Travail/livrables : Module Meili, projections, indexation incrémentale et reconstruction reprenable.
 - Besoin : [US-28](USER-STORIES.md#US-28). Acceptation : [REQ-2801](EXIGENCES.md#REQ-2801).
 - Validation : implémenter puis exécuter les recettes liées, sur **Meili réel et recherche native** ; inclure les cas négatifs et les contrôles communs appropriés.
-- Preuves : aucune preuve produit acquise ; renseigner PR/commit, version, profil, résultats et limites avant changement d’état.
+- Preuves : vrai fork GitHub créé (`Creez-io/Creezio-Lab`, ID 1391532328) depuis le main `eb97109` de la release `app/v0.0.0` ; compositions Lab et verrous en préparation. Renseigner PR/commit Lab, CI, Site B, résultats et limites avant qualification. Voir [la réalisation T37](IMPLEMENTATION-T37.md).
 
 <a id="T-29"></a>
 ## T-29 — Autres connecteurs et frontières externes
@@ -399,7 +399,7 @@ Les droits de distribution sont vérifiés **avant chaque première publication 
 - Travail/livrables : PRD et tâches par fournisseur : Hermes, mail, navigateur distant/relais, Granola, agents/exécution de développement, observabilité, desktop/infrastructure et autres IA/voix selon les capacités de la matrice.
 - Besoin : [US-29](USER-STORIES.md#US-29). Acceptation : [REQ-2901](EXIGENCES.md#REQ-2901), [REQ-2902](EXIGENCES.md#REQ-2902).
 - Validation : implémenter puis exécuter les recettes liées, sur **chaque fournisseur réel autorisé** ; inclure les cas négatifs et les contrôles communs appropriés.
-- Preuves : aucune preuve produit acquise ; renseigner PR/commit, version, profil, résultats et limites avant changement d’état.
+- Preuves : vrai fork GitHub créé (`Creez-io/Creezio-Lab`, ID 1391532328) depuis le main `eb97109` de la release `app/v0.0.0` ; compositions Lab et verrous en préparation. Renseigner PR/commit Lab, CI, Site B, résultats et limites avant qualification. Voir [la réalisation T37](IMPLEMENTATION-T37.md).
 
 <a id="T-30"></a>
 ## T-30 — Starter, paquets et extension externe
@@ -439,7 +439,7 @@ Les droits de distribution sont vérifiés **avant chaque première publication 
 - Travail/livrables : Résolveur de ressources autorisées, provisionnement/bindings et qualification des quotas.
 - Besoin : [US-33](USER-STORIES.md#US-33). Acceptation : [REQ-3301](EXIGENCES.md#REQ-3301).
 - Validation : implémenter puis exécuter les recettes liées, sur **local puis Cloudflare direct** ; inclure les cas négatifs et les contrôles communs appropriés.
-- Preuves : aucune preuve produit acquise ; renseigner PR/commit, version, profil, résultats et limites avant changement d’état.
+- Preuves : vrai fork GitHub créé (`Creez-io/Creezio-Lab`, ID 1391532328) depuis le main `eb97109` de la release `app/v0.0.0` ; compositions Lab et verrous en préparation. Renseigner PR/commit Lab, CI, Site B, résultats et limites avant qualification. Voir [la réalisation T37](IMPLEMENTATION-T37.md).
 
 <a id="T-34"></a>
 ## T-34 — Éditions, politiques et activation
@@ -449,7 +449,7 @@ Les droits de distribution sont vérifiés **avant chaque première publication 
 - Travail/livrables : Politiques versionnées, justificatifs signés, états de facturation/activation et tests Community/Enterprise.
 - Besoin : [US-34](USER-STORIES.md#US-34). Acceptation : [REQ-3401](EXIGENCES.md#REQ-3401), [REQ-3402](EXIGENCES.md#REQ-3402).
 - Validation : implémenter puis exécuter les recettes liées, sur **service central et app** ; inclure les cas négatifs et les contrôles communs appropriés.
-- Preuves : aucune preuve produit acquise ; renseigner PR/commit, version, profil, résultats et limites avant changement d’état.
+- Preuves : vrai fork GitHub créé (`Creez-io/Creezio-Lab`, ID 1391532328) depuis le main `eb97109` de la release `app/v0.0.0` ; compositions Lab et verrous en préparation. Renseigner PR/commit Lab, CI, Site B, résultats et limites avant qualification. Voir [la réalisation T37](IMPLEMENTATION-T37.md).
 
 <a id="T-35"></a>
 ## T-35 — Accompagnement avec accès consenti
@@ -459,7 +459,7 @@ Les droits de distribution sont vérifiés **avant chaque première publication 
 - Travail/livrables : Consentement limité/révocable, périmètres lecture/branche-PR/déploiement distincts, audit et révocation.
 - Besoin : [US-35](USER-STORIES.md#US-35). Acceptation : [REQ-3501](EXIGENCES.md#REQ-3501).
 - Validation : implémenter puis exécuter les recettes liées, sur **dépôt de test consenti** ; inclure les cas négatifs et les contrôles communs appropriés.
-- Preuves : aucune preuve produit acquise ; renseigner PR/commit, version, profil, résultats et limites avant changement d’état.
+- Preuves : vrai fork GitHub créé (`Creez-io/Creezio-Lab`, ID 1391532328) depuis le main `eb97109` de la release `app/v0.0.0` ; compositions Lab et verrous en préparation. Renseigner PR/commit Lab, CI, Site B, résultats et limites avant qualification. Voir [la réalisation T37](IMPLEMENTATION-T37.md).
 
 <a id="T-36"></a>
 ## T-36 — Release de l’original
@@ -470,18 +470,18 @@ Les droits de distribution sont vérifiés **avant chaque première publication 
 - Travail/livrables : Version initiale de l’original avec manifeste versions/propriété, docs, artefacts et provenance selon Git flow ; compléter la release au fil des modules et qualifications différés. La première version publiée peut être consommée par T-37 sans déclarer T-36 entièrement vérifié.
 - Besoin : [US-36](USER-STORIES.md#US-36). Acceptation : [REQ-3601](EXIGENCES.md#REQ-3601), [REQ-3602](EXIGENCES.md#REQ-3602).
 - Validation : implémenter puis exécuter les recettes liées, sur **CI, Site A et artefacts publiés** ; inclure les cas négatifs et les contrôles communs appropriés.
-- Version candidate : `app/v0.0.0` depuis le main `f8dc03c` après qualification ; conserver SDK/core/modules à leurs versions actuelles. Voir [préparation, usage et limites T36](IMPLEMENTATION-T36.md).
-- Preuves : tag et artefact applicatif absents à ce stade ; renseigner PR/commit final, provenance, examen des droits de distribution/reprise/contribution, installation neuve, Site A, résultats et limites avant de rendre le jalon consommable par T-37.
+- Version initiale publiée : `app/v0.0.0` depuis le main `eb97109` qualifié ; SDK/core/modules gardent leurs versions de ce jalon. Voir [la release T36](IMPLEMENTATION-T36.md) et [la provenance du fork T37](IMPLEMENTATION-T37.md).
+- Preuves du jalon initial : tag public `app/v0.0.0`, commit `eb97109`, archive source SHA-256 `097a7eb02e5c955a048d014cd120f95672fac5e501c1e960998f13da18a717fb`, Site A qualifié. Les compléments T36 gardent leurs preuves distinctes.
 
 <a id="T-37"></a>
 ## T-37 — Vrai fork Creezio Lab et Site B
 
-- Lot : **P7** ; état : **à faire** ; responsable nominatif : à attribuer au démarrage.
+- Lot : **P7** ; état : **en cours** ; responsable nominatif : à attribuer au démarrage.
 - Dépendances : version initiale publiée et qualifiée de [T-36](#T-36), sans attendre la clôture exhaustive de ce lot.
 - Travail/livrables : Vrai fork public Creez-io/Creezio-Lab de la version initiale, Site B et **un module métier témoin** avec thème/front propre ; les modules supplémentaires et le parcours complet de validation de budget suivent après la première app.
 - Besoin : [US-37](USER-STORIES.md#US-37). Acceptation : [REQ-3701](EXIGENCES.md#REQ-3701), [REQ-3702](EXIGENCES.md#REQ-3702).
 - Validation : implémenter puis exécuter les recettes liées, sur **GitHub et deux Sites publics** ; inclure les cas négatifs et les contrôles communs appropriés.
-- Preuves : aucune preuve produit acquise ; renseigner PR/commit, version, profil, résultats et limites avant changement d’état.
+- Preuves : vrai fork GitHub créé (`Creez-io/Creezio-Lab`, ID 1391532328) depuis le main `eb97109` de la release `app/v0.0.0` ; compositions Lab et verrous en préparation. Renseigner PR/commit Lab, CI, Site B, résultats et limites avant qualification. Voir [la réalisation T37](IMPLEMENTATION-T37.md).
 
 <a id="T-38"></a>
 ## T-38 — Adoption des mises à jour et contributions
@@ -491,7 +491,7 @@ Les droits de distribution sont vérifiés **avant chaque première publication 
 - Travail/livrables : Pour la première app, installation du vrai paquet témoin puis adoption, par le fork B, d'une nouvelle version issue de l'original A et mise à jour du module/thème sans perte des données ni du front, avec refus d'une mise à jour incompatible ; publication Cloudflare du fork via le parcours T-32. Les contributions amont et intégrations facultatives restantes gardent leurs preuves propres dans T-38.
 - Besoin : [US-38](USER-STORIES.md#US-38). Acceptation : [REQ-3801](EXIGENCES.md#REQ-3801), [REQ-3802](EXIGENCES.md#REQ-3802), [REQ-3803](EXIGENCES.md#REQ-3803).
 - Validation : implémenter puis exécuter les recettes liées, sur **A/B, Cloudflare, tarballs et GitHub** ; inclure les cas négatifs et les contrôles communs appropriés.
-- Preuves : aucune preuve produit acquise ; renseigner PR/commit, version, profil, résultats et limites avant changement d’état.
+- Preuves : vrai fork GitHub créé (`Creez-io/Creezio-Lab`, ID 1391532328) depuis le main `eb97109` de la release `app/v0.0.0` ; compositions Lab et verrous en préparation. Renseigner PR/commit Lab, CI, Site B, résultats et limites avant qualification. Voir [la réalisation T37](IMPLEMENTATION-T37.md).
 
 <a id="T-39"></a>
 ## T-39 — Recette finale et validation utilisateur
@@ -501,7 +501,7 @@ Les droits de distribution sont vérifiés **avant chaque première publication 
 - Travail/livrables : **Recette ciblée de la première app** : deux Sites publics, chat OpenAI, widget/outil autorisé et refusé, module témoin issu du paquet, mise à jour original→fork, publication Cloudflare et retour utilisateur, avec versions/SHA/profils et limites. La **recette exhaustive** de tous les modules, fournisseurs et profils suit les lots différés ; le jalon ciblé ne vaut pas clôture de T-39.
 - Besoin : [US-39](USER-STORIES.md#US-39). Acceptation : [REQ-3901](EXIGENCES.md#REQ-3901).
 - Validation : implémenter puis exécuter les recettes liées, sur **deux Sites, Cloudflare et clients GPT/MCP** ; inclure les cas négatifs et les contrôles communs appropriés.
-- Preuves : aucune preuve produit acquise ; renseigner PR/commit, version, profil, résultats et limites avant changement d’état.
+- Preuves : vrai fork GitHub créé (`Creez-io/Creezio-Lab`, ID 1391532328) depuis le main `eb97109` de la release `app/v0.0.0` ; compositions Lab et verrous en préparation. Renseigner PR/commit Lab, CI, Site B, résultats et limites avant qualification. Voir [la réalisation T37](IMPLEMENTATION-T37.md).
 
 ## Sous-tâches initiales obligatoires du lot des connecteurs
 

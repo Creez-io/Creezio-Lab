@@ -1,5 +1,9 @@
 # Changelog
 
+## 28 septembre 2026 — vérification des modules Cloudflare volumineux (T32)
+
+La confirmation d'une publication vérifie le base64 des modules sans expression régulière récursive : un module de plusieurs mégaoctets ne provoque plus de dépassement de pile. L'alphabet, le padding, les bits terminaux, les limites de taille et la comparaison exacte des fichiers restent exigés. Cette correction de l'opérateur ne relance ni l'upload ni les opérations applicatives ; la confirmation de la publication Lab en attente doit être vérifiée séparément.
+
 ## En cours — capture conservatrice de l'historique Lab (T32)
 
 Le premier transfert Cloudflare du Lab s'est arrêté en phase `capturing` avec `active_effect`, avant artefact, import ou publication. Le journal et la capture partielle sont conservés. Une ancienne exécution `turn.start` inconnue, son outbox OpenAI sans reçu et sa conversation liée expliquent ce refus ; aucun effet fournisseur ou métier n'a été rejoué. Le correctif source Core main `0078fc7defc22d27e8caf22ac3b967f36fc30fbc` (PR #39 ; candidate CI 1 183/1 183) reconnaît seulement un graphe historique quiescent cohérent et conserve exactement ses lignes. Il ne déclare ni ce transfert repris ni Lab publié sur Cloudflare. Voir [T32](docs/IMPLEMENTATION-T32.md).

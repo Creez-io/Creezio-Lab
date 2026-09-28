@@ -1,0 +1,11 @@
+# T38 — Adoption amont et mise à jour du module métier
+
+La branche de travail reprend le main Lab `e6e6001254442ddf272355c5dcde754f2b0a1393`, qualifié par 1 155 tests CI, puis fusionne explicitement le Core `a911e4d924b9acb3a33aeb6b57c47ae6d0e3bd06`. Cette source correspond à la release publique `app/v0.0.1` : archive de 1 539 015 octets, SHA-256 `133bb222818971b90f08675b37646e8e2a08784801c6381aaa079e6cab785679`.
+
+L'identité `creezio.lab`, le thème, le front, les dépendances publiques et les modules métier sont conservés. Les conflits de fusion portent sur les métadonnées et documents ; les verrous Lab sont régénérés avec le reçu public du module installé. Aucun workspace SDK local n'est réintroduit : SDK 1.1.0 public, contrat Core 0.0.0 et module d'achat 0.1.0 restent les versions consommées à cette étape. La version applicative devient 0.0.1 pour cette adoption.
+
+Le raccord d'inventaire reçu de l'amont permettra d'examiner une archive candidate sans la charger ni remplacer le module installé. Le module 0.1.0 présente un conflit entre sa route statique de création et sa route paramétrée de détail. Le SDK refuse explicitement les routes ambiguës ; la correction appartient donc au paquet du starter et sera publiée dans une nouvelle version immuable. Aucun contournement de résolution n'est ajouté au front Lab.
+
+Une sonde sans clé dans le conteneur Linux a isolé un second défaut : Node atteint OpenAI en HTTPS, mais workerd refuse le certificat faute de magasin de confiance système dans l'image `node:24-bookworm-slim`. L'image installe désormais le paquet Debian `ca-certificates`, sans désactiver TLS. La correction doit être exercée dans la nouvelle image puis remontée au socle ; aucun test Node seul ne qualifie la connexion de workerd. Le tour initial à issue inconnue est conservé et n'est pas rejoué.
+
+Restent à prouver : affichage et acceptation du plan depuis Modules et extensions, adoption explicite de la version corrigée, conservation de la demande et du fichier R2 créés sur Linux, parcours navigateur avec plusieurs widgets, publication du Site B avec son propre enregistrement au registre. La publication de l'original sur le Site A et sa release source ne prouvent pas ces résultats du fork.

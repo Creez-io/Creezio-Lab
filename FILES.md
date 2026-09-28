@@ -1,5 +1,7 @@
 # Repères du dépôt
 
+L'adoption du Core public 0.0.1, la correction du module externe et celle des certificats Docker sont suivies dans [IMPLEMENTATION-T38](docs/IMPLEMENTATION-T38.md), séparément de l'installation initiale [T37](docs/IMPLEMENTATION-T37.md).
+
 État : vrai fork Lab T37 depuis la release `app/v0.0.0` de l’original (`eb97109`) ; historique Core : PR #1 à #28 intégrées ; PR #28 fusionnée sur main `f8dc03c6076109479ad87facedc55234a343dcc4`, CI du nouveau main réussie avec 1 152/1 152 tests. SDK `sdk-v1.1.0` et starter `module-v0.1.0` publics ; démo T30 locale qualifiée dans son périmètre. Chantiers actifs : T-32 et préparation T-36 ; première publication et première mise à jour réelle de l'original qualifiées sur Cloudflare, démo encore ouverte, SDK 1.1.0 publié. Le [TODO](docs/TODO.md) distingue acquis, travaux et qualifications restantes.
 
 | Emplacement | Responsabilité |
@@ -172,7 +174,8 @@ Tout ajout structurel met ce repère à jour. Chaque module construit fournit en
 - [sdk/package.json](sdk/package.json), `sdk/public-declarations/` et [scripts/sdk](scripts/sdk/) : paquet SDK public compilé, types autonomes, exports contrôlés et licence embarquée.
 - `sdk/workspace/*-impl.tsx` et `sdk/ui/assistant-provider-impl.tsx` : contextes uniques partagés par l'hôte et ses modules installés ; les anciens points d'entrée réexportent le paquet.
 - [tests/runtime/sdk-package-resolution.test.mjs](tests/runtime/sdk-package-resolution.test.mjs) : résolution des imports publics dans le graphe Worker, le chargement de la configuration Vite et la barre d'outils, sans parcours des wrappers source du SDK.
-- [scripts/modules/package-receipt.mjs](scripts/modules/package-receipt.mjs) : vérification du reçu détaché, des archives et de leurs octets installés ; `module-inventory.json` relie explicitement le reçu à son module.
+- [scripts/modules/package-receipt.mjs](scripts/modules/package-receipt.mjs) : vérification du reçu détaché et des octets installés ; préflight sans effet d'un candidat externe plus récent avant son ajout explicite à l'inventaire. `module-inventory.json` relie le reçu installé à son module.
+- `scripts/build/compose-runtime.mjs`, `scripts/modules/lock.mjs`, `scripts/modules/archives.mjs` et `sdk/modules/inventory.mjs` : projection des métadonnées externes vérifiées depuis `externalPackages`, adoption explicite de la validation détachée en cache par empreinte et compatibilité des verrous précédents ; aucun chargement du code candidat avant installation.
 - [scripts/data/install-composition.mjs](scripts/data/install-composition.mjs) : installation locale du schéma composé complet et du premier compte natif, avec inspection et conservation des états existants.
 - `tests/modules/package-receipt.test.mjs`, `tests/workspace/package-context.test.mjs` et `tests/local/composed-installation.test.mjs` : preuves ciblées ; [réalisation T30](docs/IMPLEMENTATION-T30.md) pour la portée d'intégration.
 

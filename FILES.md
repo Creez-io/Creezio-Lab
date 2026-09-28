@@ -2,7 +2,7 @@
 
 L'adoption du Core public 0.0.1, la correction du module externe et celle des certificats Docker sont suivies dans [IMPLEMENTATION-T38](docs/IMPLEMENTATION-T38.md), séparément de l'installation initiale [T37](docs/IMPLEMENTATION-T37.md).
 
-État : vrai fork Lab T37 depuis la release `app/v0.0.0` de l’original (`eb97109`) ; historique Core : PR #1 à #28 intégrées ; PR #28 fusionnée sur main `f8dc03c6076109479ad87facedc55234a343dcc4`, CI du nouveau main réussie avec 1 152/1 152 tests. SDK `sdk-v1.1.0` et starter `module-v0.1.0` publics ; démo T30 locale qualifiée dans son périmètre. Chantiers actifs : T-32 et préparation T-36 ; première publication et première mise à jour réelle de l'original qualifiées sur Cloudflare, démo encore ouverte, SDK 1.1.0 publié. Le [TODO](docs/TODO.md) distingue acquis, travaux et qualifications restantes.
+État : vrai fork Lab T37 issu de la release source `app/v0.0.0` de l'original ; synchronisation du Core amont `cb08876689315897ca6a9ff387cb68ec3d863988` en cours sur une branche dédiée. Le SDK public reste en 1.1.0 et le module d'achat installé en 0.1.0 ; 0.1.2 est une candidate d'inventaire. Le nouveau Site B est créé et construit depuis un ancien main Lab, mais sa publication et sa recette restent ouvertes. Le [TODO](docs/TODO.md) distingue acquis, travaux et qualifications restantes.
 
 | Emplacement | Responsabilité |
 |---|---|

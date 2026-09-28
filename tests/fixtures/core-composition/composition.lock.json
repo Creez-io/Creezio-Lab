@@ -1,6 +1,6 @@
 {
   "schemaVersion": "1.0.0",
-  "applicationId": "creezio.lab",
+  "applicationId": "creezio.app",
   "sdkVersion": "1.1.0",
   "coreVersion": "0.0.0",
   "policy": {
@@ -8,7 +8,7 @@
     "version": "1.0.0",
     "integrity": "sha256-469b93af15a6dd7066e767f45af8587e613ee2f080d142ed076b00613acb5dfd"
   },
-  "compositionIntegrity": "sha256-fad541caf6d2bd2b3c7c52ce6a4e22484814d5de46462783207fc429a5c5b771",
+  "compositionIntegrity": "sha256-e2c08013058ba17c11a09165cc464202e094aa3ed20a6125c5406cff9bf6fd1f",
   "modules": [
     {
       "moduleId": "creezio.access",
@@ -128,59 +128,6 @@
           "version": "0.0.0"
         }
       ]
-    },
-    {
-      "moduleId": "creezio.theme-chatgpt",
-      "origin": "https://github.com/creezio/Creezio-D1R2",
-      "version": "0.0.0",
-      "source": {
-        "kind": "snapshot",
-        "revision": "t13-chatgpt-theme-v1",
-        "integrity": "sha256-0000000000000000000000000000000000000000000000000000000000000000"
-      },
-      "contractIntegrity": "sha256-9d71ef99ea8e9379b859eefd56a4b6c71f427a4ee07aa35eb90063a05a370d94",
-      "runtime": {
-        "integrity": "sha256-4ae187134d8cadac42fdf0d5865a0edf26469f0a473ac6a7fa8ba7b6ee58ca71",
-        "location": {
-          "kind": "local",
-          "path": ".creezio/module-artifacts/creezio.theme-chatgpt/runtime-4ae187134d8cadac42fdf0d5865a0edf26469f0a473ac6a7fa8ba7b6ee58ca71.tgz"
-        }
-      },
-      "validation": {
-        "integrity": "sha256-cf9a91437630778ce21d286e1b66388520c872de304e288b04f4fc0e4ca035e0",
-        "location": {
-          "kind": "local",
-          "path": ".creezio/module-artifacts/creezio.theme-chatgpt/validation-cf9a91437630778ce21d286e1b66388520c872de304e288b04f4fc0e4ca035e0.tgz"
-        }
-      },
-      "dependencies": []
-    },
-    {
-      "moduleId": "creezio.purchase-requests",
-      "origin": "https://github.com/creezio/Creezio-Extension-Starter",
-      "version": "0.1.0",
-      "source": {
-        "kind": "git",
-        "repository": "https://github.com/creezio/Creezio-Extension-Starter",
-        "revision": "527a1bc1446a529ad6e560e3a25dea13a12001e9",
-        "integrity": "sha256-b4bd6d9aac2750b211722c462d3adb3a94f75feab520ae3baaafe3638c475356"
-      },
-      "contractIntegrity": "sha256-f3f0933efc59e49a227511863eba10a59b42f1e0d85fb7c9cd8066a7a9b45dae",
-      "runtime": {
-        "integrity": "sha256-8cb01875f9f482f3cb77fbe0d8f880b1eb58048e32e41a07087d76fa37c1095c",
-        "location": {
-          "kind": "local",
-          "path": ".creezio/module-artifacts/creezio.purchase-requests/runtime-8cb01875f9f482f3cb77fbe0d8f880b1eb58048e32e41a07087d76fa37c1095c.tgz"
-        }
-      },
-      "validation": {
-        "integrity": "sha256-4010b8a59ef9e8a02dc5b4f15e87ed3c24f97eca0e6ef65978996dbc730736ba",
-        "location": {
-          "kind": "local",
-          "path": ".creezio/packages/creezio-purchase-requests-0.1.0-validation.tgz"
-        }
-      },
-      "dependencies": []
     },
     {
       "moduleId": "creezio.delivery",

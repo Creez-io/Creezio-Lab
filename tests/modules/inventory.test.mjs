@@ -10,6 +10,7 @@ import {fixture} from '../contracts/helpers.mjs';
 import {safePackagePath} from '../../sdk/contracts/references.mjs';
 import {contractIntegrity} from '../../sdk/contracts/validate.mjs';
 import {deterministicModuleArchive,packModuleArtifacts} from '../../scripts/modules/archives.mjs';
+import {verifyPackageReceipt} from '../../scripts/modules/package-receipt.mjs';
 import {loadRuntimeComposition} from '../../scripts/build/compose-runtime.mjs';
 import {compileModuleInventory,compileModuleInventoryWithDocuments} from '../../sdk/modules/inventory.mjs';
 import {runModulePlanCli} from '../../scripts/modules/plan.mjs';
@@ -22,6 +23,7 @@ test('every shipped Conversations composition locks the current module artifacts
     .filter(name=>JSON.parse(readFileSync(path.join(root,'configuration',name),'utf8')).modules
       .some(module=>module.moduleId==='creezio.conversations'));
   assert.ok(profiles.length>0);
+  const receipts=JSON.parse(readFileSync(path.join(root,'configuration/module-inventory.json'),'utf8')).validationReceipts;
   for(const name of profiles){
     const {composition,lock,located}=loadRuntimeComposition({root,compositionPath:`configuration/${name}`});
     for(const [index,selection] of composition.modules.entries()){
@@ -29,6 +31,16 @@ test('every shipped Conversations composition locks the current module artifacts
       assert.ok(node,`${name}: missing lock for ${selection.moduleId}`);
       const {directory,descriptor}=located[index];
       for(const kind of ['runtime','validation']){
+        if(kind==='validation'&&selection.source.kind==='package'){
+          const receiptPath=receipts?.[selection.moduleId];
+          assert.ok(receiptPath,`${name}: missing detached validation receipt for ${selection.moduleId}`);
+          const verified=verifyPackageReceipt({root,receiptPath,moduleDirectory:directory,descriptor});
+          assert.equal(node.validation.integrity,verified.validation.integrity,
+            `${name}: ${selection.moduleId} detached validation mismatch`);
+          assert.deepEqual(node.validation.location,{kind:'local',path:verified.validation.path},
+            `${name}: ${selection.moduleId} detached validation location mismatch`);
+          continue;
+        }
         const files=descriptor.packaging[kind].files.map(relative=>{
           assert.ok(safePackagePath(relative),`${name}: invalid path ${relative}`);
           let absolute=directory;

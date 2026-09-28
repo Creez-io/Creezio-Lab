@@ -21,8 +21,8 @@ const json = path => JSON.parse(readFileSync(new URL(path, import.meta.url), 'ut
 const quote = value => `"${value.replaceAll('"','""')}"`;
 const moduleId = 'creezio.access';
 const manifest = json('../../extensions/native/access/module/manifest.json');
-const composition = json('../../configuration/composition.json');
-const lock = json('../../configuration/composition.lock.json');
+const composition = json('../fixtures/core-composition/composition.json');
+const lock = json('../fixtures/core-composition/composition.lock.json');
 // This test qualifies the native Access adapter in isolation. Project the current
 // application onto Access while retaining its exact descriptor and lock node.
 composition.modules = composition.modules.filter(item => item.moduleId === moduleId);

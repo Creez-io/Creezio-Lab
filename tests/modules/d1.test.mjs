@@ -27,8 +27,8 @@ const openai=json('../../extensions/native/openai/module/manifest.json');
 const delivery=json('../../extensions/native/delivery/module/manifest.json');
 const moduleId='creezio.modules-settings';
 function compiledFixture() {
-  const composition=json('../../configuration/composition.json');
-  const lock=json('../../configuration/composition.lock.json');
+  const composition=json('../fixtures/core-composition/composition.json');
+  const lock=json('../fixtures/core-composition/composition.lock.json');
   const witness=namedModule('merchant.example','merchant');
   witness.compatibility.core='^0.0.0';
   witness.validation.policy=structuredClone(composition.sdk.policy);

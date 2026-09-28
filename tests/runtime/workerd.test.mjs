@@ -194,7 +194,12 @@ test('actual Vinext Worker, static assets, selected module and persistent D1/R2 
     await check('full artifact serves SSR and the exact emitted static asset', async () => {
       const response = await timed('homepage', () => instance.dispatchFetch('http://localhost/'));
       assert.equal(response.status, 200, response.status === 200 ? undefined : await response.clone().text());
-      const html = await response.text(); assert.match(html.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' '), /Votre application commence ici/);
+      const html = await response.text();
+      const selected = JSON.parse(readFileSync(join(root, 'configuration/composition.json'), 'utf8'));
+      const text = html.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ');
+      // A themed front waits for the native session before rendering business
+      // data. The workspace-only starter instead renders its welcome page.
+      assert.match(text, selected.front.kind === 'theme' ? /Chargement du front/ : /Votre application commence ici/);
       const asset = artifacts.files.find(file => file.path.startsWith('dist/client/') && /\.js$/.test(file.path));
       assert.ok(asset, 'The full build must contain a browser JavaScript asset.');
       const url = `http://localhost/${asset.path.slice('dist/client/'.length)}`;

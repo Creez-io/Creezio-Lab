@@ -1,5 +1,11 @@
 {
   "schemaVersion": 1,
-  "allowedOrigins": ["https://github.com/creezio/Creezio-D1R2"],
-  "available": []
+  "allowedOrigins": [
+    "https://github.com/creezio/Creezio-D1R2",
+    "https://github.com/creezio/Creezio-Extension-Starter"
+  ],
+  "available": [],
+  "validationReceipts": {
+    "creezio.purchase-requests": ".creezio/packages/manifest.json"
+  }
 }

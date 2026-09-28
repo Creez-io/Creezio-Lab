@@ -1,6 +1,6 @@
 # T36 — Première release de l’original
 
-État : **préparation du jalon initial**, T36 global en cours. Base de travail : main `f8dc03c` après PR #28 ; la release doit porter le SHA main final qualifié après la PR documentaire et les qualifications restantes. Aucun tag ni artefact applicatif public n’est attesté ici.
+État du jalon initial dans le fork Lab : release source publique `app/v0.0.0` depuis le main `eb97109493b3a945eaa882c216591bc468764014`, archive de 1 532 513 octets, SHA-256 `097a7eb02e5c955a048d014cd120f95672fac5e501c1e960998f13da18a717fb`, Site A qualifié. T36 global garde ses compléments. Cette page conserve la préparation historique de l’original ; [T37](IMPLEMENTATION-T37.md) documente le dérivé.
 
 ## Versions et usage
 

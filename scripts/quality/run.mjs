@@ -24,7 +24,7 @@ function execute(label, args, timeout = 180_000) {
   commands.push({ label, command: ['node', ...args], exitCode: result.status, durationMs: Math.round(performance.now() - time) });
   if (result.status !== 0) throw new Error(`${label} failed.\n${(result.stdout ?? '').slice(-10000)}\n${(result.stderr ?? '').slice(-6000)}\n${result.error?.message ?? ''}`);
 }
-execute('sdk-build', ['scripts/sdk/build.mjs']);
+execute('public-sdk', ['scripts/lab/verify-public-sdk.mjs']);
 execute('compose', ['scripts/build/compose-runtime.mjs']);
 execute('data-models', ['scripts/data/prepare-access.mjs']);
 execute('runtime-models', ['scripts/data/prepare-runtime.mjs']);

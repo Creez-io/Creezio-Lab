@@ -10,7 +10,7 @@ import { OPERATION_STORAGE_MODULE_ID, OPERATION_MODELS } from '../../core/operat
 const json = name => JSON.parse(readFileSync(new URL(name, import.meta.url), 'utf8'));
 const hostObjects = describeD1Schema(OPERATION_STORAGE_MODULE_ID, OPERATION_MODELS).objects.length;
 function inputs({accessOnly = false} = {}) {
-  const input = {composition: json('../../configuration/composition.json'), lock: json('../../configuration/composition.lock.json'),
+  const input = {composition: json('../fixtures/core-composition/composition.json'), lock: json('../fixtures/core-composition/composition.lock.json'),
     modules: [json('../../extensions/native/access/module/manifest.json'),
       json('../../extensions/native/modules-settings/module/manifest.json'),
       json('../../extensions/native/conversations/module/manifest.json'),
@@ -52,7 +52,10 @@ test('composed compiler includes all five native modules and freezes the runtime
   assert.ok(Object.isFrozen(plan.runtimeCatalog.modules[0].models[0].model.fields[0]));
   input.modules[0].contracts.models[0].fields[0].nullable = true;
   assert.equal(plan.runtimeCatalog.modules[0].models[0].model.fields[0].nullable, false);
-  assert.equal((await loadCompositionSchema({ root: fileURLToPath(new URL('../../', import.meta.url)) })).planDigest, plan.planDigest);
+  const root = fileURLToPath(new URL('../../', import.meta.url));
+  const current = await loadCompositionSchema({root});
+  assert.equal(current.compositionDigest, contractIntegrity(json('../../configuration/composition.json')));
+  assert.equal(current.lockDigest, contractIntegrity(json('../../configuration/composition.lock.json')));
 });
 
 test('disabled Access selection preserves data declarations while the catalog closes its runtime port', () => {

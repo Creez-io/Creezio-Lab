@@ -20,7 +20,10 @@ const field = (id, type = 'string', extra = {}) => ({ id, type, nullable: false,
 const model = (id, extra = {}) => ({ id, title: id, scope: 'application', fields: [field('id'), field('label')],
   primaryKey: ['id'], indexes: [], relations: [], permissions: [], deletion: { mode: 'hard', requiresApproval: false }, public: false, ...extra });
 function planFor(models, { enabled = true, removed = false, access = false } = {}) {
-  const composition = json('../../configuration/composition.json'), lock = json('../../configuration/composition.lock.json');
+  const composition = json('../fixtures/core-composition/composition.json'), lock = json('../fixtures/core-composition/composition.lock.json');
+  // Keep the host application's identity while projecting only the native test modules.
+  composition.application = json('../../configuration/composition.json').application;
+  lock.applicationId = composition.application.id;
   const original = json('../../extensions/native/access/module/manifest.json');
   const module = JSON.parse(JSON.stringify(original).replaceAll('creezio.access', 'example.data'));
   module.contracts.models = models;

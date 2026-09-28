@@ -1,6 +1,6 @@
 # Repères du dépôt
 
-État : PR #1 à #28 intégrées ; PR #28 fusionnée sur main `f8dc03c6076109479ad87facedc55234a343dcc4`, CI du nouveau main réussie avec 1 152/1 152 tests. SDK `sdk-v1.1.0` et starter `module-v0.1.0` publics ; démo T30 locale qualifiée dans son périmètre. Chantiers actifs : T-32 et préparation T-36 ; première publication et première mise à jour réelle de l'original qualifiées sur Cloudflare, démo encore ouverte, SDK 1.1.0 publié. Le [TODO](docs/TODO.md) distingue acquis, travaux et qualifications restantes.
+État : vrai fork Lab T37 depuis la release `app/v0.0.0` de l’original (`eb97109`) ; historique Core : PR #1 à #28 intégrées ; PR #28 fusionnée sur main `f8dc03c6076109479ad87facedc55234a343dcc4`, CI du nouveau main réussie avec 1 152/1 152 tests. SDK `sdk-v1.1.0` et starter `module-v0.1.0` publics ; démo T30 locale qualifiée dans son périmètre. Chantiers actifs : T-32 et préparation T-36 ; première publication et première mise à jour réelle de l'original qualifiées sur Cloudflare, démo encore ouverte, SDK 1.1.0 publié. Le [TODO](docs/TODO.md) distingue acquis, travaux et qualifications restantes.
 
 | Emplacement | Responsabilité |
 |---|---|
@@ -17,6 +17,8 @@
 | [docs/EXIGENCES.md](docs/EXIGENCES.md) | Exigences stables et recettes attendues. |
 | [docs/USER-STORIES.md](docs/USER-STORIES.md) | Parcours utilisateur/développeur reliés aux exigences. |
 | [docs/TODO.md](docs/TODO.md) | Backlog canonique, dépendances, jalons et états. |
+| [docs/IMPLEMENTATION-T37.md](docs/IMPLEMENTATION-T37.md) | Provenance du fork Lab, compositions, contrôles et limites de Site B. |
+| [scripts/lab/](scripts/lab/) | Restauration vérifiée des archives publiques et contrôle des dépendances `file:` installées. |
 | [docs/IMPLEMENTATION-T12.md](docs/IMPLEMENTATION-T12.md) | Documents installés, lecture et limites de qualification T12. |
 | [docs/PLAN-IMPLEMENTATION.md](docs/PLAN-IMPLEMENTATION.md) | Architecture détaillée et lots. |
 | [docs/MATRICE-CAPACITES.md](docs/MATRICE-CAPACITES.md) | Inventaire fonctionnel et scénarios de conservation. |

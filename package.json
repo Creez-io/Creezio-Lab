@@ -3,9 +3,6 @@
   "version": "0.0.0",
   "private": true,
   "type": "module",
-  "workspaces": [
-    "sdk"
-  ],
   "engines": {
     "node": ">=24 <25"
   },
@@ -75,7 +72,8 @@
     "typescript": "5.9.3",
     "vinext": "1.0.0-beta.5",
     "vite": "8.0.13",
-    "wrangler": "4.92.0"
+    "wrangler": "4.92.0",
+    "@creezio/sdk": "file:.creezio/packages/creezio-sdk-1.1.0.tgz"
   },
   "dependencies": {
     "@modelcontextprotocol/core": "2.1.0",
@@ -96,6 +94,7 @@
     "react-dom": "19.2.8",
     "sonner": "2.0.8",
     "tailwind-merge": "2.6.0",
-    "zod": "4.6.5"
+    "zod": "4.6.5",
+    "@creezio/purchase-requests": "file:.creezio/packages/creezio-purchase-requests-0.1.0.tgz"
   }
 }

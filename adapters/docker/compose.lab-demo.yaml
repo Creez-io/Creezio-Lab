@@ -1,0 +1,29 @@
+# Fork-only qualification profile. Use this file alone, not with compose.yaml.
+# SSH-forward client 5173/5175/5176 to Linux 5273/5275/5276 for loopback origins.
+name: creezio-lab-demo
+
+services:
+  app:
+    build:
+      context: ../..
+      dockerfile: adapters/docker/Dockerfile
+    init: true
+    stop_signal: SIGUSR2
+    environment:
+      CREEZIO_APP_ORIGIN: http://127.0.0.1:5173
+      CREEZIO_WIDGET_SANDBOX_ORIGIN: http://127.0.0.1:5175
+      CREEZIO_WIDGET_SANDBOX_BIND_HOST: 0.0.0.0
+      CREEZIO_LOCAL_DELIVERY_ORIGIN: http://127.0.0.1:5176
+      CREEZIO_COMPOSITION: configuration/composition.json
+      CREEZIO_COMPOSITION_LOCK: configuration/composition.lock.json
+    ports:
+      - "127.0.0.1:5273:5174"
+      - "127.0.0.1:5275:5175"
+      - "127.0.0.1:5276:5177"
+    volumes:
+      - local-state:/app/.wrangler
+    stop_grace_period: 45s
+
+volumes:
+  local-state:
+    name: creezio-lab-demo-local-state

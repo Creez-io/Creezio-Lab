@@ -1,21 +1,26 @@
 # Changelog
 
-## En cours — installation du module d'achat 0.1.2 dans Lab (T38)
+## En cours — adoption source Core T40 dans Lab
 
-Le fork adopte le paquet public 0.1.2 qui sépare la création `/purchase-requests/new` du détail `/requests/{id}`. Npm, les trois compositions et leurs verrous sélectionnent cette version exacte ; la validation détachée est conservée dans le cache adressé par empreinte et comparée au reçu public. Le SDK 1.1.0, le front, le thème et les modules natifs sont conservés. Le Site B 0.1.0 a été publié et qualifié avant cette adoption ; conservation après publication 0.1.2 et livraison Cloudflare restent à vérifier. Voir [T38](docs/IMPLEMENTATION-T38.md).
+La branche Lab fusionne Core main `a8130407d5bd54261d56755a4db2949932a94d1b` (PR #38, arbre `5cc8ff1d2bb4bf52bec1b1ab852ec00b7b45c493`). Les compositions et verrous Lab conservent `creezio.lab`, le thème ChatGPT-like, le SDK public 1.1.0 et le module d'achat 0.1.2. Les corrections des widgets historiques, du cycle durable des plans et la commande locale de schéma sont disponibles dans la source ; leur déploiement et leur recette sur Lab restent à faire. Voir [T40](docs/IMPLEMENTATION-T40.md).
 
-## En cours — synchronisation Core pour la recette chat (T39)
+## En cours — conservation des widgets et cycle des plans (T40)
 
-La branche Lab fusionne Core `cb08876689315897ca6a9ff387cb68ec3d863988` : les fragments du chat sont regroupés avant les checkpoints D1, avec reprise durable et annulation conservées. Elle reprend aussi l'interface navigateur du registre, sans changer l'identité, le front ni les paquets installés du Lab. La qualification réelle du Site B et l'adoption de 0.1.2 restent des étapes distinctes. Voir [T39](docs/IMPLEMENTATION-T39.md) et [T38](docs/IMPLEMENTATION-T38.md).
+La mise à jour réelle du module Lab 0.1.0 vers 0.1.2 conserve ses données mais rend ses anciens widgets indisponibles. Une correction de la projection compatible des messages est en développement. Le cycle des plans ajoute une confirmation fondée sur le runtime réel, une annulation motivée et un journal durable, sans réécrire les anciens plans. Les tests ciblés ne remplacent pas la qualification après publication. Voir [le suivi T40](docs/IMPLEMENTATION-T40.md).
 
-## En cours — adoption Core 0.0.1 et correction du module d'achat (T38)
+Le parcours local ajoute `schema:inspect` et `schema:apply` pour appliquer le plan central à une base déjà gérée, sous le verrou existant et après confirmation de son empreinte. Il ne recrée aucun compte et conserve le refus des évolutions incompatibles. La qualification Docker réelle reste distincte des tests de cette commande.
 
-Fusion de la source publique Core `a911e4d` dans le Lab, en conservant son front, son identité et ses paquets publics installés. Le bootstrap ajoute les trois archives/reçu vérifiés du Starter public `module-v0.1.2` et l'inventaire expose cette version comme candidate externe. Le module installé, le verrou et la composition restent en 0.1.0 jusqu'à une adoption explicite depuis Modules et extensions. Voir [T38](docs/IMPLEMENTATION-T38.md).
+## 28 septembre 2026 — checkpoints du chat administrateur intégrés (T-39)
 
-## En cours — premier fork Creezio Lab (T37)
+Les petits fragments du flux OpenAI sont regroupés avant écriture D1, avec flush aux événements de contrôle et à la fin du flux. L'annulation et la reprise gardent le curseur durable ; un accusé de checkpoint perdu n'entraîne pas de doublon. La correction répond à une coupure observée sur le Site A original. Core main `e51928f` a passé 1 163/1 163 tests CI ; sur le Site A publié depuis `cb716aa`, un tour post-correction a réussi en 14 161 ms avec un seul `turn.drive`, sans reprise manuelle, et une réponse persistée de 933 octets. Ce témoin ne qualifie pas la fluidité générale ni la recette complète. Voir la [note T39](docs/IMPLEMENTATION-T39.md).
 
-Fork public `Creez-io/Creezio-Lab` créé depuis la release source `app/v0.0.0` de l’original (`eb97109`). Compositions Lab séparées pour Docker local et Sites, thème ChatGPT-like et module public 0.1.0 ; Sites exclut Delivery. La CI restaure et vérifie les quatre archives publiques avant `npm ci`, puis contrôle la projection des paquets installés. Les verrous des deux profils sont générés avec le reçu de validation détaché. Publication et recette Site B à qualifier séparément. Voir [T37](docs/IMPLEMENTATION-T37.md).
+## En cours — confiance TLS du Docker local (T-38)
 
+L'image Docker installe les certificats CA du système avant de lancer workerd. Le Lab a montré l'échec TLS sans ce bundle, puis une réponse HTTP 401 JSON à un GET `/v1/models` sans clé depuis un Worker éphémère après reconstruction. Le premier tour resté `unknown` sans reçu n'a pas été rejoué. Cette contribution ne qualifie ni l'adoption du module dans le Lab ni son Site B ; voir la [note T38](docs/IMPLEMENTATION-T38.md).
+
+## 28 septembre 2026 — registre navigateur intégré et publié (T-08)
+
+Le registre central propose une page propriétaire générique sur sa propre origine HTTPS. Les lectures de projets et d'installations sont bornées et cloisonnées, sans jeton ; les créations conservent leurs POST et leur CSRF existants. Le navigateur propose le jeton une seule fois au téléchargement et rapproche une réponse perdue par lecture, sans rejouer la création ni tourner le jeton automatiquement. Le callback GitHub redirige les navigations HTML vers cette page et conserve son JSON pour les clients API. Les POST de rotation/révocation reconnaissent maintenant le flux vide du Worker sans accepter de contenu non vide ni affaiblir propriétaire/CSRF. La PR #35 est intégrée, Core main `e51928f` a passé 1 163/1 163 tests CI et le Worker corrigé est publié en version `ba21708c` avec DB et bindings conservés. Les installations Lab ont été créées après autorisation et leurs jetons récupérés par le parcours propriétaire natif, puis stockés dans un coffre DPAPI hors dépôt. Le raccord aux publishers reste ouvert.
 
 ## 0.0.1 — en préparation, mise à jour individuelle d'un paquet externe (T38)
 

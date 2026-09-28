@@ -1,14 +1,13 @@
 # Repères du dépôt
 
-L'adoption du Core public 0.0.1, la correction du module externe et celle des certificats Docker sont suivies dans [IMPLEMENTATION-T38](docs/IMPLEMENTATION-T38.md), séparément de l'installation initiale [T37](docs/IMPLEMENTATION-T37.md).
-
-État : vrai fork Lab T37 issu de la release source `app/v0.0.0` de l'original ; Core `cb08876689315897ca6a9ff387cb68ec3d863988` intégré dans le main Lab `abcd1f2`. Le SDK public reste en 1.1.0 ; cette branche adopte le module d'achat 0.1.2 avec ses reçus publics et trois verrous natifs. Le Site B 0.1.0 est publié et qualifié ; la mise à jour du même Site et sa conservation restent à vérifier. Le [TODO](docs/TODO.md) distingue acquis, travaux et qualifications restantes.
+État : fork Lab issu de la release source `app/v0.0.0` ; Core PR #38 (`a8130407d5bd54261d56755a4db2949932a94d1b`) adopté dans cette branche. Les deux Sites du compte courant sont publiés ; Lab 0.1.2 est actif sur Sites et Docker. Les corrections des widgets historiques et du cycle durable des plans sont ici adoptées en source, sans publication Lab de ces corrections ; Lab Cloudflare reste à publier. Le [TODO](docs/TODO.md) porte l’état courant et les preuves détaillées.
 
 | Emplacement | Responsabilité |
 |---|---|
 | [README.md](README.md) | Présentation et parcours de lecture. |
 | [AGENTS.md](AGENTS.md) | Instructions applicables et invariants. |
 | [CONTRIBUTING.md](CONTRIBUTING.md) | Point d'entrée des contributions. |
+| [scripts/local/schema.mjs](scripts/local/schema.mjs) | Inspection et application explicite du plan central sur la D1 locale déjà gérée. |
 | [LICENSE](LICENSE) | Licence du contenu déjà publié ; ne préjuge pas des conditions du futur produit. |
 | [.gitignore](.gitignore) | Exclusion des secrets, données locales et sorties régénérables. |
 | [.github/PULL_REQUEST_TEMPLATE.md](.github/PULL_REQUEST_TEMPLATE.md) | Contenu demandé pour les PR ; ne remplace pas une protection distante. |
@@ -19,8 +18,6 @@ L'adoption du Core public 0.0.1, la correction du module externe et celle des ce
 | [docs/EXIGENCES.md](docs/EXIGENCES.md) | Exigences stables et recettes attendues. |
 | [docs/USER-STORIES.md](docs/USER-STORIES.md) | Parcours utilisateur/développeur reliés aux exigences. |
 | [docs/TODO.md](docs/TODO.md) | Backlog canonique, dépendances, jalons et états. |
-| [docs/IMPLEMENTATION-T37.md](docs/IMPLEMENTATION-T37.md) | Provenance du fork Lab, compositions, contrôles et limites de Site B. |
-| [scripts/lab/](scripts/lab/) | Restauration vérifiée des archives publiques et contrôle des dépendances `file:` installées. |
 | [docs/IMPLEMENTATION-T12.md](docs/IMPLEMENTATION-T12.md) | Documents installés, lecture et limites de qualification T12. |
 | [docs/PLAN-IMPLEMENTATION.md](docs/PLAN-IMPLEMENTATION.md) | Architecture détaillée et lots. |
 | [docs/MATRICE-CAPACITES.md](docs/MATRICE-CAPACITES.md) | Inventaire fonctionnel et scénarios de conservation. |
@@ -37,6 +34,9 @@ L'adoption du Core public 0.0.1, la correction du module externe et celle des ce
 | [docs/IMPLEMENTATION-T30.md](docs/IMPLEMENTATION-T30.md) | Paquets publics SDK/starter, démo indépendante et limites de la recette locale. |
 | [docs/IMPLEMENTATION-T32.md](docs/IMPLEMENTATION-T32.md) | Première publication et premier update réels de l'original sur Cloudflare, preuves, limites et recettes restantes. |
 | [docs/IMPLEMENTATION-T36.md](docs/IMPLEMENTATION-T36.md) | Préparation de la release initiale de l’original : versions, usage, preuves et limites. |
+| [docs/IMPLEMENTATION-T38.md](docs/IMPLEMENTATION-T38.md) | Contribution amont des certificats TLS du Docker local, cause et qualification bornée. |
+| [docs/IMPLEMENTATION-T39.md](docs/IMPLEMENTATION-T39.md) | Checkpoints du flux OpenAI, observation Site A et limites de la recette T39. |
+| [docs/IMPLEMENTATION-T40.md](docs/IMPLEMENTATION-T40.md) | Mise à jour Lab 0.1.2, régression des widgets historiques et correction du cycle durable des plans. |
 | [docs/LICENCES-ET-OFFRES.md](docs/LICENCES-ET-OFFRES.md) | Politiques/activation/accompagnement et décisions commerciales différées. |
 | [docs/QUALIFICATION-SITES.md](docs/QUALIFICATION-SITES.md) | Preuves techniques limitées, distinctes du CMS. |
 | [docs/INSTALLATION-LOCALE.md](docs/INSTALLATION-LOCALE.md) | Inspection, premier compte local, configuration commune et reprises sans écrasement. |
@@ -117,7 +117,7 @@ Tout ajout structurel met ce repère à jour. Chaque module construit fournit en
 ## Registre séparé et Docker local
 
 - [sdk/registry](sdk/registry/) : protocole public partagé, sans serveur embarqué.
-- [services/registry](services/registry/) : service central à déployer séparément ; [état T-08](docs/IMPLEMENTATION-T08.md).
+- [services/registry](services/registry/) : service central à déployer séparément, page propriétaire et lectures bornées du candidat web ; [état T-08](docs/IMPLEMENTATION-T08.md).
 - [core/registry](core/registry/) : client serveur et contrôle de publication, distincts du runtime métier.
 - [scripts/registry](scripts/registry/) : build indépendant, configuration sans secret et opérateur explicite du D1 dédié.
 - [tests/registry](tests/registry/) et [tests/local](tests/local/) : protocoles et refus du registre, callback GitHub dans le Worker compilé, journal de reprise et adaptateur Docker ; suites obligatoires dans le contrôle global.
@@ -128,7 +128,7 @@ Tout ajout structurel met ce repère à jour. Chaque module construit fournit en
 - `extensions/native/modules-settings/` : catalogue, fiches issues du Product Hub Creezio, plans et journal D1 ; six suites et docs propres.
 - `sdk/modules/`, `sdk/module-settings/`, `sdk/operations/handler.ts` : solveur, inventaire vérifié au build, client/contrôleur et surface publique des handlers.
 - `scripts/modules/` : archives déterministes, verrou et plan local ; aucun téléchargement ou lancement de code tiers.
-- `configuration/module-inventory.json` : origines autorisées, reçu de la version installée et candidate externe 0.1.2 avec trois empreintes vérifiées ; inventaire compilé injecté par le cœur.
+- `configuration/module-inventory.json` : origines autorisées et candidats présents supplémentaires ; inventaire compilé injecté par le cœur.
 - `core/operations/host-inventory.ts` : capture immuable liée à la composition et au module natif exact.
 - `scripts/data/prepare-modules-settings.mjs`, `data/schema/modules-settings.sql` : création actuelle centralisée des trois modèles.
 - `tests/modules/`, [IMPLEMENTATION-T11](docs/IMPLEMENTATION-T11.md) : recette du graphe, du service et des interfaces.

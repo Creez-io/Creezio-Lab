@@ -1,12 +1,13 @@
 # Repères du dépôt
 
-État : PR #1 à #35 intégrées ; Core main `e51928f98e6f0453f26b563a504fa868e3c1a04d`, CI 1 163/1 163. SDK `sdk-v1.1.0`, starter `module-v0.1.2` et release originale `app/v0.0.1` publics. Le fork Lab est sur main `abcd1f21f957729a811b32238584c835b5f66860` après PR #3, avec CI main 1 165/1 165 et build Sites final réussis, sans publication du Site B. Le module Lab actif reste 0.1.0 ; adoption 0.1.2, recettes complètes et démo Cloudflare restent ouvertes. Le [TODO](docs/TODO.md) distingue acquis, travaux et qualifications restantes.
+État : Core PR #37 et Lab PR #4 intégrées. Les deux Sites du compte courant sont publiés ; Lab 0.1.2 est actif sur Sites et Docker. Correction des widgets historiques et du cycle durable des plans en cours ; Lab Cloudflare reste à publier. Le [TODO](docs/TODO.md) porte l’état courant et les preuves détaillées.
 
 | Emplacement | Responsabilité |
 |---|---|
 | [README.md](README.md) | Présentation et parcours de lecture. |
 | [AGENTS.md](AGENTS.md) | Instructions applicables et invariants. |
 | [CONTRIBUTING.md](CONTRIBUTING.md) | Point d'entrée des contributions. |
+| [scripts/local/schema.mjs](scripts/local/schema.mjs) | Inspection et application explicite du plan central sur la D1 locale déjà gérée. |
 | [LICENSE](LICENSE) | Licence du contenu déjà publié ; ne préjuge pas des conditions du futur produit. |
 | [.gitignore](.gitignore) | Exclusion des secrets, données locales et sorties régénérables. |
 | [.github/PULL_REQUEST_TEMPLATE.md](.github/PULL_REQUEST_TEMPLATE.md) | Contenu demandé pour les PR ; ne remplace pas une protection distante. |
@@ -35,6 +36,7 @@
 | [docs/IMPLEMENTATION-T36.md](docs/IMPLEMENTATION-T36.md) | Préparation de la release initiale de l’original : versions, usage, preuves et limites. |
 | [docs/IMPLEMENTATION-T38.md](docs/IMPLEMENTATION-T38.md) | Contribution amont des certificats TLS du Docker local, cause et qualification bornée. |
 | [docs/IMPLEMENTATION-T39.md](docs/IMPLEMENTATION-T39.md) | Checkpoints du flux OpenAI, observation Site A et limites de la recette T39. |
+| [docs/IMPLEMENTATION-T40.md](docs/IMPLEMENTATION-T40.md) | Mise à jour Lab 0.1.2, régression des widgets historiques et correction du cycle durable des plans. |
 | [docs/LICENCES-ET-OFFRES.md](docs/LICENCES-ET-OFFRES.md) | Politiques/activation/accompagnement et décisions commerciales différées. |
 | [docs/QUALIFICATION-SITES.md](docs/QUALIFICATION-SITES.md) | Preuves techniques limitées, distinctes du CMS. |
 | [docs/INSTALLATION-LOCALE.md](docs/INSTALLATION-LOCALE.md) | Inspection, premier compte local, configuration commune et reprises sans écrasement. |

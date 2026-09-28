@@ -30,9 +30,12 @@ function fixture(t, witness = true) {
       cpSync(path.join(repository, accessPath, file), destination);
     }
   }
-  const suffix = witness === true ? '.witness' : '';
-  const composition = read(path.join(repository, `configuration/composition${suffix}.json`));
-  const lock = read(path.join(repository, `configuration/composition${suffix}.lock.json`));
+  const compositionSource = witness === true ? 'configuration/composition.witness.json'
+    : 'tests/fixtures/core-composition/composition.json';
+  const lockSource = witness === true ? 'configuration/composition.witness.lock.json'
+    : 'tests/fixtures/core-composition/composition.lock.json';
+  const composition = read(path.join(repository, compositionSource));
+  const lock = read(path.join(repository, lockSource));
   if (witness === 'access') {
     // This fixture specifically qualifies Access alone, independently of other native modules.
     composition.modules = composition.modules.filter(item => item.moduleId === 'creezio.access');

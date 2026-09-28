@@ -30,7 +30,8 @@ test('provider tool schemas are the exact canonical inputs of selected operation
     const module=composition.modules.find(node=>node.moduleId===item.moduleId);
     assert.deepEqual(item.audiences,['admin','app'].filter(audience=>
       composition.exposure[audience].moduleIds.includes(item.moduleId)));
-    const manifest=read(`${module.source.path}/module/manifest.json`);
+    const directory=module.source.kind==='package' ? `node_modules/${module.source.name}` : module.source.path;
+    const manifest=read(`${directory}/module/manifest.json`);
     const operation=manifest.contracts.operations.find(op=>op.id===item.operationId);
     assert.ok(operation,label);
     const schema=manifest.contracts.schemas.find(entry=>entry.id===operation.input.schemaId)?.schema;
@@ -49,7 +50,8 @@ test('provider tool schemas are the exact canonical inputs of selected operation
         &&tool.operationDigest===item.widget.operationDigest
         &&item.audiences.every(audience=>tool.audiences.includes(audience))),label);
       const owner=composition.modules.find(node=>node.moduleId===item.widget.moduleId);
-      const widgetManifest=read(`${owner.source.path}/module/manifest.json`);
+      const widgetDirectory=owner.source.kind==='package' ? `node_modules/${owner.source.name}` : owner.source.path;
+      const widgetManifest=read(`${widgetDirectory}/module/manifest.json`);
       assert.ok(widgetManifest.contracts.widgets.some(entry=>entry.id===item.widget.widgetId
         &&entry.version===item.widget.version),label);
       assert.ok(widgetManifest.contracts.mcp.tools.some(tool=>tool.name===item.widget.toolName
@@ -58,7 +60,8 @@ test('provider tool schemas are the exact canonical inputs of selected operation
     }
   }
   const declaredWidgetAliases=composition.modules.filter(node=>node.enabled).flatMap(node=>{
-    const manifest=read(`${node.source.path}/module/manifest.json`);
+    const directory=node.source.kind==='package' ? `node_modules/${node.source.name}` : node.source.path;
+    const manifest=read(`${directory}/module/manifest.json`);
     return manifest.contracts.mcp.tools.filter(tool=>tool.widget&&tool.annotations.readOnly
       &&tool.audiences.some(audience=>composition.exposure[audience].moduleIds.includes(node.moduleId)))
       .map(tool=>`${node.moduleId}:${tool.operation.id}:${tool.name}`);
@@ -72,8 +75,8 @@ test('composition without OpenAI emits no provider import or host definition',as
   const root=temporaryDirectory(t,'creezio-provider-compose-');
   mkdirSync(path.join(root,'configuration'));
   writeFileSync(path.join(root,'package.json'),'{"type":"module"}\n');
-  const composition=read('configuration/composition.json');
-  const lock=read('configuration/composition.lock.json');
+  const composition=read('tests/fixtures/core-composition/composition.json');
+  const lock=read('tests/fixtures/core-composition/composition.lock.json');
   composition.modules=composition.modules.filter(item=>item.moduleId==='creezio.access');
   lock.modules=lock.modules.filter(item=>item.moduleId==='creezio.access');
   for(const exposure of Object.values(composition.exposure))

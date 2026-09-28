@@ -4,8 +4,8 @@ import { readFileSync } from 'node:fs';
 import { contractIntegrity, validateComposition } from '../../sdk/contracts/validate.mjs';
 
 test('a module-free bootstrap composition still requires its exact lock', () => {
-  const composition=JSON.parse(readFileSync(new URL('../../configuration/composition.json',import.meta.url),'utf8'));
-  const lock=JSON.parse(readFileSync(new URL('../../configuration/composition.lock.json',import.meta.url),'utf8'));
+  const composition=JSON.parse(readFileSync(new URL('../fixtures/core-composition/composition.json',import.meta.url),'utf8'));
+  const lock=JSON.parse(readFileSync(new URL('../fixtures/core-composition/composition.lock.json',import.meta.url),'utf8'));
   composition.modules=[];lock.modules=[];
   composition.exposure.admin.moduleIds=[];composition.exposure.app.moduleIds=[];
   lock.compositionIntegrity=contractIntegrity(composition);

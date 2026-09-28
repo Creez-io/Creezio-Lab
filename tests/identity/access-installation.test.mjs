@@ -96,6 +96,7 @@ test('explicit access installation uses real D1, refuses unrelated or inconsiste
       const isolatedComposition = JSON.parse(baseline['configuration/composition.json']);
       const isolatedLock = JSON.parse(baseline['configuration/composition.lock.json']);
       isolatedComposition.modules = isolatedComposition.modules.filter(item => item.moduleId === 'creezio.access');
+      isolatedComposition.front = {kind: 'workspace'};
       for (const audience of ['admin', 'app']) isolatedComposition.exposure[audience].moduleIds =
         isolatedComposition.exposure[audience].moduleIds.filter(id => id === 'creezio.access');
       isolatedLock.modules = isolatedLock.modules.filter(item => item.moduleId === 'creezio.access');
@@ -364,7 +365,8 @@ test('explicit access installation uses real D1, refuses unrelated or inconsiste
       // Close the engine harness before using the official adapter. Only its
       // tiny hosting declaration is needed; no repository or dependencies copy.
       await runtime.dispose(); runtime = null;
-      const fixtureRoot = join(state.directory, 'adapter-fixture');
+      // workerd appends nested SQLite paths; keep this Windows fixture root short.
+      const fixtureRoot = join(state.directory, 'a');
       mkdirSync(join(fixtureRoot, '.openai'), { recursive: true });
       writeFileSync(join(fixtureRoot, '.openai/hosting.json'), JSON.stringify({ d1: 'DB', r2: 'BUCKET' }));
       const config = loadLocalConfiguration({ root: fixtureRoot, origin: 'http://127.0.0.1:5173' });

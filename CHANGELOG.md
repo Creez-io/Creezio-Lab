@@ -1,5 +1,9 @@
 # Changelog
 
+## En cours — synchronisation Core pour la recette chat (T39)
+
+La branche Lab fusionne Core `cb08876689315897ca6a9ff387cb68ec3d863988` : les fragments du chat sont regroupés avant les checkpoints D1, avec reprise durable et annulation conservées. Elle reprend aussi l'interface navigateur du registre, sans changer l'identité, le front ni les paquets installés du Lab. La qualification réelle du Site B et l'adoption de 0.1.2 restent des étapes distinctes. Voir [T39](docs/IMPLEMENTATION-T39.md) et [T38](docs/IMPLEMENTATION-T38.md).
+
 ## En cours — adoption Core 0.0.1 et correction du module d'achat (T38)
 
 Fusion de la source publique Core `a911e4d` dans le Lab, en conservant son front, son identité et ses paquets publics installés. Le bootstrap ajoute les trois archives/reçu vérifiés du Starter public `module-v0.1.2` et l'inventaire expose cette version comme candidate externe. Le module installé, le verrou et la composition restent en 0.1.0 jusqu'à une adoption explicite depuis Modules et extensions. Voir [T38](docs/IMPLEMENTATION-T38.md).

@@ -128,7 +128,7 @@ Tout ajout structurel met ce repère à jour. Chaque module construit fournit en
 - `extensions/native/modules-settings/` : catalogue, fiches issues du Product Hub Creezio, plans et journal D1 ; six suites et docs propres.
 - `sdk/modules/`, `sdk/module-settings/`, `sdk/operations/handler.ts` : solveur, inventaire vérifié au build, client/contrôleur et surface publique des handlers.
 - `scripts/modules/` : archives déterministes, verrou et plan local ; aucun téléchargement ou lancement de code tiers.
-- `configuration/module-inventory.json` : origines autorisées et candidats présents supplémentaires ; inventaire compilé injecté par le cœur.
+- `configuration/module-inventory.json` : origines autorisées, reçu de la version installée et candidate externe 0.1.2 avec trois empreintes vérifiées ; inventaire compilé injecté par le cœur.
 - `core/operations/host-inventory.ts` : capture immuable liée à la composition et au module natif exact.
 - `scripts/data/prepare-modules-settings.mjs`, `data/schema/modules-settings.sql` : création actuelle centralisée des trois modèles.
 - `tests/modules/`, [IMPLEMENTATION-T11](docs/IMPLEMENTATION-T11.md) : recette du graphe, du service et des interfaces.

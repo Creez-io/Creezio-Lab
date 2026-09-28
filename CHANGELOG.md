@@ -2,7 +2,7 @@
 
 ## En cours — adoption Core 0.0.1 et correction du module d'achat (T38)
 
-Fusion de la source publique Core `a911e4d` dans le Lab, en conservant son front, son identité et ses paquets publics installés. Le raccord d'inventaire externe prépare la recette de mise à jour du module dont la route de création est ambiguë. Aucune nouvelle version métier n'est installée à cette étape. Voir [T38](docs/IMPLEMENTATION-T38.md).
+Fusion de la source publique Core `a911e4d` dans le Lab, en conservant son front, son identité et ses paquets publics installés. Le bootstrap ajoute les trois archives/reçu vérifiés du Starter public `module-v0.1.2` et l'inventaire expose cette version comme candidate externe. Le module installé, le verrou et la composition restent en 0.1.0 jusqu'à une adoption explicite depuis Modules et extensions. Voir [T38](docs/IMPLEMENTATION-T38.md).
 
 ## En cours — premier fork Creezio Lab (T37)
 

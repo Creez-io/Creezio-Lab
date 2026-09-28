@@ -1,12 +1,20 @@
 # Changelog
 
-## En cours — adoption source Core T40 dans Lab
+## En cours — capture conservatrice de l'historique Lab (T32)
+
+Le premier transfert Cloudflare du Lab s'est arrêté en phase `capturing` avec `active_effect`, avant artefact, import ou publication. Le journal et la capture partielle sont conservés. Une ancienne exécution `turn.start` inconnue, son outbox OpenAI sans reçu et sa conversation liée expliquent ce refus ; aucun effet fournisseur ou métier n'a été rejoué. Le correctif source Core main `0078fc7defc22d27e8caf22ac3b967f36fc30fbc` (PR #39 ; candidate CI 1 183/1 183) reconnaît seulement un graphe historique quiescent cohérent et conserve exactement ses lignes. Il ne déclare ni ce transfert repris ni Lab publié sur Cloudflare. Voir [T32](docs/IMPLEMENTATION-T32.md).
+
+## 28 septembre 2026 — corrections T40 qualifiées sur Lab
+
+Lab main `fc1ddc02d5c6e8f1a336e8f5e51d7ce397bc354b` (PR #5, CI 1 177/1 177) conserve les compositions, le front Lab, le SDK 1.1.0 et le module d'achat 0.1.2. Le Site B version 5 a restauré les anciens widgets avec leurs messages et conservé comptes, demandes, fichiers R2 et brouillon. La recette Linux a ajouté seulement `plan-outcomes`, conservé les trois tours terminés et clos les deux anciens plans par annulation motivée sans confirmation rétroactive ; un prochain vrai cycle de plan reste à exercer. Voir [T40](docs/IMPLEMENTATION-T40.md).
+
+## Historique — adoption source Core T40 dans Lab
 
 Le budget brut du Worker propre à Lab est recalé à 7 150 000 octets après mesure du build T40 : 7 005 819 octets, contre 6 910 139 précédemment, toujours 71 fichiers. La marge reste proche de 2 %. Le budget gzip de 1 350 000 octets, le graphe et les temps de réponse restent inchangés.
 
 La branche Lab fusionne Core main `a8130407d5bd54261d56755a4db2949932a94d1b` (PR #38, arbre `5cc8ff1d2bb4bf52bec1b1ab852ec00b7b45c493`). Les compositions et verrous Lab conservent `creezio.lab`, le thème ChatGPT-like, le SDK public 1.1.0 et le module d'achat 0.1.2. Les corrections des widgets historiques, du cycle durable des plans et la commande locale de schéma sont disponibles dans la source ; leur déploiement et leur recette sur Lab restent à faire. Voir [T40](docs/IMPLEMENTATION-T40.md).
 
-## En cours — conservation des widgets et cycle des plans (T40)
+## Historique — conservation des widgets et cycle des plans (T40)
 
 La mise à jour réelle du module Lab 0.1.0 vers 0.1.2 conserve ses données mais rend ses anciens widgets indisponibles. Une correction de la projection compatible des messages est en développement. Le cycle des plans ajoute une confirmation fondée sur le runtime réel, une annulation motivée et un journal durable, sans réécrire les anciens plans. Les tests ciblés ne remplacent pas la qualification après publication. Voir [le suivi T40](docs/IMPLEMENTATION-T40.md).
 

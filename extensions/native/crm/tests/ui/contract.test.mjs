@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {manifest} from '../helpers.mjs';
-import {emptySubviewDraft,formFrom,saveSubviewDraft,updateFromForm} from '../../ui/editing.ts';
+import {crmScopeTransition,emptySubviewDraft,formFrom,saveSubviewDraft,updateFromForm} from '../../ui/editing.ts';
 import {createCommandJournal,readPendingCommand} from '../../ui/commands.ts';
 
 test('an uncertain command stays locked through suspension and reload until its native status is read',async()=>{
@@ -73,6 +73,30 @@ test('three CRM subviews keep separate drafts and their opening revisions',()=>{
   assert.equal(updateFromForm('company',drafts.company.form).revision,3);
   drafts={};
   assert.equal(drafts.company,undefined,'a changed session, audience or context drops every local draft');
+});
+
+test('an access refresh preserves CRM drafts, while a real scope change purges them',()=>{
+  const admin={session:'session-a',audience:'admin',contextId:'application',panelId:'crm-panel'};
+  const loading={...admin,session:''};
+  assert.deepEqual(crmScopeTransition(admin,loading,'loading'),
+    {transient:true,scopeChanged:false,purge:false});
+  assert.deepEqual(crmScopeTransition(admin,admin,'authenticated'),
+    {transient:false,scopeChanged:false,purge:false});
+  assert.equal(crmScopeTransition(admin,loading,'anonymous').purge,true);
+  assert.equal(crmScopeTransition(admin,{...admin,session:'session-b'},'authenticated').purge,true);
+  assert.equal(crmScopeTransition(admin,{...admin,audience:'app',session:''},'loading').purge,true);
+  assert.equal(crmScopeTransition(admin,{...admin,contextId:'other',session:''},'loading').purge,true);
+  assert.equal(crmScopeTransition(admin,{...admin,panelId:'other-panel'},'authenticated').purge,true);
+});
+
+test('a pending CRM command from a loading mount is restored only after session verification',()=>{
+  const saved={sessionId:'session-a',audience:'admin',contextId:'application',
+    entity:'company',action:'update',requestKey:'update-a'};
+  const loading={sessionId:'',audience:'admin',contextId:'application'};
+  assert.equal(readPendingCommand(saved,loading),null);
+  const restored=readPendingCommand(saved,{...loading,sessionId:'session-a'});
+  assert.deepEqual(createCommandJournal(restored).pending,saved);
+  assert.equal(readPendingCommand(saved,{...loading,sessionId:'session-b'}),null);
 });
 
 test('workspace declares CRM navigation, inactive suspension and all business operations',()=>{

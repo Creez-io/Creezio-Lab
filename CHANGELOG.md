@@ -1,12 +1,16 @@
 # Changelog
 
-## Préparation SDK 1.2.0 — journal et contrats de connecteurs (T30)
+## En qualification — outils du chat des modules (T15/T16)
 
-Le paquet distribue le journal public des commandes de panneau, les descripteurs de connecteurs GET et le type public limité de configuration des secrets. Les exports SDK 1.1 de livraison restent disponibles. Les changements fonctionnels sont intégrés par PR #44/#45 ; cette préparation fixe leurs documents de distribution, sans nouvelle fonctionnalité, changement de données ni adoption automatique par une app. Le paquet final sera construit depuis le main de la PR de release, puis son téléchargement sera vérifié avant publication. Voir [T30](docs/IMPLEMENTATION-T30.md).
+Le chat peut proposer les lectures autorisées au-delà des seize premières, dans les bornes de 128 outils et 64 Kio de définitions. Son diagnostic distingue les omissions par nombre ou taille. Les descriptions de champs déjà présentes dans les schémas de sortie enrichissent le contrat transmis au modèle, sans changer les titres des interfaces ni les données. Droits et opérations restent communs aux API, MCP et widgets ; voir [T15](docs/IMPLEMENTATION-T15.md).
+
+## SDK 1.2.0 publié — journal et contrats de connecteurs (T30)
+
+Le paquet distribue le journal public des commandes de panneau, les descripteurs de connecteurs GET et le type public limité de configuration des secrets. Les exports SDK 1.1 de livraison restent disponibles. Les changements fonctionnels sont intégrés par PR #44/#45 et la distribution par PR #46. L'archive publique est construite depuis main `11be33a2`, contrôlée avec cinq modules consommateurs et vérifiée après téléchargement ; voir [T30](docs/IMPLEMENTATION-T30.md) pour sa provenance. Aucune application installée n'est mise à jour automatiquement.
 
 ## En cours — connecteurs externes déclaratifs et n8n (T26)
 
-Le SDK candidat 1.2 ajoute les descripteurs et le port de connecteur génériques. Les modules déclarent leurs ressources GET et leurs modèles privés de configuration/coffre ; le Worker les compose sans branche spéciale par fournisseur. Le module n8n configure une instance externe et propose la lecture autorisée des workflows/exécutions. Les mutations distantes, callbacks et recettes fournisseur restent ouverts ; aucun n8n n'est embarqué. Voir [T26](docs/IMPLEMENTATION-T26.md).
+Le SDK public 1.2 ajoute les descripteurs et le port de connecteur génériques. Les modules déclarent leurs ressources GET et leurs modèles privés de configuration/coffre ; le Worker les compose sans branche spéciale par fournisseur. Le module n8n configure une instance externe et propose la lecture autorisée des workflows/exécutions. Les mutations distantes, callbacks et recettes fournisseur restent ouverts ; aucun n8n n'est embarqué. Voir [T26](docs/IMPLEMENTATION-T26.md).
 
 ## En cours — Support, pages, analytics et catalogue (T19/T21/T22/T25)
 
@@ -14,7 +18,7 @@ Trois modules natifs rejoignent la composition du socle et des thèmes : tickets
 
 ## En cours — messagerie partagée et journal SDK (T18/T30)
 
-Un utilisateur autorisé retrouve les mêmes boîtes, brouillons et pièces jointes dans le workspace et le front. Les modèles sont rattachés au principal et au contexte ; les permissions restent distinctes par audience. Le SDK candidat 1.2 expose un journal de mutation qui conserve la clé avant émission, bloque le nouvel envoi après une issue incertaine et vérifie le statut sans replay. Les archives SDK déjà publiées restent inchangées. Voir [T18](docs/IMPLEMENTATION-T18.md) et [le contrat SDK](sdk/operations/README.md).
+Un utilisateur autorisé retrouve les mêmes boîtes, brouillons et pièces jointes dans le workspace et le front. Les modèles sont rattachés au principal et au contexte ; les permissions restent distinctes par audience. Le SDK public 1.2 expose un journal de mutation qui conserve la clé avant émission, bloque le nouvel envoi après une issue incertaine et vérifie le statut sans replay. Les archives SDK déjà publiées restent inchangées. Voir [T18](docs/IMPLEMENTATION-T18.md) et [le contrat SDK](sdk/operations/README.md).
 
 ## En cours — CRM natif (T20)
 

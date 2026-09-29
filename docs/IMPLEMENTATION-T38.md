@@ -1,5 +1,9 @@
 # T38 — Adoption amont et mise à jour du module métier
 
+## Candidat Core suivant — 29 septembre 2026
+
+La branche Lab `core/t38-core-af60262` reprend, depuis la base Core `e2e5dc4` déjà intégrée, les quatre commits jusqu'à `af602626`. L'adoption reste locale : la nouvelle navigation Pages est présente dans le socle mais non sélectionnée par les compositions Lab ; le statut de retrait du contexte est corrigé dans l'hôte Conversations. Les verrous de tous les profils consommant Pages ou Conversations, y compris `composition.t30-demo.lock.json`, sont régénérés. `creezio.lab`, le front ChatGPT-like, SDK public 1.4.1, achats public 0.1.3 et la source Sites reconstructible restent inchangés. Les tests du candidat et sa revue précèdent toute PR, publication ou recette hébergée de cette révision. Le Site et le Worker Cloudflare Lab déjà publiés gardent leurs données et révisions en service.
+
 ## Préparation de la mise à jour Core suivante — 29 septembre 2026
 
 La branche `core/t38-sdk141-adoption` du fork Lab prépare une fusion de Core `e2e5dc4` depuis Lab `59374b4`, sans rebase. Le SDK déclaré passe de 1.2.0 au paquet public 1.4.1 (archive et empreinte vérifiées) ; le module d'achat reste exactement 0.1.3, avec ses archives et son reçu inchangés. Les compositions actives conservent `creezio.lab`, le front ChatGPT-like, sept modules sous Docker et six sous Sites ; les nouveaux modules Core ne sont pas sélectionnés. Les verrous actifs sont régénérés contre le reçu d'achat public. Composition et typage ciblés passent. Les modèles des modules actifs n'ayant pas changé, aucun DDL actif nouveau n'est attendu ; cela ne remplace pas l'inspection d'un hôte. Aucun build, changement de base, installation de module ou publication hébergée n'a encore qualifié cette nouvelle source. Les étapes historiques ci-dessous décrivent leurs propres versions et preuves.

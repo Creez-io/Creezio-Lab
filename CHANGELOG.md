@@ -1,5 +1,21 @@
 # Changelog
 
+## Candidat local — adoption du Core `af602626` (T16/T21/T38)
+
+Le fork Lab reprend la navigation Pages du Core et la correction du statut de contexte dans l'hôte Conversations. Pages reste inactif dans les compositions Lab. L'identité, le front ChatGPT-like, le SDK public 1.4.1, les achats publics 0.1.3 et la source de build Sites sont conservés. Les verrous de chaque composition consommatrice sont recalculés ; cette adoption source ne publie ni ne modifie les données des hôtes.
+
+## En qualification — statut du contexte de widget retiré (T16)
+
+Après un retrait confirmé, l'hôte Conversations affiche que le contexte est retiré pour les prochains tours. Le service conserve son retrait durable ; un test D1 vérifie qu'un tour démarré après ce retrait capture un snapshot vide. Le parcours Lab Sites version 3 a exercé lecture directe, sélection et contexte, puis préparation sans envoi d'un message ; aucun tour suivant réel n'y a été lancé. Ce correctif source n'est pas encore publié.
+
+## En préparation — documentation du repli Sites depuis la source
+
+Le guide Sites distingue l'archive locale du build distant officiel depuis un commit source poussé. Il décrit la preuve d'inventaire source du mode opératoire `remote-source`, le préflight avant déploiement, la vérification du reçu fournisseur et la déclaration sous une même clé, sans assimiler ce digest au Worker compilé. Le suivi T-09 distingue la version sauvée sans archive, le déploiement fournisseur réussi et le registre synchronisé de la recette applicative encore ouverte. Il sépare les anciennes cibles des Sites du compte actuel. T-38 note la mise à jour Cloudflare Lab et une réponse réelle correcte sur 123,45 EUR. Aucun nouveau contrôle produit ni déploiement n'est apporté par cette édition documentaire.
+
+## Unreleased — finalisation des candidates de module
+
+Les guides de développement demandent de contrôler, après la dernière édition d'un fichier déclaré, tous les profils qui sélectionnent le module et leurs archives runtime et validation avant push. Ils renvoient au contrôleur `modules:lock` existant, avec reçu pour les paquets externes. Les indications historiques « avant GO/P0 à construire » sont retirées des guides courants ; aucune règle de fusion ni capacité runtime ne change.
+
 ## En préparation — source Sites reconstructible à distance (T09/T38)
 
 Les dépendances npm SDK 1.4.1 et achats 0.1.3 pointent vers leurs archives de release publiques avec intégrité verrouillée. Le build Sites vérifie les douze assets publics avant la composition ; le staging transporte scripts et lock sans archive locale ignorée. Les contrôles de source et de projection restent stricts. Ce correctif source ne prouve pas encore un build du fournisseur, une publication ou une recette hébergée.

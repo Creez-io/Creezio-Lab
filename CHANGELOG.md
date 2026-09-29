@@ -1,5 +1,9 @@
 # Changelog
 
+## En préparation — source Sites reconstructible à distance (T09/T38)
+
+Les dépendances npm SDK 1.4.1 et achats 0.1.3 pointent vers leurs archives de release publiques avec intégrité verrouillée. Le build Sites vérifie les douze assets publics avant la composition ; le staging transporte scripts et lock sans archive locale ignorée. Les contrôles de source et de projection restent stricts. Ce correctif source ne prouve pas encore un build du fournisseur, une publication ou une recette hébergée.
+
 ## En préparation — adoption Core T38 avec SDK 1.4.1
 
 La branche Lab adopte en source Core `e2e5dc4` et le paquet public SDK 1.4.1, en gardant le module d'achat public 0.1.3 exactement. Les profils actifs conservent l'identité `creezio.lab`, le front ChatGPT-like et leur sélection Docker (sept modules) ou Sites (six modules) ; les nouveaux modules de l'amont restent inactifs. Les verrous actifs sont recalculés avec le reçu public 0.1.3. Cette préparation ne modifie aucune donnée ni publication hébergée ; la recette de mise à jour reste à faire. Voir [T38](docs/IMPLEMENTATION-T38.md).

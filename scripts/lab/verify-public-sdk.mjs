@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-/** Check that npm installed the exact public file: packages selected by this fork. */
+/** Check the exact public package URLs, lock and installed projections. */
 import {createHash} from 'node:crypto';
 import {existsSync,readFileSync} from 'node:fs';
 import path from 'node:path';
@@ -11,8 +11,7 @@ const fail=reason=>{throw new Error(`Public package projection refused: ${reason
 const json=file=>JSON.parse(readFileSync(file,'utf8'));
 const sha512=bytes=>`sha512-${createHash('sha512').update(bytes).digest('base64')}`;
 
-export async function verifyPublicPackageProjection(root=defaultRoot){
-  await bootstrapPublicPackages(root);
+export function verifyPublicPackageSource(root=defaultRoot){
   const pack=json(path.join(root,'package.json'));
   const lock=json(path.join(root,'package-lock.json'));
   const selected=[
@@ -22,12 +21,22 @@ export async function verifyPublicPackageProjection(root=defaultRoot){
       exports:['./dist/module/entry.server.js','./dist/ui/contributions.js']},
   ];
   for(const item of selected){
-    const spec=`file:.creezio/packages/${item.file}`;
+    const pin=pins.find(([name])=>name===item.file);
+    if(!pin)fail(`${item.name} pin`);
+    const spec=`${pin[1]}${pin[0]}`;
     const entry=lock.packages?.[`node_modules/${item.name}`];
     const bytes=readFileSync(path.join(root,'.creezio','packages',item.file));
     if(pack[item.section]?.[item.name]!==spec||lock.packages?.['']?.[item.section]?.[item.name]!==spec
       ||entry?.resolved!==spec||entry?.version!==item.version||entry?.integrity!==sha512(bytes))
       fail(`${item.name} lock`);
+  }
+  return selected;
+}
+
+export async function verifyPublicPackageProjection(root=defaultRoot){
+  await bootstrapPublicPackages(root);
+  const selected=verifyPublicPackageSource(root);
+  for(const item of selected){
     const installedRoot=path.join(root,'node_modules',...item.name.split('/'));
     if(!existsSync(path.join(installedRoot,'package.json')))fail(`${item.name} absent`);
     const installed=json(path.join(installedRoot,'package.json'));

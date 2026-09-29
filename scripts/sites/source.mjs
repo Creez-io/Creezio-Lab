@@ -77,6 +77,8 @@ function selection(source,site,projectId,compositionDigest){
     /\.(?:clixml|pem|key|sqlite|db)$/.test(file.path)))
     throw new Error('Core source includes a disallowed Sites file.');
   if(!sourceFiles.some(file=>file.path==='package.json')||
+    !sourceFiles.some(file=>file.path==='package-lock.json')||
+    !sourceFiles.some(file=>file.path==='scripts/lab/bootstrap-public-packages.mjs')||
     !sourceFiles.some(file=>file.path==='scripts/sites/build.mjs')||
     !sourceFiles.some(file=>file.path==='configuration/composition.sites.json')||
     !sourceFiles.some(file=>file.path==='configuration/composition.sites.lock.json'))

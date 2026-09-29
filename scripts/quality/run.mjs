@@ -6,6 +6,7 @@ import { fileURLToPath } from 'node:url';
 import { inspectTap, tapFailureExcerpt, sourceIdentity, sameSourceIdentity, collectRequiredTests } from './evidence.mjs';
 import { validateDocs } from './docs.mjs';
 import { measureRuntimeArtifacts } from './runtime.mjs';
+import { pins } from '../lab/bootstrap-public-packages.mjs';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
 const started = new Date().toISOString();
@@ -49,9 +50,10 @@ execute('meili-models', ['scripts/data/prepare-native-module.mjs', 'meili', '--f
 // Lab validates module archives against the immutable public SDK selected by
 // its npm lock. It never packs the local SDK workspace in place of that SDK.
 const sdkSpec=JSON.parse(readFileSync(resolve(root,'package.json'),'utf8')).devDependencies?.['@creezio/sdk'];
-if(sdkSpec!=='file:.creezio/packages/creezio-sdk-1.4.1.tgz')
+const sdkPin=pins[11];
+if(sdkSpec!==`${sdkPin[1]}${sdkPin[0]}`)
   throw new Error('Lab public SDK pin differs from the qualified archive.');
-const sdkArchive=resolve(root,sdkSpec.slice('file:'.length));
+const sdkArchive=resolve(root,'.creezio','packages',sdkPin[0]);
 const sdkSha=createHash('sha256').update(readFileSync(sdkArchive)).digest('hex');
 if(sdkSha!=='3196390908a13cf32290f100584a3edb20931c8b3f56c37c6fab131c3fe4b37d')
   throw new Error('Lab public SDK archive integrity differs.');

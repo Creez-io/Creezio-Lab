@@ -11,6 +11,7 @@ import {planSitesExport,writeSitesArchive} from '../../scripts/sites/export.mjs'
 import {measureRuntimeArtifacts} from '../../scripts/quality/runtime.mjs';
 import {sourceIdentity} from '../../scripts/quality/evidence.mjs';
 import {planSitesSource,prepareSitesSource,verifySitesSource} from '../../scripts/sites/source.mjs';
+import {pins} from '../../scripts/lab/bootstrap-public-packages.mjs';
 
 const hash=bytes=>createHash('sha256').update(bytes).digest('hex');
 const digest=bytes=>`sha256-${hash(bytes)}`;
@@ -50,8 +51,15 @@ function fixture({previous=false,unknown=false}={}){
   put(site,'db/creezio-schema-history.json',JSON.stringify({schemaVersion:1,applicationId:'app',
     compositionDigest,files:historyFiles})+'\n');
   put(core,'.gitignore','dist/\n.quality/\n');
-  put(core,'package.json',JSON.stringify({name:'example',scripts:{build:'node build.js'}},null,2)+'\n');
-  put(core,'scripts/sites/build.mjs','export {};\n');
+  const sdk=`${pins[11][1]}${pins[11][0]}`,purchase=`${pins[8][1]}${pins[8][0]}`;
+  put(core,'package.json',JSON.stringify({name:'example',scripts:{build:'node build.js'},
+    dependencies:{'@creezio/purchase-requests':purchase},devDependencies:{'@creezio/sdk':sdk}},null,2)+'\n');
+  put(core,'package-lock.json',JSON.stringify({lockfileVersion:3,packages:{'':{
+    dependencies:{'@creezio/purchase-requests':purchase},devDependencies:{'@creezio/sdk':sdk}},
+    'node_modules/@creezio/purchase-requests':{version:'0.1.3',resolved:purchase},
+    'node_modules/@creezio/sdk':{version:'1.4.1',resolved:sdk}}},null,2)+'\n');
+  put(core,'scripts/lab/bootstrap-public-packages.mjs','export async function bootstrapPublicPackages() {}\n');
+  put(core,'scripts/sites/build.mjs',"import {bootstrapPublicPackages} from '../lab/bootstrap-public-packages.mjs';\nawait bootstrapPublicPackages();\n");
   put(core,'configuration/composition.sites.json','{}\n');
   put(core,'configuration/composition.sites.lock.json','{}\n');
   put(core,'app.js','export default "source";\n');
@@ -94,7 +102,18 @@ test('Sites source plan prepares only attested files and verifies the separate s
     const receipt=JSON.parse(readFileSync(f.receiptFile,'utf8'));
     assert.equal(receipt.projectId,'appgprj_test');
     assert.throws(()=>lstatSync(path.join(f.stage,'legacy.txt')),error=>error.code==='ENOENT');
-    assert.match(readFileSync(path.join(f.stage,'package.json'),'utf8'),/composition\.sites\.json/);
+    const stagedPackage=JSON.parse(readFileSync(path.join(f.stage,'package.json'),'utf8'));
+    const stagedLock=JSON.parse(readFileSync(path.join(f.stage,'package-lock.json'),'utf8'));
+    assert.match(stagedPackage.scripts.build,/composition\.sites\.json/);
+    for(const [section,name] of [['dependencies','@creezio/purchase-requests'],
+      ['devDependencies','@creezio/sdk']]){
+      assert.equal(stagedPackage[section][name],stagedLock.packages[''][section][name]);
+      assert.equal(stagedPackage[section][name],stagedLock.packages[`node_modules/${name}`].resolved);
+      assert.match(stagedPackage[section][name],/^https:\/\/github\.com\/creezio\//);
+    }
+    assert.match(readFileSync(path.join(f.stage,'scripts/sites/build.mjs'),'utf8'),/bootstrapPublicPackages/);
+    assert.match(readFileSync(path.join(f.stage,'scripts/lab/bootstrap-public-packages.mjs'),'utf8'),/bootstrapPublicPackages/);
+    assert(!plan.files.some(file=>file.path.startsWith('.creezio/')));
     assert.throws(()=>verifySitesSource(f.planFile,f.receiptFile),/committed/);
     commit(f.stage,'new Sites source');
     execFileSync(process.execPath,[sourceCli,'verify','--plan',f.planFile,

@@ -45,6 +45,8 @@ La [branche source T38](docs/IMPLEMENTATION-T38.md) adopte Core `e2e5dc4`, SDK p
 | [docs/INSTALLATION-LOCALE.md](docs/INSTALLATION-LOCALE.md) | Inspection, premier compte local, configuration commune et reprises sans écrasement. |
 | [docs/AUDIT-AVANT-DEVELOPPEMENT.md](docs/AUDIT-AVANT-DEVELOPPEMENT.md) | Audit croisé et conditions de démarrage/livraison. |
 
+La source Sites T09/T38 embarque le lock npm à URL de releases et le script de bootstrap ; [scripts/sites/build.mjs](scripts/sites/build.mjs) vérifie les archives publiques avant la composition. Le staging Git ne contient pas les archives `.creezio` ignorées.
+
 ## MCP et OAuth natifs T-10
 
 - [core/mcp](core/mcp/) : catalogue vérifié, transport officiel stateless, authentification native et découverte filtrée.

@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-/** Restore immutable public file: dependencies before npm ci. No install or build. */
+/** Verify and restore immutable public archives and receipts. No install or build. */
 import {createHash,randomUUID} from 'node:crypto';
 import {existsSync,lstatSync,mkdirSync,readFileSync,renameSync,unlinkSync,writeFileSync} from 'node:fs';
 import path from 'node:path';

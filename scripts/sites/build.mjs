@@ -8,8 +8,10 @@ import {stageSitesMetadata,verifySitesArtifactTree} from './artifacts.mjs';
 import {loadCompositionSchema} from '../data/composition-schema.mjs';
 import {sourceIdentity,sameSourceIdentity} from '../quality/evidence.mjs';
 import {measureRuntimeArtifacts} from '../quality/runtime.mjs';
+import {bootstrapPublicPackages} from '../lab/bootstrap-public-packages.mjs';
 
 const root=fileURLToPath(new URL('../../',import.meta.url));
+await bootstrapPublicPackages(root);
 const hostingPath=process.env.CREEZIO_SITES_MANIFEST??path.join(root,'.openai/hosting.json');
 const configuration=loadSitesBuildConfiguration({root,hostingPath});
 const compositionPath=process.env.CREEZIO_COMPOSITION??'configuration/composition.sites.json';

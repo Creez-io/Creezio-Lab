@@ -1,5 +1,9 @@
 # T38 — Adoption amont et mise à jour du module métier
 
+## Préparation de la mise à jour Core suivante — 29 septembre 2026
+
+La branche `core/t38-sdk141-adoption` du fork Lab prépare une fusion de Core `e2e5dc4` depuis Lab `59374b4`, sans rebase. Le SDK déclaré passe de 1.2.0 au paquet public 1.4.1 (archive et empreinte vérifiées) ; le module d'achat reste exactement 0.1.3, avec ses archives et son reçu inchangés. Les compositions actives conservent `creezio.lab`, le front ChatGPT-like, sept modules sous Docker et six sous Sites ; les nouveaux modules Core ne sont pas sélectionnés. Les verrous actifs sont régénérés contre le reçu d'achat public. Composition et typage ciblés passent. Les modèles des modules actifs n'ayant pas changé, aucun DDL actif nouveau n'est attendu ; cela ne remplace pas l'inspection d'un hôte. Aucun build, changement de base, installation de module ou publication hébergée n'a encore qualifié cette nouvelle source. Les étapes historiques ci-dessous décrivent leurs propres versions et preuves.
+
 ## État après la publication du module 0.1.2
 
 Lab main `26180ed6c2409ae85944f33b1909e7d076c661aa` a passé 1 165/1 165 tests CI. Le module 0.1.2 est actif sur le même Site B et sur Docker Linux ; comptes, demandes, fichiers, messages et brouillon ont été conservés. La correction des anciens widgets et le cycle durable des plans sont adoptés en source depuis Core `a8130407d5bd54261d56755a4db2949932a94d1b` dans la présente branche Lab, sans publication ni recette des corrections. Voir [T40](IMPLEMENTATION-T40.md). Les paragraphes suivants conservent les étapes et limites observées avant la publication 0.1.2.

@@ -8,6 +8,7 @@ import {fileURLToPath} from 'node:url';
 const defaultRoot=fileURLToPath(new URL('../../',import.meta.url));
 const sdk='https://github.com/creezio/Creezio-D1R2/releases/download/sdk-v1.1.0/';
 const sdk12='https://github.com/creezio/Creezio-D1R2/releases/download/sdk-v1.2.0/';
+const sdk141='https://github.com/creezio/Creezio-D1R2/releases/download/sdk-v1.4.1/';
 const module='https://github.com/creezio/Creezio-Extension-Starter/releases/download/module-v0.1.0/';
 const candidate='https://github.com/creezio/Creezio-Extension-Starter/releases/download/module-v0.1.2/';
 const current='https://github.com/creezio/Creezio-Extension-Starter/releases/download/module-v0.1.3/';
@@ -23,6 +24,7 @@ export const pins=[
   ['creezio-purchase-requests-0.1.3.tgz',current,38739,'3cc1600d2fa5555be7013105521af2fbd4a0fb92408135465601d22cdd05ea4a'],
   ['creezio-purchase-requests-0.1.3-validation.tgz',current,59898,'fda2bab507a5d7ec7ac58d6360bd720d5b95039872be4f822bd738d8fe21383f'],
   ['manifest-0.1.3.json',current,1198,'04e0ae79297a5f1c41c934b99b4a1e1a0c5a0e69830c8a4bbfbc65d019fe6085'],
+  ['creezio-sdk-1.4.1.tgz',sdk141,73013,'3196390908a13cf32290f100584a3edb20931c8b3f56c37c6fab131c3fe4b37d'],
 ];
 const fail=reason=>{throw new Error(`Public package bootstrap refused: ${reason}`);};
 const hash=bytes=>createHash('sha256').update(bytes).digest('hex');

@@ -23,16 +23,16 @@ test('public package bootstrap refuses an existing archive with changed bytes',a
   const fixture=temporaryDirectory(t,'creezio-public-packages-');
   const directory=path.join(fixture,'.creezio','packages');
   mkdirSync(directory,{recursive:true});
-  const bytes=readFileSync(path.join(source,pins[7][0]));
+  const bytes=readFileSync(path.join(source,pins[11][0]));
   bytes[0]^=1;
-  writeFileSync(path.join(directory,pins[7][0]),bytes);
-  await assert.rejects(bootstrapPublicPackages(fixture),/existing creezio-sdk-1\.2\.0\.tgz/);
+  writeFileSync(path.join(directory,pins[11][0]),bytes);
+  await assert.rejects(bootstrapPublicPackages(fixture),/existing creezio-sdk-1\.4\.1\.tgz/);
 });
 
 test('npm projects both public file packages selected by the lock',async()=>{
   const report=await verifyPublicPackageProjection(root);
   assert.deepEqual(report.packages,[
-    {name:'@creezio/sdk',version:'1.2.0'},
+    {name:'@creezio/sdk',version:'1.4.1'},
     {name:'@creezio/purchase-requests',version:'0.1.3'},
   ]);
 });

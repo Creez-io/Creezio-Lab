@@ -12,7 +12,13 @@ Décision utilisateur du 28 septembre : les boîtes, messages, brouillons et pi�
 
 Sans fournisseur configuré, la rédaction reste disponible et l'envoi/réception est explicitement indisponible. Le socle n'héberge aucun serveur SMTP/IMAP et ne lance aucun ordonnanceur. Un résultat inconnu chez un fournisseur ne doit jamais être transformé en envoi confirmé ou rejoué automatiquement.
 
-## Qualification
+## Widgets de lecture — tranche en qualification
+
+Trois cartes partagent les mêmes boîtes et droits que la messagerie : boîtes, messages et brouillons. Les listes conversationnelles utilisent des projections serveur de cinq éléments au maximum, avec extraits explicitement signalés et sortie bornée à 7 600 octets sous le plafond du chat. Le contenu complet est lu seulement sur demande ; un message HTML est présenté en texte dans la carte et renvoie à la messagerie pour sa mise en forme. Le module conserve ses modèles actuels et son interface native.
+
+Les outils directs des cartes appellent les opérations du module, sans envoi de courrier, mutation implicite au montage ou dépendance à un fournisseur. Le contrôle des curseurs, du propriétaire, du contexte et des permissions reste serveur. La qualification source, les tests sur archives autonomes et la recette dans le chat sont des étapes distinctes ; la présence du renderer ne clôt pas la recette ChatGPT.
+
+## Qualification historique avant les widgets
 
 Les six suites locales ont passé 19 tests initiaux (8 backend, 5 UI, 3 API/MCP et un dans chaque suite widgets, paquet et documentation). Après revue, la suite UI passe six tests et les parcours de sélection du brouillon sauvegardé, du lecteur après sauvegarde répétée et de restauration de la boîte sont corrigés. La suite widgets vérifie l'absence déclarée de renderer et le maintien des outils MCP textuels ; elle ne constitue pas une recette ChatGPT.
 
@@ -45,3 +51,7 @@ Le journal public `@creezio/sdk/operations/command-journal` centralise le suivi 
 PR #44 est fusionnée sur `9cd410be0309a006e2ff5cbf24dc847d0144e39b`, arbre identique au candidat `21e6d2c401c6f4fb43f0904d161a75f2d4fec176`, CI candidate 1 196/1 196 et revue indépendante sans anomalie ouverte. Docker Linux a été construit depuis ce candidat dans le checkout et le volume existants. L'application native du schéma additif a conservé le propriétaire, la conversation, le brouillon et le fichier témoins ; aucune transformation des anciennes tables n'a été imposée.
 
 La nouvelle recette navigateur admin/app a vérifié les mêmes boîtes A/B, le brouillon enregistré puis modifié depuis l'autre audience et relu dans la première, sa conservation après rechargement et les bascules de boîte. Une nouvelle pièce jointe privée de 108 octets apparaît dans les deux lecteurs ; les deux API retournent le même identifiant et les octets exacts. Upload et lien ont été exécutés une fois, via les API natives. Le sélecteur et le téléchargement dans le navigateur ne sont pas qualifiés par cette recette. Sessions déconnectées et runtime arrêté avec code 0 après contrôle ; données conservées. Les fournisseurs externes, widgets et publications hébergées restent ouverts.
+
+## Contrôle de démarrage du profil complet — 29 septembre
+
+La PR #59/main `468b101` a passé 1 258/1 258 contrôles. Son image Linux a été construite et le schéma adopté sans DDL dans le volume existant. Le démarrage a ensuite refusé le catalogue MCP statique : 18 529 969 octets dépassent la borne de 16 Mio, malgré des ressources individuelles conformes. L’application de qualification est arrêtée ; données et image sont conservées. Le correctif commun augmente uniquement la borne de cet inventaire à 24 Mio et valide le vrai catalogue dès la composition. Une nouvelle image et la recette réelle des trois cartes sont encore nécessaires ; les tests des modules ne valent pas cette preuve.

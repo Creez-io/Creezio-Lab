@@ -1,5 +1,11 @@
 # Changelog
 
+## En qualification — widgets de lecture du CRM (T20)
+
+Les listes et fiches des entreprises, contacts et prospects disposent de six widgets MCP Apps typés, avec recherche, lecture et pagination à la demande. Ils utilisent les opérations CRM existantes et leurs droits dans le chat interne comme dans un client MCP compatible. Aucun modèle D1, écran d'administration ou traitement métier n'est remplacé. Les résultats textuels restent disponibles ; la limite actuelle des sorties d'outils du chat interne reste applicable. Voir [T20](docs/IMPLEMENTATION-T20.md) pour les preuves et limites de qualification.
+
+Le catalogue MCP statique inclut le HTML compilé pour chaque audience : le profil complet des connecteurs mesure environ 12 Mo avec ces widgets. Sa borne agrégée passe de 4 à 16 Mio ; les limites des requêtes et de chaque ressource, ainsi que les contrôles d'accès, restent inchangées. Le Worker capture cet index immuable une seule fois ; moteur, authentification et droits sont toujours liés à la requête courante. La CI a mesuré le build à 11 931 616 octets bruts et 2 068 665 gzip ; les deux budgets de taille sont ajustés avec moins de 3 % de marge, sans modifier les plafonds de graphe ou de durée.
+
 ## En cours — connexion Meili externe (T28)
 
 Le module optionnel prépare les réglages HTTPS, la clé scellée et un contrôle de connexion borné sur la liste des index, sans retourner leurs données. La PR #53 a passé 1 247/1 247 contrôles ; la recette Linux du code `3b2131c` a confirmé les réglages et affiché la connexion Meili dans l’interface après un contrôle réel. Aucune indexation, recherche Meili, écriture distante ou recherche globale T05 n'est livrée par cette première tranche. Voir [T28](docs/IMPLEMENTATION-T28.md).

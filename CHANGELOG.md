@@ -1,12 +1,18 @@
 # Changelog
 
+## 29 septembre 2026 — Sites du compte courant et packaging T09 en qualification
+
+Deux nouvelles installations publiques T56, Original et Lab, sont distinctes des Sites version 5 conservés. Leur publication et leur déclaration au registre sont confirmées. Les lectures natives refusent le MCP anonyme en 401 et exposent les catalogues autorisés par audience ; un témoin synthétique par Site conserve réponse OpenAI, brouillon et pièce R2. Le navigateur admin retrouve ces témoins après rechargement, avec le widget de lecture historique sur Lab. La lecture directe « Actualiser la liste » du widget Lab termine sans tour IA et le widget se remonte prêt après rechargement ; la liste est vide. La sélection d’une demande, un nouveau plugin ChatGPT et le partage des conversations admin avec l’audience app ne sont pas qualifiés.
+
+Le correctif T09 en cours prépare des archives runtime séparées pour l'opérateur et l'application Sites : inventaire fermé de `dist/`, manifeste d'hébergement et historique DDL central contrôlés, source Git et empreintes vérifiées. Cinq tests ciblés passent ; la revue statique et ces tests ne constituent pas encore une CI complète, une archive finale intégrée ni une publication. Le guide [Installation Sites](docs/INSTALLATION-SITES.md) décrit le parcours prévu.
+
 ## En qualification — widgets du Support (T19)
 
 Quatre cartes distinguent listes et fils de tickets pour les audiences app et admin. Les créations et réponses réutilisent les opérations, droits et clés d’idempotence existants. Le SDK reconnaît ces clés comme noms de champs JSON, y compris `requestKey` ; le binding MCP accepte une union limitée aux schémas de sortie exacts des outils de la carte. Les recettes et la publication de cette tranche restent à confirmer.
 
 ## 29 septembre 2026 — nouveaux Sites et mise à jour Cloudflare confirmée
 
-L’original et Lab sont republiés sur le compte GPT courant, dans deux Sites distincts, avec leurs nouveaux comptes natifs et leurs données propres. Le registre confirme les deux publications. La configuration des droits, d’OpenAI et les recettes des interfaces restent en cours ; les recettes des anciens Sites ne valent pas qualification de ces nouvelles installations.
+L’original et Lab sont republiés sur le compte GPT courant, dans deux Sites distincts, avec leurs nouveaux comptes natifs et leurs données propres. Le registre confirme les deux publications. Les droits, OpenAI et les recettes natives/API et navigateur sont maintenant qualifiés dans les limites T56 indiquées ci-dessus ; les recettes des anciens Sites restent distinctes.
 
 La source `512a7ff1` est active sur la cible Core Cloudflare existante, avec 30 tables et 30 index ajoutés par le plan additif. Après le correctif PR #56 et ses 1 253 tests, le même update `e11287c4` est confirmé `delivered`, registre synchronisé. La relecture API et le navigateur vérifient les conversations, brouillons, fichiers et droits historiques conservés. Aucun nouvel upload ni appel OpenAI n’a été nécessaire à cette confirmation. Voir [T32](docs/IMPLEMENTATION-T32.md).
 

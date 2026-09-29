@@ -44,30 +44,34 @@ for (const name of ['support', 'pages-navigation', 'analytics']) {
 }
 execute('catalog-models', ['scripts/data/prepare-native-module.mjs', 'catalog', '--family=common']);
 execute('n8n-models', ['scripts/data/prepare-native-module.mjs', 'n8n', '--family=connectors']);
+execute('stripe-models', ['scripts/data/prepare-native-module.mjs', 'stripe', '--family=connectors']);
+execute('meili-models', ['scripts/data/prepare-native-module.mjs', 'meili', '--family=connectors']);
 // Lab validates module archives against the immutable public SDK selected by
 // its npm lock. It never packs the local SDK workspace in place of that SDK.
 const sdkSpec=JSON.parse(readFileSync(resolve(root,'package.json'),'utf8')).devDependencies?.['@creezio/sdk'];
-if(sdkSpec!=='file:.creezio/packages/creezio-sdk-1.2.0.tgz')
+if(sdkSpec!=='file:.creezio/packages/creezio-sdk-1.4.1.tgz')
   throw new Error('Lab public SDK pin differs from the qualified archive.');
 const sdkArchive=resolve(root,sdkSpec.slice('file:'.length));
 const sdkSha=createHash('sha256').update(readFileSync(sdkArchive)).digest('hex');
-if(sdkSha!=='34eb5e1a8ff5b2937cdc9e8fe0a41697705208e708f85a90e0308802b430eda8')
+if(sdkSha!=='3196390908a13cf32290f100584a3edb20931c8b3f56c37c6fab131c3fe4b37d')
   throw new Error('Lab public SDK archive integrity differs.');
 execute('module-archive-suites',['scripts/modules/validate-archives.mjs','--sdk-archive',sdkArchive,
   '--sdk-sha256',sdkSha,'extensions/native/support','extensions/native/pages-navigation',
-  'extensions/native/analytics','extensions/common/catalog','extensions/connectors/n8n'],180_000);
+  'extensions/native/analytics','extensions/common/catalog','extensions/connectors/n8n',
+  'extensions/connectors/stripe','extensions/connectors/meili'],180_000);
 execute('delivery-suites', ['extensions/native/delivery/gate.mjs']);
 execute('widgets-witness-suites', ['extensions/widgets-witness/gate.mjs']);
 execute('theme-standard-suites', ['themes/standard/gate.mjs']);
 execute('theme-chatgpt-suites', ['themes/chatgpt-like/gate.mjs']);
 execute('typecheck', ['node_modules/typescript/bin/tsc', '--noEmit']);
 execute('build', ['scripts/run-framework.mjs', 'build']);
-// T15's 126-file Windows suite measured 329s, then exceeded 360s under local load.
-// Keep a bounded aggregate margin; per-test deadlines and complete TAP remain required.
+// T27's full suite passed 1,246 tests in 483s; another runner stopped at the 600s
+// ceiling after reporting its final test. Leave bounded room for host variance;
+// individual test deadlines and complete TAP counters remain mandatory.
 // This harness deadline does not change any product deadline or permit an incomplete TAP result.
 const testStarted = performance.now();
 const result = spawnSync(process.execPath, ['--test', '--test-concurrency=1', '--test-reporter=tap', ...tests],
-  { cwd: root, encoding: 'utf8', timeout: 600_000, maxBuffer: 8 * 1024 * 1024 });
+  { cwd: root, encoding: 'utf8', timeout: 900_000, maxBuffer: 8 * 1024 * 1024 });
 const testDurationMs = Math.round(performance.now() - testStarted);
 // Preserve failing diagnostics before a bounded console tail hides early failures.
 writeFileSync(resolve(root, '.quality/tests-latest.tap'), result.stdout ?? '');

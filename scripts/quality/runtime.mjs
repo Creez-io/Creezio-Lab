@@ -8,8 +8,9 @@ const hash = bytes => createHash('sha256').update(bytes).digest('hex');
 // Lab adds the public purchase-requests package, its views and widgets to the
 // native composition. The T41 source build with public SDK 1.2.0 and purchase
 // requests 0.1.3 measures 7,046,827 raw / 1,327,438 gzip bytes across 71
-// Worker files. The existing raw and gzip ceilings still bound this profile;
-// no local runtime, browser or hosted behavior is inferred from this build.
+// Worker files. The T38 source with SDK 1.4.1 needs its own measurement; do
+// not raise these ceilings from a source diff. No local runtime, browser or
+// hosted behavior is inferred from the earlier build.
 // Other compositions still require explicit measurements.
 // They are neither provider quotas nor production latency guarantees.
 export const RUNTIME_BUDGETS = Object.freeze({ workerBytes: 7_150_000, workerGzipBytes: 1_350_000,

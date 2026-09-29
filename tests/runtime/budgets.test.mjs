@@ -23,3 +23,16 @@ test('runtime ceilings reject size, import graph and latency regressions rather 
     assert.throws(() => assertRuntimeBudgets(slow), new RegExp(key));
   }
 });
+
+test('Lab T38 Worker measurement fits both size ceilings with under three percent headroom', () => {
+  // PR11 CI 36587549770 measured the Lab composition with public SDK 1.4.1.
+  const observed = {workerBytes: 7_056_734, workerGzipBytes: 1_330_065};
+  const report = valid();
+  report.artifact.worker.bytes = observed.workerBytes;
+  report.artifact.worker.gzipBytes = observed.workerGzipBytes;
+  assert.deepEqual(assertRuntimeBudgets(report), RUNTIME_BUDGETS);
+  for (const name of Object.keys(observed)) {
+    assert(RUNTIME_BUDGETS[name] > observed[name]);
+    assert(RUNTIME_BUDGETS[name] < observed[name] * 1.03);
+  }
+});

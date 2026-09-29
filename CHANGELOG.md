@@ -1,5 +1,9 @@
 # Changelog
 
+## En préparation — adoption Core T38 avec SDK 1.4.1
+
+La branche Lab adopte en source Core `e2e5dc4` et le paquet public SDK 1.4.1, en gardant le module d'achat public 0.1.3 exactement. Les profils actifs conservent l'identité `creezio.lab`, le front ChatGPT-like et leur sélection Docker (sept modules) ou Sites (six modules) ; les nouveaux modules de l'amont restent inactifs. Les verrous actifs sont recalculés avec le reçu public 0.1.3. Cette préparation ne modifie aucune donnée ni publication hébergée ; la recette de mise à jour reste à faire. Voir [T38](docs/IMPLEMENTATION-T38.md).
+
 ## En préparation — provenance officielle Sites du fork Lab (T09/T41)
 
 Le build du fork lie désormais le manifeste et le journal DDL central à son artefact `dist`. L'export vérifie les octets des archives app/opérateur ; la préparation de source lie un commit Lab propre à un commit Site distinct, sans écraser des fichiers non possédés. Les dépendances publiques restent SDK 1.2.0 et achats 0.1.3, avec le même front, les mêmes compositions et données. Six tests locaux ciblés passent ; aucune nouvelle publication ou recette hébergée n'est incluse dans cette préparation.

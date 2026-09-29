@@ -24,8 +24,9 @@ test('runtime ceilings reject size, import graph and latency regressions rather 
   }
 });
 
-test('Analytics widget Worker measurement fits both size ceilings with under three percent headroom', () => {
-  const observed = {workerBytes: 18_325_038, workerGzipBytes: 3_322_668};
+test('Lab T38 Worker measurement fits both size ceilings with under three percent headroom', () => {
+  // PR11 CI 36587549770 measured the Lab composition with public SDK 1.4.1.
+  const observed = {workerBytes: 7_056_734, workerGzipBytes: 1_330_065};
   const report = valid();
   report.artifact.worker.bytes = observed.workerBytes;
   report.artifact.worker.gzipBytes = observed.workerGzipBytes;

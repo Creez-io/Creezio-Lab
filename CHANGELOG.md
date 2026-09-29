@@ -1,5 +1,9 @@
 # Changelog
 
+## En préparation — provenance officielle Sites du fork Lab (T09/T41)
+
+Le build du fork lie désormais le manifeste et le journal DDL central à son artefact `dist`. L'export vérifie les octets des archives app/opérateur ; la préparation de source lie un commit Lab propre à un commit Site distinct, sans écraser des fichiers non possédés. Les dépendances publiques restent SDK 1.2.0 et achats 0.1.3, avec le même front, les mêmes compositions et données. Six tests locaux ciblés passent ; aucune nouvelle publication ou recette hébergée n'est incluse dans cette préparation.
+
 ## 29 septembre 2026 — candidate source Lab T41
 
 Lab adopte en source Core main `7b343782`, le SDK public 1.2.0 et le module achats public 0.1.3 avec leurs intégrités vérifiées. Les compositions Docker/Sites conservent `creezio.lab`, le front ChatGPT-like et leurs six ou sept modules sélectionnés ; les autres modules Core restent disponibles dans la source sans activation. Le build, le typage et les contrôles ciblés passent. Aucun serveur, schéma D1, publication ou recette du nouveau code n'a été exécuté ; les hôtes publiés restent sur les versions historiques. Voir [T41](docs/IMPLEMENTATION-T41.md).

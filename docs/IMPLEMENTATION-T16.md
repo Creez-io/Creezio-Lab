@@ -1,5 +1,7 @@
 # Réalisation T16 — widgets des modules
 
+Préparation Lab locale du 30 septembre : le port interne du Core et l'opération `widget.context.read` retournent la révision d'une tombstone valide (`value: null`, `removed: true`) après contrôle de l'instance, du catalogue, de l'action et des droits actuels. Le contrôleur peut alors remplacer ce contexte avec la vraie révision CAS ; le tour suivant continue d'exclure le contexte retiré. Ce delta reprend quatre hunks relus sur Core mais ne constitue pas encore une qualification Core finale, une publication Lab/Sites ni un nouveau tour OpenAI. SDK public 1.4.1, achat 0.1.3 et modèles D1 restent inchangés.
+
 T-16 / US-16, REQ-1601 à REQ-1607. Branche `core/t16-widgets` depuis main `42efa820`. Développement parallèle du catalogue/MCP, du moteur/D1 et du SDK/UI ; intégration, publication et recettes par l'orchestrateur. Cette fiche décrit le raccord en construction, sans annoncer une qualification acquise.
 
 Le module conserve ses opérations, modèles, écrans, dépendances et droits. Sa partie plugin expose ses outils et plusieurs widgets MCP Apps. Le chat Creezio reprend le panneau original ; il héberge les mêmes ressources HTML compilées que les clients MCP. Le workspace et le front montent le même provider public du SDK. Aucun catalogue HTML complet n'est embarqué dans le JavaScript public du front : une projection native filtre audience, contexte et permissions ; chaque ressource est relue sous les droits courants.

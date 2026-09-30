@@ -1,5 +1,9 @@
 # Changelog
 
+## Préparation locale — révision du contexte widget retiré (T16)
+
+Depuis Lab main `7ebf532`, seuls le port interne de widgets, la lecture Conversations et leurs deux tests sont adaptés au correctif Core gelé du 30 septembre. La révision durable d'un contexte retiré est de nouveau lisible pour permettre un remplacement protégé par CAS ; aucun contexte retiré n'est réinjecté au tour suivant. SDK public 1.4.1, achat 0.1.3, front, schéma et données restent inchangés. La qualification Core finale, les verrous Lab et toute livraison hébergée restent distincts de cette préparation.
+
 ## Candidat local — adoption du Core `af602626` (T16/T21/T38)
 
 Le fork Lab reprend la navigation Pages du Core et la correction du statut de contexte dans l'hôte Conversations. Pages reste inactif dans les compositions Lab. L'identité, le front ChatGPT-like, le SDK public 1.4.1, les achats publics 0.1.3 et la source de build Sites sont conservés. Les verrous de chaque composition consommatrice sont recalculés ; cette adoption source ne publie ni ne modifie les données des hôtes.

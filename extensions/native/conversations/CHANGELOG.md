@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.0.0 — T16, révision d'un contexte retiré (préparation Lab)
+
+- La lecture d'une tombstone valide retourne sa révision et `value: null` après contrôle du widget, de l'action et des droits courants. Le remplacement suivant utilise cette révision pour le CAS ; le contexte retiré reste absent du prochain tour.
+- Ce port local ne publie pas le correctif sur les hôtes Lab et ne change ni contrat public SDK, ni schéma, ni fournisseur.
+
 ## 0.0.0 — T16, statut après retrait du contexte
 
 - L'hôte affiche « Contexte retiré pour les prochains tours » quand le contrôleur confirme le retrait. Il conserve les états de remplacement, refus et résultat incertain. Le service et le contrat de contexte ne changent pas.

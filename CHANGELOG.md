@@ -1,5 +1,9 @@
 # Changelog
 
+## En préparation — sélection des outils de rendu du chat natif (T14/T16)
+
+Quand une lecture autorisée dispose d'alias de widgets admissibles, le chat natif propose ces alias avant l'outil canonique et masque ce doublon pour le même contrat d'entrée. Plusieurs widgets de la même opération restent proposés ; l'outil canonique reste disponible si aucun alias ne passe les contrôles d'audience, de contrat, de droits ou de budget. Le tour Lab observé avait appelé le doublon canonique et n'avait donc créé aucun widget malgré un résultat d'outil réussi. Le correctif est qualifié localement sur le projecteur et le pont de conversation ; sa PR, sa CI et une nouvelle recette du chat natif hébergé restent à faire. La prose de montant erronée demeure un défaut distinct. Aucun contrat API/MCP, schéma, SDK 1.4.1, module achats 0.1.3 ou hôte publié n'est modifié par cette préparation.
+
 ## Préparation locale — révision du contexte widget retiré (T16)
 
 Depuis Lab main `7ebf532`, seuls le port interne de widgets, la lecture Conversations et leurs deux tests sont adaptés au correctif Core gelé du 30 septembre. La révision durable d'un contexte retiré est de nouveau lisible pour permettre un remplacement protégé par CAS ; aucun contexte retiré n'est réinjecté au tour suivant. SDK public 1.4.1, achat 0.1.3, front, schéma et données restent inchangés. La qualification Core finale, les verrous Lab et toute livraison hébergée restent distincts de cette préparation.

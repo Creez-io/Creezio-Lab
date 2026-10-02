@@ -1,5 +1,48 @@
 # T20 — CRM natif
 
+## État récent sur Original domix — 2 octobre 2026
+
+Dans le contexte `t20-oct2-a`, les widgets natifs `company-list` et `prospect-detail` ont été affichés dans le chat Original, puis relus par leurs actions directes et après rechargement. Leurs sources sont les lectures `crm_company_search` et `crm_prospect_read` des fiches fictives existantes. Reçu hors dépôt : `CREEZIO-T20-ORIGINAL-WIDGETS-UI-READBACK-VERIFY.json` (SHA-256 `5fecaa8e22bb5d7dcd44a617a91e425a3a4f9c14622b54f1ee3beb3757ecb6e8`). Cette preuve concerne ces deux widgets dans le chat Original ; elle ne couvre pas les quatre autres widgets ni un client MCP externe.
+
+Le conflit de formulaire a ensuite été observé sur l'entreprise A existante avec deux onglets : l'enregistrement récent a été conservé, l'envoi fondé sur une révision périmée a été refusé, puis le contenu métier initial a été restauré. La référence de lecture actuelle en A est entreprise révision 9, contact révision 6 et prospect révision 6 ; B reste inchangé. Reçu `CREEZIO-T20-ORIGINAL-CRM-UI-CONFLICT.json` (SHA-256 `c7165f048687f89e387ba638b7983552da49ae8135e488c49daeca63309417ae`). Les sessions et navigateurs de ces recettes sont fermés.
+
+Le prévol MCP hébergé sur ce même Original a trouvé la métadonnée OAuth de `/mcp/app` (200), avec `creezio.crm:use`, et le refus de `initialize` anonyme (401 `authentication_required`). Aucun bearer OAuth ou API token MCP déjà utilisable pour ce contexte n'est enregistré dans le dossier de cette tâche ; le grant du chat n'en fournit que les métadonnées. Les lectures authentifiées des deux outils, leurs ressources et les refus hors droit ou hors contexte n'ont donc pas été exécutés. Aucun nouveau credential, droit ou compte n'a été créé. Reçus hors dépôt : `CREEZIO-T20-OCT2-ORIGINAL-MCP-PREFLIGHT.json` et `CREEZIO-T20-OCT2-ORIGINAL-MCP-GAP.md`.
+
+## Relations par les sélecteurs et refus croisés — 2 octobre 2026
+
+Sur Original domix v6/Core `d7e117a`, les formulaires existants du contact et du prospect A ont effectué quatre mises à jour : retrait puis rétablissement de l'entreprise du contact, ajout puis retrait des deux liens du prospect. Les recherches et sélections des références ont été effectuées dans l'interface. Deux tentatives API de liaison vers B ont été refusées avec `not_found`, sans changement ; les quatre mutations autorisées et les deux refus ont chacun une intention conservée, sans rejeu.
+
+La lecture finale compare tous les champs métier au point de départ : entreprise A révision 7, contact A révision 6 toujours lié à cette entreprise, prospect A révision 6 sans lien. Les deux fiches B restent intégralement identiques (révisions 2/1). Journal final sans opération en attente, zéro écriture navigateur inattendue, logout 200/session 401 et navigateurs fermés. Reçu `CREEZIO-T20-ORIGINAL-RELATIONS-SUMMARY.json`, SHA-256 `63a1a227807a843342a44d93b4bf41230c3672703caa3d70eee6e8d372a7c212`, lié à huit reçus et à la capture finale. Cette nouvelle référence succède aux révisions 5/3/4 pour toute relecture future de ces témoins. Pagination, widgets et conflit concurrent restent distincts de cette recette.
+
+## Kanban et édition du prospect sur Original — 2 octobre 2026
+
+Sur Original domix v5/Core `252791f`, la recette utilise les quatre fiches A/B déjà présentes et crée un seul prospect explicitement fictif dans A. L'interface à cinq colonnes montre son déplacement de « À contacter » à « Contacté », l'édition d'une note temporaire et la restauration par formulaire de son étape, position et note initiales. Les quatre fiches entreprise/contact sont inchangées ; B reste isolé. Le prospect est conservé à la révision 4, sans lien entreprise/contact. Les lectures natives confirment les commandes et le contenu métier ; les sessions et navigateurs sont fermés.
+
+Le reçu `CREEZIO-T20-ORIGINAL-KANBAN-SUMMARY.json`, SHA-256 `3f7da202586c84e253a248d0e3c5e83f2082e8ee1bf8bfe17a10b8f541e34eda`, lie les phases et la capture finale. La relecture après publication d'Original v6/Core `d7e117a` confirme les mêmes cinq témoins. Ce cycle ne qualifie pas le conflit concurrent du kanban, les sélecteurs de relations, la pagination visible ou les six widgets liste/fiche ; leurs critères restent ouverts. Aucun export métier CRM n'est ajouté : REQ-2001 impose la frontière de droits lorsqu'une voie d'export existe.
+
+## Deux contextes logiques sur Original Sites — 2 octobre 2026
+
+Sur Original avant la mise à jour PR #97 (source Site `be34e8d`, version 3), `t20-oct2-a` et `t20-oct2-b` utilisent le même couple D1/R2. Une entreprise et un contact ont été créés dans chaque contexte, soit quatre fiches ; chaque contact référence l'entreprise locale. La recherche retrouve chaque fiche dans son contexte et aucune fiche étrangère ; la lecture croisée et les deux relations entre contextes répondent `not_found`. L'UI a montré les fiches et leur relation en A et B, puis B après rechargement ; logout 200/session 401 est confirmé. Reçu hors dépôt : `CREEZIO-T20-OCT2-ORIGINAL-FINAL.json` (SHA-256 `52C51EE870550312E91F48D2040034694E979231A96C40BD7B18ECC29E257844`).
+
+Cette recette établit l'isolation logique CRM entre deux contextes actifs sur Sites. Elle n'exerce pas l'export CRM, ne crée pas de prospect et ne qualifie pas le routage T33 vers des D1/R2 physiques distincts. La recette v7/b9 à trois fiches décrite ensuite reste un témoin séparé.
+
+Sur le même Original après PR #97, un cycle borné a réutilisé ces quatre fiches. L'archivage de l'entreprise A encore liée a répondu `conflict` sans effet ; le contact A puis l'entreprise A ont été archivés, puis l'entreprise et le contact restaurés par les opérations natives et leurs révisions CAS. Le contenu métier et le lien local sont revenus exactement à leur état initial ; seules les révisions/dates de A ont progressé (entreprise 2→5, contact 1→3). Les deux fiches B, leurs révisions et dates sont inchangées. Le navigateur relit les contacts et entreprises A/B après restauration ; sessions API/navigateur fermées (logout 200, session 401). Reçus hors dépôt : `CREEZIO-T20-OCT2-EXISTING-CYCLE-FINAL.json` et `CREEZIO-T20-OCT2-EXISTING-CYCLE-BROWSER.json`. Il n'y a eu ni nouvelle fiche ni suppression physique ; ce cycle ne qualifie ni les widgets, ni l'export, ni le routage T33.
+
+
+## Recette ciblée Original Sites v7/Core b9 — 2 octobre 2026
+
+Trois fiches dédiées `T20-B9-C17FB5FDD40F` (entreprise, contact et prospect) ont été créées et recherchées par API native. Le contact référence l'entreprise ; le prospect référence l'entreprise et le contact, stade `a_contacter`. Les trois vues ont été observées en navigateur. Un premier contrôle navigateur s'est arrêté après cette observation, sans diagnostic précis ; un second a confirmé le prospect et ses liens avant/après rechargement, puis la déconnexion 200/session 401. Les recherches des trois types sous le contexte non attribué `t20-foreign` ont refusé à 403 sans sortie. L'ancien contact révision 3 et le ticket Support révision 4 sont préservés. Cette preuve ne couvre pas un refus entre deux contextes vivants ni les refus de relation/export. Reçus hors dépôt : `CREEZIO-T20-SITES-B9-CRM-FINAL-2026-10-02.json`, `CREEZIO-T20-SITES-B9-PLAYWRIGHT-UI-2026-10-02.json` et `CREEZIO-T20-SITES-B9-PLAYWRIGHT-RELOAD-2026-10-02.json`.
+
+Les sections du 1er octobre ci-dessous restent historiques.
+
+## Relation Support/CRM sur Original Sites v5 — 1er octobre 2026
+
+Le contact CRM préexistant `0347a984-4f37-4120-890e-b53a5bc1280d` a été lié explicitement au ticket Support `debf24c8-4c25-459a-ae4a-da082bde2de4` dans le workspace admin. Le rechargement admin conserve ce lien et les deux messages du fil. Une lecture native du port public Support `reference.contact.read` retrouve le même contact ; les lectures du ticket en admin et app confirment la même référence à la révision 4. Le front sans droit CRM refuse la recherche localement tout en conservant sa session et le ticket ; aucun code HTTP navigateur n'est revendiqué. Ce témoin qualifie le raccord CRM/Support sous droits actuels, sans qualifier les six widgets CRM ni une relation avec un message Messaging. Preuves hors dépôt : `outputs/CREEZIO-T19-SITES-UI-RECIPE-2026-10-01.json`, `outputs/CREEZIO-T09-ORIGINAL-SUPPORT-NATIVE-READ-2026-10-01.json`.
+
+## Recette API native CRM sur Linux main `9ce856c` — 1er octobre 2026
+
+Deux contacts témoins nouveaux ont été créés sous le même propriétaire/contexte. Une recherche `limit=1` avec curseur a parcouru deux pages contenant exactement leurs ID. Le contact A a été archivé par la commande native (révision 1→2) ; la recherche active n'a conservé que B, la recherche archivée retrouve A, et la lecture active de A répond `not_found`. B et les enregistrements métier antérieurs sont préservés ; aucune suppression physique n'a eu lieu. Le journal a confirmé les trois intentions. Cette recette API ne couvre ni les vues navigateur ni les widgets ; voir `CREEZIO-T20-T19-NATIVE-RECIPE-9CE856C-2026-10-01.json`.
+
 Réalisation de [REQ-2001](EXIGENCES.md#REQ-2001) et [US-20](USER-STORIES.md#US-20), suivie dans le [backlog](TODO.md#T-20). Branche `core/t20-native-crm`, depuis le socle intégrant la messagerie PR #42.
 
 ## Données et interfaces
@@ -34,3 +77,7 @@ Le candidat de complément conversationnel ajoute six widgets de lecture liste/f
 Le catalogue MCP validé est capturé une fois au chargement du Worker : sa copie intégrale n'est plus refaite pour chaque requête. Seul cet index statique est partagé ; origine, moteur, authentification et vérification des permissions restent propres au transport de la requête. Le test de la factory utilise deux clients et moteurs distincts et vérifie l'isolation des credentials, une révocation et la stabilité du catalogue capturé.
 
 La CI du candidat `619e95e` a exécuté 1 249 tests : 1 247 réussites et deux échecs correspondant au sous-test de budget et à son parent. Le Worker mesuré contient 83 fichiers, 11 931 616 octets bruts et 2 068 665 gzip ; les six renderers autoportants ajoutent leur code de pont MCP Apps. Les budgets locaux passent à 12 250 000 et 2 130 000 octets, chacun avec moins de 3 % de marge sur cette mesure. Graphe et délais restent inchangés. Démarrage observé : 752 ms ; redémarrage : 715 ms. Cette CI reste en échec ; seul un nouveau contrôle complet pourra qualifier le candidat corrigé.
+
+## Port de consultation — 30 septembre
+
+Le contrat public `contact-lookup` v1 exporte uniquement les requêtes `contact.search` et `contact.read` avec leurs schémas. Les modèles CRM restent privés ; Support n'obtient pas un accès implicite aux données, seulement une requête soumise aux droits CRM du principal courant. Les six widgets CRM continuent de n'exposer que des lectures déclenchées volontairement et écartent désormais un résultat historique marqué en erreur. Ce complément source ne qualifie pas, à lui seul, les interactions ChatGPT/MCP externes ni la comparaison visuelle finale du kanban.

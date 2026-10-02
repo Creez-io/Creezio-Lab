@@ -16,9 +16,12 @@ import type {RuntimeFrontView} from '../../sdk/runtime/ui';
 import type {FrontProjection, FrontThemeProps, PublicFrontViewProps} from '../../sdk/front/types';
 import {shouldNavigateFromPanel} from '../../sdk/front/navigation';
 import {currentProtectedSlot,protectedSlotNavigation} from './slot-navigation';
+import {isFrontHomeUrl} from './home-url';
 import {FrontAccessRefused, readFrontProjection} from './projection-client';
 import styles from './host.module.css';
 import {WidgetHostProvider} from '../../sdk/widgets/provider';
+import {startAnalyticsCollection} from '../analytics/collection';
+import {shouldRefreshHostAccess} from '../access/operation-refusal';
 
 const contextId = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/.test(frontContextId) ? frontContextId : '';
 const emptyInput: WorkspaceInput = Object.freeze({});
@@ -97,6 +100,7 @@ function BoundFront({access, initialUrl}: {access: AccessController; initialUrl?
   const [activePanelUrl, setActivePanelUrl] = useState<string | null>(null);
   const activePanelUrlRef = useRef<string | null>(null);
   const controllerRef = useRef<WorkspaceController | null>(null);
+  const analyticsCollector=useRef<ReturnType<typeof startAnalyticsCollection>|null>(null);
   const currentProjection = useRef(projection); currentProjection.current = projection;
   const lastRevocation = useRef(revocationVersion);
 
@@ -139,8 +143,9 @@ function BoundFront({access, initialUrl}: {access: AccessController; initialUrl?
   const client = useMemo(() => {
     const base = createOperationClient({origin: access.origin, audience: 'app', access,
       bindings: httpBindings.filter(binding => binding.audience === 'app' && binding.auth.includes('session'))});
-    const rejection = (result: Awaited<ReturnType<typeof base.invoke>>) => {
-      if (result.kind === 'rejected' && ['unauthorized','forbidden','authentication_required'].includes(result.code)) {
+    const rejection = (result: Awaited<ReturnType<typeof base.invoke>>, bindingId: string,
+      source: 'invoke' | 'status' = 'invoke') => {
+      if (shouldRefreshHostAccess(result, bindingId, source)) {
         setProjection(null); setRevocationVersion(value => value + 1); void access.refresh();
       }
     };
@@ -149,13 +154,13 @@ function BoundFront({access, initialUrl}: {access: AccessController; initialUrl?
         const initial = currentProjection.current;
         const result = await base.invoke({...request, isCurrent: () => !!initial && currentProjection.current === initial
           && (request.isCurrent?.() ?? true)});
-        rejection(result); return result;
+        rejection(result, request.bindingId); return result;
       },
       async status(request: Parameters<typeof base.status>[0]) {
         const initial = currentProjection.current;
         const result = await base.status({...request, isCurrent: () => !!initial && currentProjection.current === initial
           && (request.isCurrent?.() ?? true)});
-        rejection(result); return result;
+        rejection(result, request.bindingId, 'status'); return result;
       },
     };
   }, [access]);
@@ -165,6 +170,21 @@ function BoundFront({access, initialUrl}: {access: AccessController; initialUrl?
   const allLocation = resolveWorkspaceLocation(currentUrl, appViews, appViewIds, 'front');
   const currentView = allLocation && appViews.find(view => view.id === allLocation.viewId);
   const currentPermitted = !!(currentView && visibleIds.has(currentView.id));
+  useEffect(()=>{
+    if(!authorized||!httpBindings.some(binding=>binding.moduleId==='creezio.analytics'
+      &&binding.operationId==='collection.effective'&&binding.audience==='app'))return;
+    const collector=startAnalyticsCollection({client,contextId,audience:'app',surface:'front',target:document});
+    analyticsCollector.current=collector;
+    const refresh=()=>{void collector.refresh();};
+    window.addEventListener('creezio:analytics-policy-updated',refresh);
+    return()=>{window.removeEventListener('creezio:analytics-policy-updated',refresh);
+      if(analyticsCollector.current===collector)analyticsCollector.current=null;collector.dispose();};
+  },[authorized,client]);
+  useEffect(()=>{
+    const collector=analyticsCollector.current;if(!collector)return;
+    collector.location(currentPermitted&&currentView?{viewId:currentView.id,route:currentView.route}:null);
+    void collector.refresh();
+  },[authorized,currentPermitted,currentView?.id,currentUrl,client]);
   const workspaceViews = useMemo(() => appViews.map(workspaceAdapter), []);
   const routeTo = useCallback((location: WorkspaceLocation, replace = false) => {
     if (browserUrl() !== location.url) window.history[replace ? 'replaceState' : 'pushState'](null, '', location.url);
@@ -234,7 +254,7 @@ function BoundFront({access, initialUrl}: {access: AccessController; initialUrl?
   const Theme = FrontCustomTheme ?? frontTheme?.component;
   if (!Theme) return <p role="alert">Le thème front sélectionné est indisponible.</p>;
   let content: ReactNode;
-  if (!allLocation || !currentView) content = currentUrl === '/'
+  if (!allLocation || !currentView) content = isFrontHomeUrl(currentUrl)
     ? <p role="status">Choisissez une vue dans la navigation.</p>
     : <p role="alert">Vue front introuvable.</p>;
   else if (!currentPermitted && currentView.access === 'protected') content = !authenticated

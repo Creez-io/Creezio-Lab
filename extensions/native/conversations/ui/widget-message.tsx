@@ -3,7 +3,12 @@
 import {useEffect, useMemo, useRef, useState} from 'react';
 import type {CallToolRequest, CallToolResult} from '@modelcontextprotocol/client';
 import {createMcpAppsBridge, type McpAppsBridge} from '../../../../sdk/widgets/mcp-apps-bridge.ts';
-import {useWidgetHost} from '../../../../sdk/widgets/provider.tsx';
+import {createHostOpenLinkGate, type HostOpenLinkGate,
+  type HostOpenLinkPrompt} from '../../../../sdk/widgets/host-open-link.ts';
+import {linkedImageToolResult} from '../../../../sdk/widgets/private-image.ts';
+import {useWidgetHost, type WidgetLinkScope} from '../../../../sdk/widgets/provider.tsx';
+import {createFileClient} from '../../../../sdk/files/client.ts';
+import type {StagedFileReference} from '../../../../sdk/files/types.ts';
 import type {WidgetApprovalPreview} from '../../../../sdk/widgets/approval-client.ts';
 import type {WidgetMessageContentV1, WidgetMessageInstanceV1} from '../../../../sdk/widgets/types.ts';
 import type {ConversationsController} from '../../../../sdk/conversations/types.ts';
@@ -29,6 +34,10 @@ function WidgetInstanceView(props: {instance: WidgetMessageInstanceV1; messageId
   onContextAction?: ConversationsController['changeWidgetContext']}) {
   const host = useWidgetHost();
   const iframe = useRef<HTMLIFrameElement>(null);
+  const linkAnchor = useRef<HTMLAnchorElement>(null);
+  const restoredLinkFocus = useRef<string | null>(null);
+  const restoreFocusGuard = useRef<(() => void) | null>(null);
+  const keyboardTabCandidate = useRef<string | null>(null);
   const bridge = useRef<McpAppsBridge | null>(null);
   const proposeRef = useRef(props.onProposeText);
   const contextRef = useRef(props.onContextAction);
@@ -40,8 +49,25 @@ function WidgetInstanceView(props: {instance: WidgetMessageInstanceV1; messageId
   const [approval, setApproval] = useState<PendingApproval | null>(null);
   const approvalDraftRef = useRef<WidgetApprovalDraft | null>(null);
   const [approvalBusy, setApprovalBusy] = useState(false);
+  const [linkPrompt, setLinkPrompt] = useState<HostOpenLinkPrompt | null>(null);
+  const linkPromptRef = useRef<HostOpenLinkPrompt | null>(null);
+  const linkGate = useRef<HostOpenLinkGate | null>(null);
   const instanceSignature = JSON.stringify(props.instance);
   const config = host?.configuration;
+  useEffect(() => {
+    if (!linkPrompt) {keyboardTabCandidate.current = null; return;}
+    const frame = iframe.current, link = linkAnchor.current;
+    if (frame && link && document.activeElement === frame && link.tabIndex === 0 &&
+      frame.nextElementSibling?.querySelector('a[href],button,[tabindex]') === link &&
+      !link.closest('[inert],[aria-hidden="true"]')) keyboardTabCandidate.current = linkPrompt.id;
+    if (restoredLinkFocus.current !== linkPrompt.url) return;
+    restoreFocusGuard.current?.();
+    restoredLinkFocus.current = null;
+    if (props.active && host?.phase === 'ready' && host.access.getSnapshot().phase === 'authenticated' &&
+      document.visibilityState === 'visible' && document.hasFocus() &&
+      document.activeElement === document.body && linkAnchor.current?.isConnected)
+      linkAnchor.current.focus({preventScroll: true});
+  }, [linkPrompt, host, props.active]);
   const entry = config?.widgets.find(item => item.moduleId === props.instance.moduleId &&
     item.widgetId === props.instance.widgetId && item.version === props.instance.widgetVersion &&
     item.resourceUri === props.instance.resourceUri && item.resourceDigest === props.instance.resourceDigest &&
@@ -51,8 +77,9 @@ function WidgetInstanceView(props: {instance: WidgetMessageInstanceV1; messageId
     item.widgetId === props.instance.widgetId && item.version === props.instance.widgetVersion &&
     item.audiences.includes(host!.audience));
   const approvalMatchesCurrent = (draft: WidgetApprovalDraft): boolean => {
-    const tool=entry?.serverTools.find(item=>item.toolName===draft.toolName
-      &&item.operationDigest===draft.operationDigest&&item.operationKind==='command');
+    const matched=entry?.serverTools.find(item=>item.toolName===draft.toolName);
+    const tool=matched&&!('kind' in matched)&&matched.operationDigest===draft.operationDigest
+      &&matched.operationKind==='command'?matched:null;
     const action=entry?.actions.find(item=>item.id===tool?.actionId);
     return !!host&&!!tool&&action?.mode==='direct'&&action.target.kind==='operation'
       &&action.target.operation.moduleId===draft.moduleId
@@ -144,7 +171,7 @@ function WidgetInstanceView(props: {instance: WidgetMessageInstanceV1; messageId
   }, [approvalJournal, journal, host, entry, sessionId, props.active]);
   useEffect(() => {
     const node = iframe.current;
-    if (!host || !node || !props.active || host.phase !== 'ready' || !config || !entry || !resource || !sessionId) {
+    if (!host || !node || !props.active || host.phase !== 'ready' || !config || !entry || !resource || !session) {
       setStatus('Widget indisponible.');
       setApproval(null);
       return;
@@ -158,14 +185,55 @@ function WidgetInstanceView(props: {instance: WidgetMessageInstanceV1; messageId
       ...(props.instance.objectVersion !== undefined ? {objectVersion: props.instance.objectVersion} : {})};
     const isCurrent = () => !cancelled && props.active &&
       host.access.getSnapshot().phase === 'authenticated' &&
-      host.access.getSnapshot().session?.id === sessionId &&
+      host.access.getSnapshot().session?.id === session.id &&
       host.configuration === config;
+    const linkScope: WidgetLinkScope = {sessionId: session.id, principalId: session.principalId,
+      audience: host.audience, contextId: host.contextId, conversationId: props.conversationId,
+      messageId: props.messageId, instanceId: props.instance.instanceId,
+      instanceRevision: props.instance.instanceRevision, instanceSignature,
+      moduleId: props.instance.moduleId,
+      widgetId: props.instance.widgetId, widgetVersion: props.instance.widgetVersion,
+      resourceUri: props.instance.resourceUri, resourceDigest: props.instance.resourceDigest,
+      catalogEpoch: config.epoch};
+    const linkGeneration = host.linkGeneration();
+    const links = createHostOpenLinkGate({isCurrent, show: prompt => {
+      linkPromptRef.current = prompt; setLinkPrompt(prompt);
+    }});
+    linkGate.current = links;
+    const onWindowBlur = (event: FocusEvent) => {
+      const link = linkAnchor.current, prompt = linkPromptRef.current;
+      // The confirmation link is the first host tab stop following this iframe.
+      const next = node.nextElementSibling?.querySelector('a[href],button,[tabindex]');
+      const eligible = event.isTrusted && prompt && link && next === link &&
+        document.activeElement === node && link.tabIndex === 0 &&
+        !link.closest('[inert],[aria-hidden="true"]') &&
+        document.visibilityState === 'visible' && document.hasFocus();
+      keyboardTabCandidate.current = eligible ? prompt.id : null;
+    };
+    window.addEventListener('blur', onWindowBlur, true);
     const callTool = async (params: CallToolRequest['params']): Promise<CallToolResult> => {
       if (!isCurrent()) return toolResult('rejected', 'widget_inactive');
       const tool = entry.serverTools.find(item => item.toolName === params.name &&
         item.visibility.includes('app'));
-      const action = entry.actions.find(item => item.id === tool?.actionId);
-      if (!tool || !action || action.mode !== 'direct' || action.target.kind !== 'operation' ||
+      if (tool && 'kind' in tool && tool.kind === 'linked-image') {
+        const args = params.arguments;
+        if (host.audience !== 'app' || !('categoryId' in tool) ||
+          typeof tool.categoryId !== 'string' || !args || typeof args !== 'object' ||
+          Array.isArray(args) || Object.keys(args).sort().join(',') !== 'recordId,reference' ||
+          typeof args.recordId !== 'string') return toolResult('rejected', 'image_unavailable');
+        try {
+          const files = createFileClient({access:host.access,moduleId:entry.moduleId,
+            categoryId:tool.categoryId,contextId:host.contextId});
+          const read = await files.downloadLinked(args.reference as StagedFileReference,
+            args.recordId,isCurrent);
+          if (!isCurrent() || read.kind !== 'ready') return toolResult('rejected', 'image_unavailable');
+          const image = await linkedImageToolResult(read.value);
+          return isCurrent() && image ? image : toolResult('rejected', 'image_unavailable');
+        } catch {return toolResult('rejected', 'image_unavailable');}
+      }
+      if (!tool || 'kind' in tool) return toolResult('rejected', 'tool_unavailable');
+      const action = entry.actions.find(item => item.id === tool.actionId);
+      if (!action || action.mode !== 'direct' || action.target.kind !== 'operation' ||
         action.target.operationDigest !== tool.operationDigest ||
         action.target.operationKind !== tool.operationKind ||
         (action.target.idempotencyKeyField ?? null) !== tool.idempotencyKeyField)
@@ -284,7 +352,7 @@ function WidgetInstanceView(props: {instance: WidgetMessageInstanceV1; messageId
           if (outputBytes > entry.transport.maxPayloadBytes) throw new Error('render_output_too_large');
         } catch {setStatus('Résultat du widget indisponible.'); return;}
         initialResult = {content: [{type: 'text', text: 'Données du widget prêtes.'}],
-          structuredContent: {kind: 'creezio.widget.render.v1', input: output}};
+          structuredContent: {kind: 'creezio.widget.render.v1', instance: instanceRef, input: output}};
       }
       try {
         const mounted = await createMcpAppsBridge({iframe: node,
@@ -296,10 +364,16 @@ function WidgetInstanceView(props: {instance: WidgetMessageInstanceV1; messageId
             baseUriDomains: [...resource.uiMeta.csp.baseUriDomains]},
           permissions: resource.uiMeta.permissions,
           instance: instanceRef,
-          toolNames: entry.serverTools.filter(tool => tool.visibility.includes('app')).map(tool => tool.toolName),
-          toolInput: {state: props.instance.state, instanceId: props.instance.instanceId},
+          toolNames: entry.serverTools.filter(tool => tool.visibility.includes('app') &&
+            (!('kind' in tool) || tool.kind !== 'linked-image' || host.audience === 'app'))
+            .map(tool => tool.toolName),
+          toolInput: {state: props.instance.state, instanceId: props.instance.instanceId,
+            audience: host.audience},
           ...(initialResult ? {toolResult: initialResult} : {}),
           isCurrent, callTool,
+          openLink: async (url, signal) => {if (!isCurrent()) return false;
+            setStatus('Ce widget demande l’ouverture d’un lien externe. Confirmez dans Creezio.');
+            return links.request(url, signal);},
           ...(proposeRef.current ? {proposeMessage: async text => {
             if (!isCurrent()) return false;
             proposeRef.current?.(text); setStatus('Message proposé. Envoyez-le volontairement.');
@@ -326,9 +400,43 @@ function WidgetInstanceView(props: {instance: WidgetMessageInstanceV1; messageId
         bridge.current = mounted;
         setStatus(pendingRef.current ? 'Résultat incertain. Vérifiez avant de réessayer.' :
           approvalDraftRef.current ? 'Confirmation à vérifier…' : 'Widget prêt.');
+        const resumeKeyboardFocus = host.keyboardLinkFocus(linkScope);
+        const continued = host.takeLink(linkScope);
+        if (continued) {
+          if (resumeKeyboardFocus) {
+            restoredLinkFocus.current = continued;
+            const cancelFocus = () => {restoredLinkFocus.current = null; cleanupFocusGuard();};
+            const cleanupFocusGuard = () => {
+              document.removeEventListener('keydown', cancelFocus, true);
+              document.removeEventListener('pointerdown', cancelFocus, true);
+              document.removeEventListener('focusin', cancelFocus, true);
+              document.removeEventListener('visibilitychange', cancelFocus);
+              window.removeEventListener('blur', cancelFocus);
+              restoreFocusGuard.current = null;
+            };
+            restoreFocusGuard.current = cleanupFocusGuard;
+            document.addEventListener('keydown', cancelFocus, true);
+            document.addEventListener('pointerdown', cancelFocus, true);
+            document.addEventListener('focusin', cancelFocus, true);
+            document.addEventListener('visibilitychange', cancelFocus);
+            window.addEventListener('blur', cancelFocus);
+          }
+          setStatus('Ce widget demande l’ouverture d’un lien externe. Confirmez dans Creezio.');
+          void links.request(continued);
+        }
       } catch {if (!cancelled) setStatus('Widget indisponible.');}
     })();
-    return () => {cancelled = true; const current = bridge.current; bridge.current = null;
+    return () => {
+      restoreFocusGuard.current?.();
+      const prompt = linkPromptRef.current, snapshot = host.access.getSnapshot();
+      if (prompt && snapshot.phase === 'loading' && !snapshot.pending)
+        host.retainLink(linkScope, prompt.url, config, linkGeneration,
+          keyboardTabCandidate.current === prompt.id && document.visibilityState === 'visible' &&
+          document.hasFocus());
+      window.removeEventListener('blur', onWindowBlur, true);
+      cancelled = true;
+      links.dispose();if (linkGate.current === links) linkGate.current = null;
+      const current = bridge.current; bridge.current = null;
       if (current) void current.dispose();};
   }, [host, config, entry, resource, sessionId, instanceSignature, props.messageId,
     props.conversationId, props.active, journal, approvalJournal]);
@@ -433,6 +541,23 @@ function WidgetInstanceView(props: {instance: WidgetMessageInstanceV1; messageId
     aria-label={`Widget ${props.instance.widgetId}`} data-widget-instance={props.instance.instanceId}>
     <iframe ref={iframe} title={`Widget ${props.instance.widgetId}`}
       className="h-64 w-full rounded-md border border-slate-100" />
+    {linkPrompt && <section className="mt-2 rounded-md border border-sky-300 bg-sky-50 p-2"
+      aria-label="Ouverture d’un lien externe">
+      <p className="text-xs font-medium text-sky-950">Ce widget demande l’ouverture d’un site externe :</p>
+      <p className="mt-1 break-all text-[11px] text-sky-950">{linkPrompt.url}</p>
+      <div className="mt-2 flex gap-3 text-xs">
+        <a href={linkPrompt.url} target="_blank" rel="noopener noreferrer"
+          ref={linkAnchor}
+          className="rounded bg-sky-700 px-2 py-1 text-white"
+          onClick={event => {
+            const current = linkGate.current?.accept(linkPrompt.id) ?? false;
+            if (!current) event.preventDefault();
+            setStatus(current ? 'Ouverture demandée au navigateur.' : 'Lien refusé : widget inactif.');
+          }}>Ouvrir le lien</a>
+        <button type="button" className="rounded border border-sky-400 px-2 py-1"
+          onClick={() => {linkGate.current?.cancel(linkPrompt.id);setStatus('Lien refusé.');}}>Annuler</button>
+      </div>
+    </section>}
     {approval && <section className="mt-2 rounded-md border border-amber-300 bg-amber-50 p-2"
       aria-label="Confirmation de l’opération">
       <p className="font-medium text-amber-950">{approval.preview.operation.title}</p>

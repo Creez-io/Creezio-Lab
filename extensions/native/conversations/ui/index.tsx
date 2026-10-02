@@ -12,6 +12,7 @@ import {useAssistantUiOptional} from '@creezio/sdk/ui/assistant-provider';
 import {ConversationPanel, type ConversationMode, type ConversationPanelProps} from './panel.tsx';
 import {projectTurnEvents} from './turn-projection.ts';
 import {startTurnDriveLoop} from './drive-loop.ts';
+import {useWidgetHost} from '../../../../sdk/widgets/provider.tsx';
 
 type AttachmentState = NonNullable<ConversationPanelProps['attachmentState']>;
 type ProviderStatus = ConversationPanelProps['providerStatus'];
@@ -92,6 +93,7 @@ function useConversations(props: WorkspaceViewProps) {
 }
 
 function ConversationsView(props: WorkspaceViewProps & {readonly surface: 'admin' | 'front'}) {
+  const widgetHost = useWidgetHost();
   const workspaceActive=useWorkspaceActivity();
   const {controller, snapshot, retained, sessionId, live, accessPhase} = useConversations(props);
   const activity = useRef(false);
@@ -101,6 +103,21 @@ function ConversationsView(props: WorkspaceViewProps & {readonly surface: 'admin
   activity.current = activeNow;
   const assistantUi = useAssistantUiOptional();
   const floating = props.surface === 'admin' && props.input.presentation === 'assistant' && !!assistantUi;
+  const lastConversation = useRef<string | null>(null);
+  const lastInputConversation = useRef(props.input.conversationId ?? null);
+  useEffect(() => {
+    const next = props.input.conversationId ?? null;
+    if (lastInputConversation.current !== next && lastConversation.current &&
+      lastConversation.current !== next) widgetHost?.discardLinksForConversation(lastConversation.current);
+    lastInputConversation.current = next;
+  }, [props.input.conversationId, widgetHost?.discardLinksForConversation]);
+  useEffect(() => {
+    if (accessPhase !== 'authenticated' || snapshot?.phase !== 'ready') return;
+    const next = snapshot.selected?.id ?? null;
+    if (lastConversation.current && lastConversation.current !== next)
+      widgetHost?.discardLinksForConversation(lastConversation.current);
+    lastConversation.current = next;
+  }, [accessPhase, snapshot?.phase, snapshot?.selected?.id, widgetHost?.discardLinksForConversation]);
   const [mode, setMode] = useState<ConversationMode>('chat');
   const [query, setQuery] = useState('');
   const [busyList, setBusyList] = useState(false);
@@ -158,12 +175,15 @@ function ConversationsView(props: WorkspaceViewProps & {readonly surface: 'admin
     return () => {if (searchTimer.current) clearTimeout(searchTimer.current);};
   }, [controller, query, snapshot?.searchQuery]);
   const selectedIdForEffect = snapshot?.selected?.id ?? null;
+  const selectedHydratedForEffect = !!selectedIdForEffect &&
+    snapshot?.draft?.conversationId === selectedIdForEffect;
   useEffect(() => {
     const wanted = draftRequested.current;
-    if (!controller || !activity.current || !selectedIdForEffect || wanted?.id !== selectedIdForEffect) return;
+    if (!controller || !activity.current || !selectedHydratedForEffect ||
+      wanted?.id !== selectedIdForEffect) return;
     if (draftTimer.current) clearTimeout(draftTimer.current);
     draftTimer.current = setTimeout(() => resumeDraft.current?.(wanted.id), 200);
-  }, [controller, selectedIdForEffect]);
+  }, [controller, selectedIdForEffect, selectedHydratedForEffect]);
   useEffect(() => {
     setModelIds([]);setSelectedModelId(null);setProviderStatus('checking');
     if(!controller||!activeNow)return;
@@ -231,15 +251,15 @@ function ConversationsView(props: WorkspaceViewProps & {readonly surface: 'admin
     return ()=>{loop.stop();if(driveLoop.current?.loop===loop)driveLoop.current=null;};
   },[controller,activeNow,runningTurn?.id,sessionId]);
   useEffect(() => {
-    setAttachments([]); setAttachmentsNextCursor(null);
-    if (!controller || !selectedIdForEffect) return;
+    setAttachments([]); setAttachmentsNextCursor(null); setLoadingAttachments(false);
+    if (!controller || !selectedIdForEffect || !selectedHydratedForEffect) return;
     let current = true;
     setLoadingAttachments(true);
     void controller.listAttachments(selectedIdForEffect).then(page => {
       if (current && page) {setAttachments(page.items);setAttachmentsNextCursor(page.nextCursor);}
     }).finally(() => {if (current) setLoadingAttachments(false);});
     return () => {current = false;};
-  }, [controller, selectedIdForEffect]);
+  }, [controller, selectedIdForEffect, selectedHydratedForEffect]);
 
   if (!controller || !snapshot || snapshot.phase !== 'ready') return floating ? null :
     <p role="status" className="p-4 text-sm text-slate-600">Chargement des conversations…</p>;
@@ -256,7 +276,9 @@ function ConversationsView(props: WorkspaceViewProps & {readonly surface: 'admin
     const wanted = draftRequested.current;
     if (!wanted) return true;
     if (wanted.id !== id || live.current !== controller ||
-      controller.getSnapshot().selected?.id !== id || controller.getSnapshot().unknown || !activity.current) return false;
+      controller.getSnapshot().selected?.id !== id ||
+      controller.getSnapshot().draft?.conversationId !== id ||
+      controller.getSnapshot().unknown || !activity.current) return false;
     const inFlight = draftSaving.current;
     if (inFlight?.controller === controller) {
       await inFlight.promise;
@@ -352,7 +374,10 @@ function ConversationsView(props: WorkspaceViewProps & {readonly surface: 'admin
     void uploadPending(pending);
   };
   const content = <ConversationPanel variant={floating ? 'floating' : 'embedded'}
-    open={floating ? !!assistantUi?.open : true} onOpenChange={open => assistantUi?.setOpen(open)}
+    open={floating ? !!assistantUi?.open : true} onOpenChange={open => {
+      if (!open && selectedId) widgetHost?.discardLinksForConversation(selectedId);
+      assistantUi?.setOpen(open);
+    }}
     mode={snapshot.selected?.mode ?? mode} onModeChange={next => {void beforeTransition(async () => {
       setMode(next);
       if (snapshot.selected?.mode !== next) {
@@ -366,9 +391,11 @@ function ConversationsView(props: WorkspaceViewProps & {readonly surface: 'admin
       content:message.body, widgetContent:message.content??null, createdAt:message.createdAt}))}
     onWidgetContextAction={controller.changeWidgetContext}
     draft={snapshot.draft?.conversationId === selectedId ? snapshot.draft.text : ''}
+    draftReady={selectedHydratedForEffect}
     modelOptions={modelIds.map(id=>({id,label:id}))} selectedModelId={selectedModelId}
     onModelChange={id=>setSelectedModelId(modelIds.includes(id)?id:null)}
-    onSend={providerStatus==='ready'&&selectedModelId&&modelIds.includes(selectedModelId)&&selectedId&&!runningTurn?()=>{void beforeTransition(async()=>{
+    onSend={providerStatus==='ready'&&selectedModelId&&modelIds.includes(selectedModelId)&&
+      selectedHydratedForEffect&&selectedId&&!runningTurn?()=>{void beforeTransition(async()=>{
       const current=controller.getSnapshot(),body=current.draft?.conversationId===selectedId?current.draft.text:'';
       if(!body.trim()||!modelIds.includes(selectedModelId))return;
       const result=await controller.startTurn(selectedId,body,selectedModelId);
@@ -396,19 +423,25 @@ function ConversationsView(props: WorkspaceViewProps & {readonly surface: 'admin
     assistantPreview={runningTurn?progress.preview:''} progressSteps={runningTurn?progress.steps:[]}
     toolDiagnostics={selectedTurn?progress.toolDiagnostics:null}
     onDraftChange={text => {
-      if (!selectedId) return;
+      if (!selectedId || controller.getSnapshot().selected?.id!==selectedId ||
+        controller.getSnapshot().draft?.conversationId!==selectedId) return;
       controller.setDraft(selectedId,text);
       draftRequested.current = {id:selectedId,text};
       if (draftTimer.current) clearTimeout(draftTimer.current);
       draftTimer.current = setTimeout(() => {void flushDraft(selectedId);}, 600);
     }}
     onCreate={next => {void beforeTransition(async () => {
+      if (selectedId) widgetHost?.discardLinksForConversation(selectedId);
       const result = await controller.create({mode:next});
       ready(result); if (result.kind === 'ok') await controller.open(result.value.id);
     });}}
-    onSelect={id => {void beforeTransition(async () => {setAttachmentState(null);await controller.open(id);});}}
+    onSelect={id => {void beforeTransition(async () => {
+      if (selectedId && selectedId !== id) widgetHost?.discardLinksForConversation(selectedId);
+      setAttachmentState(null);await controller.open(id);
+    });}}
     onArchive={id => {void beforeTransition(async () => {const result = await controller.archive(id);ready(result);
       if (result.kind === 'ok' && selectedId === id) {
+        widgetHost?.discardLinksForConversation(id);
         setAttachmentState(null);
         await controller.search({query,archived:true});
       }

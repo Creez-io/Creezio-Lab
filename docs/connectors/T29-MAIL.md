@@ -1,0 +1,34 @@
+# PRD T29-MAIL — transports de messagerie externes
+
+REQ-2901/2902 ; US-29 et messagerie T18. Premier fournisseur HTTP : Resend, dont les comportements existent dans la messagerie Creezio de référence. Les autres passerelles SMTP/IMAP restent externes ; aucune bibliothèque de connexion persistante ni scheduler ne devient une dépendance du socle.
+
+Messagerie demeure propriétaire des boîtes, messages, brouillons, identifiants et états de livraison rapprochés et fichiers partagés entre workspace et front selon les droits. Le connecteur est propriétaire de sa configuration et de ses références de secrets. Il ne réplique pas le modèle métier de Messagerie.
+
+L'utilisateur autorisé prépare son brouillon et ses pièces jointes. Une commande explicite crée l'intention durable avec contenu/révision/destinataires vérifiés avant émission. L'envoi HTTP utilise une clé d'idempotence issue du journal hôte. Un timeout après tentative n'est jamais présenté comme un échec certain ni renvoyé sous une nouvelle clé. L'état local, l'accusé d'acceptation et la livraison réelle sont distincts.
+
+Le callback signé valide les octets bruts, les en-têtes et la fenêtre temporelle du fournisseur avant déduplication ; les accusés sont rapprochés d'un envoi connu, sans confiance dans un contexte fourni par l'événement. Les callbacks désordonnés ne régressent pas un état confirmé. Une réception entrante autorisée relit le message par l'API du fournisseur puis l'insère par le contrat Messagerie, sans texte HTML exécutable. Les pièces jointes passent par le port R2 déclaré et les quotas existants.
+
+Les tentatives de reprise sont explicites et bornées, déclenchées par API/MCP/UI ou un planificateur externe déjà autorisé. Le connecteur ne promet pas de livraison future simplement parce qu'une ligne est en attente. L'interface conserve boîtes/brouillons/messages lorsque le fournisseur est absent et explique l'indisponibilité de l'envoi.
+
+TODO de réalisation :
+
+- [x] Déclarer dépendance et contrats publics Messagerie, provenance des messages et écritures atomiques nécessaires.
+- [x] Configurer clé/API, expéditeur autorisé, secret de signature et jeton de service dans le coffre.
+- [x] Adapter l'envoi Resend au port mutateur hôte et au journal/outbox commun, sans client HTTP privé.
+- [x] Vérifier et enregistrer les événements signés, rapprocher manuellement les accusés connus sans rejeu incertain.
+- [x] Importer explicitement un message entrant sans pièce jointe dans une boîte autorisée dont l'adresse correspond exactement au destinataire fournisseur.
+- [x] Ajouter l'ingestion privée R2 des pièces jointes entrantes via un port hôte borné ; import exact 0/1/50 et refus de conflit vérifiés sur D1/R2 synthétiques.
+- [x] Raccorder les panneaux existants ; six suites backend/ui/api-mcp/widgets/package/docs.
+- [ ] Recette réelle avec expéditeur vérifié et destinataire de test explicitement autorisé, réception et refus intercontextes.
+
+La tranche locale couvre configuration et éligibilité Resend, snapshot texte/HTML et références R2, intention d’outbox et suivi UI. Les fixtures D1/R2 `tests/connectors/resend-integration.test.mjs` et `tests/modules/messaging-delivery-integration.test.mjs` vérifient les droits, le commit unique, 50 pièces jointes figées, un POST simulé, l'absence de rejeu après issue inconnue et le rapprochement d'un accusé stocké. Elles n’appellent pas Resend. La recette fournisseur réelle est différée à la demande de l’utilisateur.
+
+Sources fournisseur vérifiées le 30 septembre : [envoi](https://resend.com/docs/api-reference/emails/send-email), [vérification des webhooks](https://resend.com/docs/webhooks/verify-webhooks-requests), [lecture d'un courriel reçu](https://resend.com/docs/api-reference/emails/retrieve-received-email), [lecture d'une pièce jointe reçue](https://resend.com/docs/api-reference/emails/retrieve-received-email-attachment). Ne pas élargir cette recette aux destinataires métier existants sans instruction.
+
+## Contrat de livraison candidat — 30 septembre 2026
+
+`creezio.messaging:message.send` crée en un commit D1 le message `queued`, `send_snapshot` immuable, les liens `message_attachment` et l’intention d’outbox canonique. `send_snapshot` est indexé par `(context_id,owner_id,box_id,intentId)` et contient draft/révision, from/to/cc/bcc, sujet, texte/HTML, révision de config Resend et SHA-256 des références figées. Le brouillon conserve `send_intent_id` pour refuser un second envoi de la même révision. Jusqu’à 50 pièces jointes privées et 10 Mio cumulés sont admis : le port hôte vérifie octets R2, métadonnées et ensemble exact des liens, puis copie ces liens dans le même commit D1. Le corps métier sérialisé reste sous 60 KiB ; les octets sont encodés seulement dans le POST Resend, sous 14,5 Mio. L’outbox garde seulement `{kind,boxId,messageId,snapshotDigest,configRevision}` (moins de 32 KiB), provider `resend.api.v1` et `providerIdempotencyKey=intentId`; le header HTTP dérive de l’intention par l’hôte.
+
+Le manifest déclare `contracts.deliveries[]` avec `id:'message-send'`, commande `message.send`, ressource `resend.api.v1/email.send`, préparateur interne `message.delivery.prepare`, projecteur `module/delivery.ts::projectDeliveryReceipt`, modèles `box/message/send_snapshot/message_attachment` et reçu typé `accepted|rejected|unknown`. La dépendance facultative `creezio.resend` expose `delivery-readiness`, `delivery-events` et `received-email` v1. La query readiness exige `resend.use` indépendamment de `messaging.use` et ne rend que `state/from/configRevision`. L’hôte vérifie à nouveau droits, clé scellée, configuration et correspondance expéditeur avant l’effet.
+
+L’exécuteur générique conserve le lease et l’identité d’origine, réclame l’intention via `claimDelivery`, appelle le transport mutateur déclaré avec `intentId` stable, puis règle `settleDelivery` avec les plans CAS du projecteur. Une réponse inconnue n’est pas rejouée. Le webhook Resend vérifie la signature sur les octets bruts et enregistre seulement l'identifiant, le type, l'identifiant email, les horodatages et le condensat dans le contexte de connexion actif. `message.delivery.reconcile` lit ces événements par contrat public et applique le même projecteur CAS au message du propriétaire ; aucun callback ne mute directement la boîte. `message.inbound.prepare` exige une boîte choisie par son propriétaire, un événement `email.received` de la connexion active et une adresse `to` identique à celle de la boîte, puis fige les métadonnées 0–50 pièces sans créer le message. `message.inbound.attachment.stage` télécharge chaque enfant déclaré vers R2 privé par le port hôte ; `message.inbound.import` ne fait aucun réseau et publie la liste exacte dans le commit du message. L'HTML est assaini. La vérification locale couvre 0/1/50 pièces, conflits de reçu, rotation/révocation au commit, 50 fichiers sortants, POST simulé et accusé projeté ; aucun appel réel au fournisseur n'est qualifié.

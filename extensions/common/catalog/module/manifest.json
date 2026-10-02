@@ -5,11 +5,11 @@
     "title": "Catalogue métier",
     "publisher": "creezio",
     "origin": "https://github.com/creezio/Creezio-D1R2",
-    "version": "0.1.1",
+    "version": "0.1.3",
     "source": {
       "kind": "snapshot",
-      "revision": "t25-catalog-v2",
-      "integrity": "sha256-4667eb0ee0228b00722be65d489bb8976beb405ff90dae4f6bd5e57b2fba600d"
+      "revision": "t25-catalog-v4",
+      "integrity": "sha256-42fb11cc0dee477ca11448b48b39e0ce0ef3c0d94348fee0995a1e9eae8ceec0"
     },
     "license": {
       "expression": "NOASSERTION",
@@ -18,7 +18,7 @@
   },
   "compatibility": {
     "core": "^0.0.0",
-    "sdk": "^1.3.0",
+    "sdk": "^1.5.0",
     "requiredCapabilities": [
       "runtime.worker",
       "data.d1.shared",
@@ -52,6 +52,21 @@
       "optional": false,
       "contracts": [],
       "whenAbsent": "block",
+      "whenIncompatible": "block",
+      "autoInstall": false
+    },
+    {
+      "moduleId": "creezio.meili",
+      "origin": "https://github.com/creezio/Creezio-D1R2",
+      "versionRange": "^0.3.0",
+      "optional": true,
+      "contracts": [
+        {
+          "id": "meili.index",
+          "versionRange": "^1.0.0"
+        }
+      ],
+      "whenAbsent": "disable-contributions",
       "whenIncompatible": "block",
       "autoInstall": false
     }
@@ -600,7 +615,8 @@
             "id": {
               "type": "string",
               "minLength": 1,
-              "maxLength": 36
+              "maxLength": 36,
+              "description": "Internal product ID, never SKU. For a published product, use items[].id from product.search."
             }
           },
           "required": [
@@ -904,7 +920,8 @@
             "query": {
               "type": "string",
               "minLength": 0,
-              "maxLength": 120
+              "maxLength": 120,
+              "description": "Search text, such as a product name or SKU; use the returned items[].id for product.get."
             },
             "categoryId": {
               "type": "string",
@@ -931,7 +948,8 @@
                   "id": {
                     "type": "string",
                     "minLength": 1,
-                    "maxLength": 36
+                    "maxLength": 36,
+                    "description": "Internal product ID, not SKU; pass it to product.get for a published product."
                   },
                   "sku": {
                     "type": "string",
@@ -1042,7 +1060,8 @@
                   "id": {
                     "type": "string",
                     "minLength": 1,
-                    "maxLength": 36
+                    "maxLength": 36,
+                    "description": "Internal product ID, not SKU; pass it to product.get for a published product."
                   },
                   "sku": {
                     "type": "string",
@@ -2607,13 +2626,77 @@
           "when": {
             "field": "status",
             "equals": "published"
+          },
+          "mcpImage": {
+            "toolName": "catalog_linked_image_read",
+            "widgetIds": [
+              "product-list",
+              "product-detail"
+            ]
           }
         }
       }
     ],
     "events": [],
     "settings": [],
-    "search": [],
+    "search": [
+      {
+        "id": "catalog-products",
+        "model": {
+          "moduleId": "creezio.catalog",
+          "kind": "model",
+          "id": "product"
+        },
+        "fields": [
+          "id",
+          "name",
+          "description",
+          "category_id",
+          "price_minor",
+          "currency",
+          "status",
+          "revision",
+          "updated_at"
+        ],
+        "facets": [
+          "category_id"
+        ],
+        "permissions": [
+          {
+            "moduleId": "creezio.catalog",
+            "kind": "permission",
+            "id": "view"
+          }
+        ],
+        "context": "required",
+        "engine": "provider",
+        "provider": "meili.api.v1",
+        "projection": {
+          "orderIndexId": "by-updated",
+          "idField": "id",
+          "revisionField": "revision",
+          "visibilityField": "status",
+          "visibleValue": "published"
+        },
+        "rebuildOperation": {
+          "moduleId": "creezio.meili",
+          "kind": "operation",
+          "id": "index.rebuild.start"
+        },
+        "deleteOperation": {
+          "moduleId": "creezio.meili",
+          "kind": "operation",
+          "id": "index.emit"
+        },
+        "invalidatedBy": [],
+        "projectionVersion": "1.0.0",
+        "filterBeforeCount": true,
+        "resumable": true,
+        "requiresModules": [
+          "creezio.meili"
+        ]
+      }
+    ],
     "permissions": [
       {
         "id": "manage",
@@ -5612,6 +5695,18 @@
             "idempotent": true,
             "openWorld": false
           },
+          "widgetCalls": [
+            {
+              "moduleId": "creezio.catalog",
+              "kind": "widget",
+              "id": "product-list"
+            },
+            {
+              "moduleId": "creezio.catalog",
+              "kind": "widget",
+              "id": "product-detail"
+            }
+          ],
           "textFallback": true
         },
         {
@@ -5775,7 +5870,7 @@
             "product-list-ui",
             "product-detail-ui"
           ],
-          "integrity": "sha256-999019a99fcfd9ee79dca23e528b5bef5ca72f3bf137d93f259a90b30d072e46"
+          "integrity": "sha256-f3e3d9a8d569a5d7574caf46ceb83dcc254a09c1f39f4ebf7cd88f9f63fcd7f0"
         }
       ]
     },
@@ -5995,7 +6090,7 @@
     "widgets": [
       {
         "id": "product-list",
-        "version": "1.0.0",
+        "version": "1.1.0",
         "compatibility": "^1.0.0",
         "resource": "product-list-ui",
         "renderer": {
@@ -6042,6 +6137,24 @@
                 "id": "product.search"
               }
             }
+          },
+          {
+            "id": "media-list",
+            "label": "Lire les images du produit",
+            "input": {
+              "schemaId": "media-list-input"
+            },
+            "requiredCapabilities": [],
+            "fallback": "unavailable",
+            "mode": "direct",
+            "target": {
+              "kind": "operation",
+              "operation": {
+                "moduleId": "creezio.catalog",
+                "kind": "operation",
+                "id": "media.list"
+              }
+            }
           }
         ],
         "instance": {
@@ -6061,7 +6174,7 @@
       },
       {
         "id": "product-detail",
-        "version": "1.0.0",
+        "version": "1.1.0",
         "compatibility": "^1.0.0",
         "resource": "product-detail-ui",
         "renderer": {
@@ -6106,6 +6219,24 @@
                 "moduleId": "creezio.catalog",
                 "kind": "operation",
                 "id": "product.get"
+              }
+            }
+          },
+          {
+            "id": "media-list",
+            "label": "Lire les images du produit",
+            "input": {
+              "schemaId": "media-list-input"
+            },
+            "requiredCapabilities": [],
+            "fallback": "unavailable",
+            "mode": "direct",
+            "target": {
+              "kind": "operation",
+              "operation": {
+                "moduleId": "creezio.catalog",
+                "kind": "operation",
+                "id": "media.list"
               }
             }
           }
@@ -6213,8 +6344,8 @@
       }
     },
     "versionBinding": {
-      "moduleVersion": "0.1.1",
-      "sourceRevision": "t25-catalog-v2"
+      "moduleVersion": "0.1.3",
+      "sourceRevision": "t25-catalog-v4"
     },
     "localRevisions": {
       "installedVersionDistinct": true,
@@ -6252,7 +6383,9 @@
         "mode": "required",
         "script": "ci/widgets.mjs",
         "tests": [
-          "tests/widgets/contract.test.mjs"
+          "tests/widgets/contract.test.mjs",
+          "tests/widgets/image-view.test.mjs",
+          "tests/widgets/runtime.test.mjs"
         ]
       },
       "package": {
@@ -6303,6 +6436,7 @@
         "ui/session.ts",
         "ui/image-gate.ts",
         "ui/widgets/runtime.ts",
+        "ui/widgets/image-view.ts",
         "ui/widgets/product-list.ts",
         "ui/widgets/product-detail.ts",
         "ui/widgets/product-list.html",
@@ -6339,14 +6473,16 @@
         "ci/package.mjs",
         "tests/package/contract.test.mjs",
         "ci/docs.mjs",
-        "tests/docs/contract.test.mjs"
+        "tests/docs/contract.test.mjs",
+        "tests/widgets/image-view.test.mjs",
+        "tests/widgets/runtime.test.mjs"
       ],
       "references": []
     },
     "validationBinding": {
       "moduleId": "creezio.catalog",
-      "moduleVersion": "0.1.1",
-      "sourceRevision": "t25-catalog-v2"
+      "moduleVersion": "0.1.3",
+      "sourceRevision": "t25-catalog-v4"
     },
     "noRuntimeTests": true,
     "installation": "build-and-publish",

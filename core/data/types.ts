@@ -27,6 +27,8 @@ export interface DataPermission {
 }
 export interface RuntimeDataCatalog {
   readonly schemaVersion: 1; readonly compositionDigest: string;
+  /** Exact installed module contracts/archives; required for routed storage. */
+  readonly lockDigest?: string;
   readonly modules: readonly { readonly moduleId: string; readonly version: string; readonly enabled: boolean;
     readonly permissions: readonly DataPermission[];
     readonly models: readonly { readonly modelId: string; readonly table: string; readonly model: DataModel }[] }[];
@@ -61,7 +63,8 @@ export interface DataPort {
   patch(modelId: string, input: DataPatch): Promise<{ readonly changes: number }>;
   delete(modelId: string, input: DataDelete): Promise<{ readonly changes: number }>;
 }
-export interface InternalDataPortOptions { readonly moduleId: string; readonly modelId: string; readonly fields: readonly string[] }
+export interface InternalDataPortOptions { readonly moduleId: string; readonly modelId: string;
+  readonly fields: readonly string[]; readonly guardOnly?: boolean }
 export interface DataAccess {
   authorize(credential: DataCredential, target: AuthorizationTarget, owner: { readonly moduleId: string }): Promise<DataLease>;
   forModule(lease: DataLease, moduleId: string): DataPort;

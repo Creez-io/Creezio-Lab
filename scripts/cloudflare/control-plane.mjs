@@ -5,13 +5,22 @@ const NAME = /^[a-z][a-z0-9-]{1,62}[a-z0-9]$/;
 const MAX_RESULT = 2 * 1024 * 1024;
 
 export class CloudflareControlError extends Error {
-  constructor(code, status = null) {
+  constructor(code, status = null, providerCodes = [], explicitRefusal = false) {
     super(`Cloudflare control plane ${code}.`);
     this.name = 'CloudflareControlError'; this.code = code; this.status = status;
+    this.providerCodes = Object.freeze([...providerCodes]); this.explicitRefusal = explicitRefusal;
   }
 }
-const fail = (code, status) => { throw new CloudflareControlError(code, status); };
+const fail = (code, status, providerCodes, explicitRefusal) => {
+  throw new CloudflareControlError(code, status, providerCodes, explicitRefusal);
+};
 const nameOK = value => typeof value === 'string' && NAME.test(value);
+function refusalCodes(value) {
+  const errors = value?.errors;
+  return value?.success === false && Array.isArray(errors) && errors.length > 0 && errors.length <= 8
+    && errors.every(item => Number.isSafeInteger(item?.code) && item.code >= 1000 && item.code <= 999999999)
+    ? [...new Set(errors.map(item => item.code))] : [];
+}
 
 async function readJson(response) {
   const reader = response.body?.getReader();
@@ -52,7 +61,14 @@ export function createCloudflareControlPlane({accountId, token, fetcher = fetch}
     if (!response || response.redirected || response.status >= 300 && response.status < 400) fail('refused', response?.status);
     if (missing && response.status === 404) return null;
     const value = await readJson(response);
-    if (!response.ok || value?.success !== true) fail('refused', response.status);
+    if (!response.ok || value?.success !== true) {
+      const providerCodes = refusalCodes(value);
+      // A structured 4xx response is a definite provider refusal, not necessarily a quota refusal.
+      // Timeouts, rate limits, malformed envelopes and server errors remain uncertain.
+      const explicitRefusal = response.status >= 400 && response.status < 500
+        && response.status !== 408 && response.status !== 429 && providerCodes.length > 0;
+      fail('refused', response.status, providerCodes, explicitRefusal);
+    }
     return value;
   }
   async function verifyToken(scope) {
@@ -132,6 +148,17 @@ export function createCloudflareControlPlane({accountId, token, fetcher = fetch}
   async function workerDeployment(name) {
     return (await deployments(name)).deployments[0] ?? null;
   }
+  /** The API orders Worker versions newest first; one item proves the current head. */
+  async function latestVersion(name) {
+    if (!nameOK(name)) fail('invalid_request');
+    const value = await request(`/workers/scripts/${name}/versions?page=1&per_page=1`);
+    const items = value?.result?.items;
+    if (!Array.isArray(items) || items.length !== 1 || !UUID.test(items[0]?.id ?? '')
+        || items[0].number !== undefined
+          && (!Number.isSafeInteger(items[0].number) || items[0].number < 1))
+      fail('invalid_response');
+    return Object.freeze({id: items[0].id, number: items[0].number});
+  }
   async function workerVersion(name, id) {
     if (!nameOK(name) || !UUID.test(id ?? '')) fail('invalid_request');
     const value = await request(`/workers/scripts/${name}/versions/${id}`, {missing: true});
@@ -141,5 +168,5 @@ export function createCloudflareControlPlane({accountId, token, fetcher = fetch}
   }
   return Object.freeze({accountId, verifyToken, workerSubdomain, inspectConnection,
     findD1, database: findD1, createD1, bucket, createBucket, workerSettings,
-    deployments, workerDeployment, version: workerVersion, workerVersion});
+    deployments, workerDeployment, latestVersion, version: workerVersion, workerVersion});
 }

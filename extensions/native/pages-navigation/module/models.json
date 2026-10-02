@@ -484,6 +484,11 @@
         "moduleId": "creezio.pages-navigation",
         "kind": "permission",
         "id": "edit"
+      },
+      {
+        "moduleId": "creezio.pages-navigation",
+        "kind": "permission",
+        "id": "view"
       }
     ],
     "deletion": {
@@ -650,6 +655,445 @@
     ],
     "deletion": {
       "mode": "hard",
+      "requiresApproval": false
+    },
+    "public": false
+  },
+  {
+    "id": "page_publication",
+    "title": "État de publication des médias",
+    "scope": "context",
+    "contextField": "context_id",
+    "fields": [
+      {
+        "id": "context_id",
+        "type": "string",
+        "nullable": false,
+        "protected": true,
+        "computed": false,
+        "constraints": {
+          "minLength": 1,
+          "maxLength": 128
+        }
+      },
+      {
+        "id": "page_id",
+        "type": "string",
+        "nullable": false,
+        "protected": false,
+        "computed": false,
+        "constraints": {
+          "minLength": 1,
+          "maxLength": 128
+        }
+      },
+      {
+        "id": "state",
+        "type": "string",
+        "nullable": false,
+        "protected": false,
+        "computed": false,
+        "constraints": {
+          "enum": [
+            "published"
+          ]
+        }
+      },
+      {
+        "id": "published_revision",
+        "type": "integer",
+        "nullable": false,
+        "protected": false,
+        "computed": false,
+        "constraints": {
+          "minimum": 1,
+          "maximum": 9007199254740991
+        }
+      }
+    ],
+    "primaryKey": [
+      "context_id",
+      "page_id"
+    ],
+    "indexes": [],
+    "relations": [
+      {
+        "id": "page",
+        "fields": [
+          "context_id",
+          "page_id"
+        ],
+        "target": {
+          "moduleId": "creezio.pages-navigation",
+          "kind": "model",
+          "id": "page"
+        },
+        "targetFields": [
+          "context_id",
+          "id"
+        ],
+        "onDelete": "restrict"
+      }
+    ],
+    "permissions": [
+      {
+        "moduleId": "creezio.pages-navigation",
+        "kind": "permission",
+        "id": "edit"
+      },
+      {
+        "moduleId": "creezio.pages-navigation",
+        "kind": "permission",
+        "id": "view"
+      }
+    ],
+    "deletion": {
+      "mode": "soft",
+      "requiresApproval": false
+    },
+    "public": false
+  },
+  {
+    "id": "public_page",
+    "title": "Exposition anonyme explicite du snapshot",
+    "scope": "context",
+    "contextField": "context_id",
+    "fields": [
+      {
+        "id": "context_id",
+        "type": "string",
+        "nullable": false,
+        "protected": true,
+        "computed": false,
+        "constraints": {
+          "minLength": 1,
+          "maxLength": 128
+        }
+      },
+      {
+        "id": "page_id",
+        "type": "string",
+        "nullable": false,
+        "protected": false,
+        "computed": false,
+        "constraints": {
+          "minLength": 1,
+          "maxLength": 128
+        }
+      },
+      {
+        "id": "published_revision",
+        "type": "integer",
+        "nullable": false,
+        "protected": false,
+        "computed": false,
+        "constraints": {
+          "minimum": 1,
+          "maximum": 9007199254740991
+        }
+      },
+      {
+        "id": "enabled_at",
+        "type": "date-time",
+        "nullable": false,
+        "protected": false,
+        "computed": false
+      }
+    ],
+    "primaryKey": [
+      "context_id",
+      "page_id"
+    ],
+    "indexes": [],
+    "relations": [
+      {
+        "id": "publication",
+        "fields": [
+          "context_id",
+          "page_id"
+        ],
+        "target": {
+          "moduleId": "creezio.pages-navigation",
+          "kind": "model",
+          "id": "page_publication"
+        },
+        "targetFields": [
+          "context_id",
+          "page_id"
+        ],
+        "onDelete": "restrict"
+      }
+    ],
+    "permissions": [
+      {
+        "moduleId": "creezio.pages-navigation",
+        "kind": "permission",
+        "id": "edit"
+      }
+    ],
+    "deletion": {
+      "mode": "hard",
+      "requiresApproval": false
+    },
+    "public": false
+  },
+  {
+    "id": "published_page_media",
+    "title": "Médias du snapshot publié",
+    "scope": "context",
+    "contextField": "context_id",
+    "fields": [
+      {
+        "id": "context_id",
+        "type": "string",
+        "nullable": false,
+        "protected": true,
+        "computed": false,
+        "constraints": {
+          "minLength": 1,
+          "maxLength": 128
+        }
+      },
+      {
+        "id": "page_id",
+        "type": "string",
+        "nullable": false,
+        "protected": false,
+        "computed": false,
+        "constraints": {
+          "minLength": 1,
+          "maxLength": 128
+        }
+      },
+      {
+        "id": "file_id",
+        "type": "string",
+        "nullable": false,
+        "protected": false,
+        "computed": false,
+        "constraints": {
+          "minLength": 1,
+          "maxLength": 67
+        }
+      },
+      {
+        "id": "filename",
+        "type": "string",
+        "nullable": false,
+        "protected": false,
+        "computed": false,
+        "constraints": {
+          "minLength": 1,
+          "maxLength": 255
+        }
+      },
+      {
+        "id": "content_type",
+        "type": "string",
+        "nullable": false,
+        "protected": false,
+        "computed": false,
+        "constraints": {
+          "minLength": 1,
+          "maxLength": 128
+        }
+      },
+      {
+        "id": "byte_size",
+        "type": "integer",
+        "nullable": false,
+        "protected": false,
+        "computed": false,
+        "constraints": {
+          "minimum": 0,
+          "maximum": 9007199254740991
+        }
+      },
+      {
+        "id": "digest",
+        "type": "string",
+        "nullable": false,
+        "protected": false,
+        "computed": false,
+        "constraints": {
+          "minLength": 64,
+          "maxLength": 64
+        }
+      },
+      {
+        "id": "intent_id",
+        "type": "string",
+        "nullable": false,
+        "protected": false,
+        "computed": false,
+        "constraints": {
+          "minLength": 1,
+          "maxLength": 128
+        }
+      },
+      {
+        "id": "generation",
+        "type": "string",
+        "nullable": false,
+        "protected": false,
+        "computed": false,
+        "constraints": {
+          "minLength": 1,
+          "maxLength": 128
+        }
+      },
+      {
+        "id": "position",
+        "type": "integer",
+        "nullable": false,
+        "protected": false,
+        "computed": false,
+        "constraints": {
+          "minimum": 0,
+          "maximum": 9007199254740991
+        }
+      }
+    ],
+    "primaryKey": [
+      "context_id",
+      "page_id",
+      "file_id"
+    ],
+    "indexes": [
+      {
+        "id": "by-page",
+        "fields": [
+          "context_id",
+          "page_id",
+          "position",
+          "file_id"
+        ],
+        "unique": false
+      }
+    ],
+    "relations": [
+      {
+        "id": "publication",
+        "fields": [
+          "context_id",
+          "page_id"
+        ],
+        "target": {
+          "moduleId": "creezio.pages-navigation",
+          "kind": "model",
+          "id": "page_publication"
+        },
+        "targetFields": [
+          "context_id",
+          "page_id"
+        ],
+        "onDelete": "restrict"
+      }
+    ],
+    "permissions": [
+      {
+        "moduleId": "creezio.pages-navigation",
+        "kind": "permission",
+        "id": "edit"
+      },
+      {
+        "moduleId": "creezio.pages-navigation",
+        "kind": "permission",
+        "id": "view"
+      }
+    ],
+    "deletion": {
+      "mode": "hard",
+      "requiresApproval": false
+    },
+    "public": false
+  },
+  {
+    "id": "sidebar_overrides",
+    "title": "Présentation de la barre latérale du workspace",
+    "scope": "context",
+    "contextField": "context_id",
+    "fields": [
+      {
+        "id": "context_id",
+        "type": "string",
+        "nullable": false,
+        "protected": true,
+        "computed": false,
+        "constraints": {
+          "minLength": 1,
+          "maxLength": 128
+        }
+      },
+      {
+        "id": "id",
+        "type": "string",
+        "nullable": false,
+        "protected": false,
+        "computed": false,
+        "constraints": {
+          "enum": [
+            "workspace"
+          ]
+        }
+      },
+      {
+        "id": "overrides",
+        "type": "json",
+        "nullable": false,
+        "protected": false,
+        "computed": false
+      },
+      {
+        "id": "revision",
+        "type": "integer",
+        "nullable": false,
+        "protected": false,
+        "computed": false,
+        "constraints": {
+          "minimum": 1,
+          "maximum": 9007199254740991
+        }
+      },
+      {
+        "id": "updated_at",
+        "type": "date-time",
+        "nullable": false,
+        "protected": false,
+        "computed": false
+      },
+      {
+        "id": "updated_by",
+        "type": "string",
+        "nullable": false,
+        "protected": false,
+        "computed": false,
+        "constraints": {
+          "minLength": 1,
+          "maxLength": 128
+        }
+      }
+    ],
+    "primaryKey": [
+      "context_id",
+      "id"
+    ],
+    "indexes": [],
+    "relations": [],
+    "permissions": [
+      {
+        "moduleId": "creezio.pages-navigation",
+        "kind": "permission",
+        "id": "sidebar.manage"
+      },
+      {
+        "moduleId": "creezio.pages-navigation",
+        "kind": "permission",
+        "id": "sidebar.read"
+      }
+    ],
+    "deletion": {
+      "mode": "soft",
       "requiresApproval": false
     },
     "public": false

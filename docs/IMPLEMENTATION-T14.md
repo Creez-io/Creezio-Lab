@@ -1,5 +1,9 @@
 # Réalisation T-14 — Conversations natives
 
+## Correctif candidat — hydratation du brouillon sélectionné
+
+Après la lecture du titre, le panneau attend la lecture du brouillon D1 avant d’activer la saisie ou l’envoi. Si cette lecture tarde ou échoue, le contrôleur garde le brouillon non hydraté et refuse `draft.save` et `turn.start` sans inventer une révision 0. Le texte local reste attaché à son fil et reprend avec la révision obtenue lors d’une nouvelle lecture, y compris après un aller-retour entre conversations. Les messages et la reprise d’un tour mémorisé restent lisibles. Les tests ciblés du contrôleur (16/16) et du panneau (15/15) passent ; la recette navigateur après livraison reste à faire. Aucun fournisseur n’est appelé pour ce correctif.
+
 T-14 / US-14 / REQ-1401 et REQ-1402. PR #23 intégrée : candidat `efe476eb`, main `f435fd36`, arbre commun `d43e86e3`. Les 974 tests locaux et CI candidat/main (36309174628/36309958508) réussissent, sans échec, ignoré, annulé ou todo. Les trois revues indépendantes, les recettes navigateur et les contrôles de provenance sont conservés hors sources. La qualification hébergée et le fournisseur se poursuivent dans leurs lots.
 
 ## Module et interface
@@ -37,3 +41,7 @@ Les essais initiaux ont révélé puis corrigé une révision CAS fournie deux f
 La revue finale a aussi corrigé la sauvegarde avant changement de fil, l'ouverture sur les messages récents et la relecture après confirmation d'une commande incertaine. Création en 54 ms et sélection en 141 ms avant la temporisation conservent les brouillons ; une déconnexion/reconnexion relit le texte exact dans D1. Le build de recette `3b8c733` a le même code runtime que le candidat final, dont le dernier delta concerne un test et les verrous de validation. Les serveurs et sessions de recette ont été fermés.
 
 La nouvelle cible Sites publique est autorisée sur le compte courant ; sa publication et sa recette restent distinctes. OpenAI réel, modèles/effort/voix selon fournisseur et widgets sont raccordés dans les lots T15/T16. Aucune réponse IA ni compatibilité ChatGPT réelle n'est déduite des seules recettes T14. Les modules et capacités non nécessaires à la première app suivent le jalon initial selon le TODO, sans retrait d'exigence.
+
+## Candidat : lectures de connecteurs dans le chat natif
+
+Le projecteur d'outils peut proposer une opération `query` avec un unique fournisseur externe lorsque ce fournisseur correspond à un descripteur de connecteur compilé du même module avec une ressource GET. Il conserve les contrôles de schéma, de droits courants, d'audience et de taille déjà appliqués aux autres lectures ; les commandes, appels interopérations, plans d'écriture, émissions et fournisseurs non liés à un connecteur restent exclus. Le pont reprojette avant chaque appel, puis le moteur réautorise l'opération. Pour une `query`, le port connecteur permet une seule requête GET déclarée, avec URL et paramètres fermés, réponse bornée, délai et relecture du coffre et des droits avant et après l'appel. Ce candidat ne vaut ni recette Meili dans une conversation réelle ni qualification fournisseur : la validation ciblée et la livraison sont à enregistrer séparément.

@@ -23,7 +23,11 @@ test('D1 event data and permissions are context scoped',()=>{
   assert.deepEqual(manifest.contracts.models[0].primaryKey,['context_id','id']);
   assert.deepEqual(manifest.contracts.models[0].indexes[0].fields,['context_id','created_at','id']);
   assert.deepEqual(manifest.contracts.permissions.map(permission=>permission.scopes[0]),
-    ['analytics.emit','analytics.read']);
+    ['analytics.emit','analytics.read','analytics.purge','analytics.configure']);
+  assert.equal(manifest.contracts.models.find(model=>model.id==='event').deletion.mode,'hard');
+  assert.ok(manifest.contracts.models.some(model=>model.id==='retention_policy'));
+  for(const name of ['collection_policy','transport_refusal'])
+    assert.equal(manifest.contracts.models.find(model=>model.id===name)?.scope,'application');
 });
 test('record fixes principal and time on server and rejects arbitrary content',async()=>{
   const {context}=harness();
@@ -82,6 +86,11 @@ test('filter search scans without pretending a partial period is complete',async
   const found=await eventList({period:'day',limit:5,query:'E_FAIL'},context);
   assert.deepEqual(found.output.items.map(item=>item.id),['two']);
   assert.equal(found.output.complete,true);
+});
+test('CSV export neutralizes formula-looking legacy identities',async()=>{
+  const {context}=harness([row('legacy',{principal_id:'=HYPERLINK("https://example.invalid")'})]);
+  const result=await eventExport({period:'week',limit:50,format:'csv'},context);
+  assert.match(result.output.content,/"'=HYPERLINK\(""https:\/\/example\.invalid""\)"/u);
 });
 test('year period spans twelve calendar months and remains cursor-compatible',async()=>{
   const rows=Array.from({length:2},(_,index)=>row(`year-${index}`));

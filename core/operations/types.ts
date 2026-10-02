@@ -5,7 +5,11 @@ import type { ModuleSettingsHostInventory } from '../../sdk/module-settings/type
 import type {OperationFilesPort} from '../../sdk/files/types.ts';
 import type {ProviderSecretsPort} from '../../sdk/providers/types.ts';
 import type {ConnectorPort} from '../../sdk/connectors/types.ts';
+import type {SearchProjectionPort} from '../../sdk/search/types.ts';
 import type {WidgetOperationPort} from '../widgets/host.ts';
+import type {OperationDiagnosticsPort} from './diagnostics.ts';
+import type {ModuleQueryPort} from './intermodule.ts';
+import type {WorkspaceNavigationCatalogPortV1} from '../../sdk/workspace/navigation-catalog.ts';
 import {OperationError} from '@creezio/sdk/operations/error';
 export {OperationError};
 export type {OperationErrorCode} from '@creezio/sdk/operations/error';
@@ -61,12 +65,20 @@ export interface OperationContext {
   readonly providerSecrets?: ProviderSecretsPort;
   /** Declared, host-controlled outbound read capability; no URL, headers or secret reach module code. */
   readonly connector?: ConnectorPort;
+  /** Build-owned projection policy; every read reauthorizes against its source model. */
+  readonly search?: SearchProjectionPort;
   /** Server-selected readiness only; it carries neither credentials nor authority to emit. */
   readonly providerAvailability?: OperationProviderAvailability;
   /** Build-owned inventory; supplied only to the trusted native modules-settings implementation. */
   readonly hostInventory?: ModuleSettingsHostInventory;
   /** Trusted catalog-backed snapshot projection for the native Conversations module. */
   readonly widgets?: WidgetOperationPort;
+  /** Host-owned, scoped read projection of the existing operation journal and static routes. */
+  readonly diagnostics?: OperationDiagnosticsPort;
+  /** Declared query-only intermodule call, with host-owned traversal and authorization. */
+  readonly operations?: ModuleQueryPort;
+  /** Build-owned workspace catalogue, available only to pages-navigation. */
+  readonly workspaceNavigation?: WorkspaceNavigationCatalogPortV1;
 }
 export interface OperationHandlerResult {
   readonly output: unknown;

@@ -13,6 +13,7 @@ import {createOperationRegistry} from '../../core/operations/registry.ts';
 import {createOperationEngine} from '../../core/operations/service.ts';
 import {createTurnBridge} from '../../core/conversations/turn-bridge.ts';
 import {ProviderTransportError} from '../../sdk/providers/errors.ts';
+import {meiliConnectorDescriptor} from '../../extensions/connectors/meili/module/storage.ts';
 import * as handlers from '../../extensions/native/conversations/module/operations.ts';
 
 const manifest=JSON.parse(readFileSync(new URL('../../extensions/native/conversations/module/manifest.json',import.meta.url),'utf8'));
@@ -168,7 +169,7 @@ test('client drive persists one confirmed assistant and never recreates an unkno
           yield {cursor:1,kind:'function_call',callId:'call_resumed_tool',name:'t_not_advertised',arguments:{}};
           yield {cursor:2,kind:'terminal',state:'succeeded'};
         },
-        async status(){throw new Error('status unavailable');},
+        async status(){return {responseId:'resp_resumed_tool',state:'running',cursor:null,events:[]};},
         async cancel(){throw new Error('Unexpected cancel');}
       },'model-a')}});
     const resumedRequest={...driveRequest,conversationId:resumedConversationId,turnId:resumedTurnId};
@@ -544,6 +545,124 @@ test('client drive persists one confirmed assistant and never recreates an unkno
     assert.deepEqual(ackEvents.execution.output.items.filter(item=>item.kind==='text_delta')
       .map(item=>item.payload.text),['A'.repeat(512),'B']);
 
+    const statusTerminalRequest=await newTurn('known-terminal-status');
+    let terminalCreates=0,terminalStatuses=0,terminalResumes=0;
+    const statusTerminalBridge=createTurnBridge({engine,db,catalog,permissions,registry:reg,toolCatalog:[],
+      provider:{withTransport:async(_request,callback)=>callback({
+        async create(){terminalCreates++;return {receipt:{responseId:'resp_status_terminal',cursor:0},
+          events:(async function*(){throw new Error('stream interrupted');})()};},
+        async status(responseId,signal){terminalStatuses++;
+          assert.equal(responseId,'resp_status_terminal');assert.equal(signal.aborted,false);
+          return terminalStatuses===1
+            ?{responseId,state:'running',cursor:null,events:[]}
+            :{responseId,state:'succeeded',cursor:null,events:[
+              {cursor:0,kind:'text_delta',text:'Recovered without a second create'},
+              {cursor:0,kind:'terminal',state:'succeeded'}]};},
+        async *resume(){terminalResumes++;throw new Error('Unexpected resume');}
+      },'model-a')}});
+    assert.equal((await statusTerminalBridge.drive(statusTerminalRequest)).turn.state,'unknown');
+    assert.equal((await statusTerminalBridge.drive(statusTerminalRequest)).turn.state,'succeeded');
+    assert.deepEqual([terminalCreates,terminalStatuses,terminalResumes],[1,2,0]);
+    const terminalMessages=await invoke('message.list',{conversationId:statusTerminalRequest.conversationId,limit:50});
+    assert.equal(terminalMessages.execution.output.items.filter(item=>item.role==='assistant').length,1);
+    assert.equal(terminalMessages.execution.output.items.find(item=>item.role==='assistant').body,
+      'Recovered without a second create');
+
+    const statusRunningRequest=await newTurn('known-running-status');
+    let runningCreates=0,runningStatuses=0,runningResumes=0;
+    const statusRunningBridge=createTurnBridge({engine,db,catalog,permissions,registry:reg,toolCatalog:[],
+      provider:{withTransport:async(_request,callback)=>callback({
+        async create(){runningCreates++;return {receipt:{responseId:'resp_status_running',cursor:0},
+          events:(async function*(){throw new Error('stream interrupted');})()};},
+        async status(responseId){runningStatuses++;
+          return {responseId,state:'running',cursor:null,events:[]};},
+        async *resume(responseId,afterCursor,signal){runningResumes++;
+          assert.equal(responseId,'resp_status_running');assert.equal(afterCursor,0);
+          assert.equal(signal.aborted,false);
+          yield {cursor:1,kind:'text_delta',text:'Resumed'};
+          yield {cursor:2,kind:'terminal',state:'succeeded'};}
+      },'model-a')}});
+    assert.equal((await statusRunningBridge.drive(statusRunningRequest)).turn.state,'unknown');
+    assert.equal((await statusRunningBridge.drive(statusRunningRequest)).turn.state,'succeeded');
+    assert.deepEqual([runningCreates,runningStatuses,runningResumes],[1,2,1]);
+
+    const statusAbortRequest=await newTurn('known-aborted-stream');
+    const abortController=new AbortController();
+    let abortCreates=0,abortStatuses=0,abortResumes=0;
+    const statusAbortBridge=createTurnBridge({engine,db,catalog,permissions,registry:reg,toolCatalog:[],
+      provider:{withTransport:async(_request,callback)=>callback({
+        async create(){abortCreates++;return {receipt:{responseId:'resp_status_abort',cursor:0},
+          events:(async function*(){throw new Error('stream interrupted');})()};},
+        async status(responseId,signal){abortStatuses++;
+          assert.equal(signal.aborted,false);return {responseId,state:'running',cursor:null,events:[]};},
+        async *resume(){abortResumes++;abortController.abort();
+          yield {cursor:1,kind:'text_delta',text:'Must remain uncommitted'};}
+      },'model-a')}});
+    assert.equal((await statusAbortBridge.drive({...statusAbortRequest,
+      signal:abortController.signal})).turn.state,'unknown');
+    assert.equal((await statusAbortBridge.drive({...statusAbortRequest,
+      signal:abortController.signal})).turn.state,'unknown');
+    assert.deepEqual([abortCreates,abortStatuses,abortResumes],[1,2,1]);
+    const abortMessages=await invoke('message.list',{conversationId:statusAbortRequest.conversationId,limit:50});
+    assert.equal(abortMessages.execution.output.items.some(item=>item.role==='assistant'),false);
+
+    const expiredRequest=await newTurn('known-expired-status');
+    let expiredCreates=0,expiredStatuses=0,expiredResumes=0;
+    const expiredBridge=createTurnBridge({engine,db,catalog,permissions,registry:reg,toolCatalog:[],
+      provider:{withTransport:async(_request,callback)=>callback({
+        async create(){expiredCreates++;return {receipt:{responseId:'resp_status_expired',cursor:0},
+          events:(async function*(){throw new Error('stream interrupted');})()};},
+        async status(responseId){expiredStatuses++;
+          if(expiredStatuses===2)throw new Error('provider response unavailable (404)');
+          return {responseId,state:'running',cursor:null,events:[]};},
+        async *resume(){expiredResumes++;throw new Error('Unexpected resume');}
+      },'model-a')}});
+    assert.equal((await expiredBridge.drive(expiredRequest)).turn.state,'unknown');
+    assert.equal((await expiredBridge.drive(expiredRequest)).turn.state,'unknown');
+    assert.deepEqual([expiredCreates,expiredStatuses,expiredResumes],[1,2,0]);
+    const expiredMessages=await invoke('message.list',{conversationId:expiredRequest.conversationId,limit:50});
+    assert.equal(expiredMessages.execution.output.items.some(item=>item.role==='assistant'),false);
+
+    const preAbortedRequest=await newTurn('known-pre-aborted');
+    const preAbortedController=new AbortController();
+    let preAbortedCreates=0,preAbortedStatuses=0,preAbortedResumes=0;
+    const preAbortedBridge=createTurnBridge({engine,db,catalog,permissions,registry:reg,toolCatalog:[],
+      provider:{withTransport:async(_request,callback)=>callback({
+        async create(){preAbortedCreates++;return {receipt:{responseId:'resp_pre_aborted',cursor:0},
+          events:(async function*(){throw new Error('stream interrupted');})()};},
+        async status(responseId){preAbortedStatuses++;
+          return {responseId,state:'running',cursor:null,events:[]};},
+        async *resume(){preAbortedResumes++;throw new Error('Unexpected resume');}
+      },'model-a')}});
+    assert.equal((await preAbortedBridge.drive(preAbortedRequest)).turn.state,'unknown');
+    preAbortedController.abort();
+    assert.equal((await preAbortedBridge.drive({...preAbortedRequest,
+      signal:preAbortedController.signal})).turn.state,'unknown');
+    assert.deepEqual([preAbortedCreates,preAbortedStatuses,preAbortedResumes],[1,1,0]);
+
+    const lateTerminalRequest=await newTurn('known-late-terminal');
+    const lateTerminalController=new AbortController();
+    let lateTerminalCreates=0,lateTerminalStatuses=0,lateTerminalResumes=0;
+    const lateTerminalBridge=createTurnBridge({engine,db,catalog,permissions,registry:reg,toolCatalog:[],
+      provider:{withTransport:async(_request,callback)=>callback({
+        async create(){lateTerminalCreates++;return {receipt:{responseId:'resp_late_terminal',cursor:0},
+          events:(async function*(){throw new Error('stream interrupted');})()};},
+        async status(responseId){lateTerminalStatuses++;
+          if(lateTerminalStatuses===1)return {responseId,state:'running',cursor:null,events:[]};
+          lateTerminalController.abort();
+          return {responseId,state:'succeeded',cursor:null,events:[
+            {cursor:0,kind:'text_delta',text:'Too late'},
+            {cursor:0,kind:'terminal',state:'succeeded'}]};},
+        async *resume(){lateTerminalResumes++;throw new Error('Unexpected resume');}
+      },'model-a')}});
+    assert.equal((await lateTerminalBridge.drive(lateTerminalRequest)).turn.state,'unknown');
+    assert.equal((await lateTerminalBridge.drive({...lateTerminalRequest,
+      signal:lateTerminalController.signal})).turn.state,'unknown');
+    assert.deepEqual([lateTerminalCreates,lateTerminalStatuses,lateTerminalResumes],[1,2,0]);
+    const lateTerminalMessages=await invoke('message.list',{
+      conversationId:lateTerminalRequest.conversationId,limit:50});
+    assert.equal(lateTerminalMessages.execution.output.items.some(item=>item.role==='assistant'),false);
+
     const betweenRequest=await newTurn('cancel-between-flushes');
     let betweenCancels=0;
     const betweenBridge=createTurnBridge({engine,db,catalog,permissions,registry:reg,toolCatalog:[],
@@ -878,5 +997,83 @@ test('client drive persists one confirmed assistant and never recreates an unkno
     assert.equal((await hostAcl.replacePolicy(login.token,{expectedEpoch:hostCurrent.epoch,policy:revokedPolicy})).ok,true);
     assert.equal((await driveHost(deniedRequest,false)).error,'forbidden');
     assert.equal(hostCalls,1);
+
+    // A declared connector GET may be called by the native chat; the same tool
+    // is withheld without its descriptor and refused after a permission change.
+    const meiliManifest=JSON.parse(readFileSync(new URL(
+      '../../extensions/connectors/meili/module/manifest.json',import.meta.url),'utf8'));
+    const meiliId='creezio.meili',searchPermission=`${meiliId}:search`;
+    const searchOp=meiliManifest.contracts.operations.find(item=>item.id==='index.search');
+    const searchSchema=meiliManifest.contracts.schemas.find(item=>item.id===searchOp.input.schemaId).schema;
+    const searchDeclaration={moduleId:meiliId,declaration:searchOp,contractDigest:digest,
+      validateInput:value=>typeof value?.q==='string'&&Number.isSafeInteger(value?.limit)
+        &&Number.isSafeInteger(value?.offset)&&typeof value?.source==='string'};
+    const providerRegistry={compositionDigest:digest,resolve:(moduleId,operationId)=>
+      moduleId===meiliId&&operationId==='index.search'?searchDeclaration:hostRegistry.resolve(moduleId,operationId)};
+    const providerPermissions=[...hostPermissions,{id:searchPermission,audiences:['admin'],
+      actors:['user','delegated-user']}];
+    const providerCatalog={...hostCatalog,modules:[...hostCatalog.modules,{moduleId:meiliId,
+      version:meiliManifest.identity.version,enabled:true,permissions:[],models:[]}]};
+    const meiliAllowedRequest=await newTurn('meili-allowed');
+    const meiliUnboundRequest=await newTurn('meili-unbound');
+    const meiliRevokedRequest=await newTurn('meili-revoked');
+    const providerAcl=createAuthorizationService(db,{permissions:providerPermissions});
+    const providerBefore=await providerAcl.readPolicy(login.token);assert.equal(providerBefore.ok,true);
+    const providerPolicy=structuredClone(providerBefore.policy);
+    providerPolicy.roles.find(role=>role.id==='bridge-role').permissionIds.push(searchPermission);
+    assert.equal((await providerAcl.replacePolicy(login.token,{expectedEpoch:providerBefore.epoch,
+      policy:providerPolicy})).ok,true);
+    const searchArgs={q:'Produit image T25',source:'creezio.catalog:catalog-products',limit:5,offset:0};
+    const searchOutput={source:searchArgs.source,items:[{id:'product-t25',fields:{name:'Produit image T25'}}],
+      facets:[],pageCount:1,nextOffset:null,stale:false};
+    let providerCalls=0,searchToolName;
+    const providerEngine={async invoke(request){
+      assert.equal(request.moduleId,meiliId);assert.equal(request.operationId,'index.search');
+      assert.equal(request.contextId,'application');assert.equal(request.audience,'admin');
+      assert.deepEqual({...request.input},searchArgs);providerCalls++;
+      return {execution:{id:`meili-search-${providerCalls}`,state:'succeeded',output:searchOutput,
+        errorCode:null},replayed:false};
+    }};
+    const searchTool={moduleId:meiliId,operationId:'index.search',inputSchema:searchSchema,
+      schemaDigest:digest,audiences:['admin']};
+    const driveProvider=async(request,mode)=>{
+      let creates=0,continued;
+      const provider={withTransport:async(_request,callback)=>callback({async create(input){
+        creates++;
+        if(creates===1){
+          const name=input.tools.find(item=>item.bindingId===`${meiliId}:index.search`)?.name;
+          if(mode!=='allowed')assert.equal(name,undefined);
+          else {assert.ok(name);searchToolName=name;}
+          return {receipt:{responseId:`meili_${mode}_1`,cursor:0},events:(async function*(){
+            yield {cursor:1,kind:'function_call',callId:`meili_call_${mode}`,
+              name:name??searchToolName,arguments:searchArgs};
+            yield {cursor:2,kind:'terminal',state:'succeeded'};
+          })()};
+        }
+        continued=input.inputItems;
+        if(mode!=='allowed')assert.equal(input.tools.some(item=>item.bindingId===`${meiliId}:index.search`),false);
+        return {receipt:{responseId:`meili_${mode}_2`,cursor:0},events:(async function*(){
+          yield {cursor:1,kind:'terminal',state:'succeeded'};})()};
+      },async *resume(){throw new Error('Unexpected resume');},async status(){throw new Error('Unexpected status');}},'model-a')};
+      const bridge=createTurnBridge({engine:providerEngine,db,catalog:providerCatalog,
+        permissions:providerPermissions,provider,registry:providerRegistry,toolCatalog:[searchTool],
+        connectors:mode==='unbound'?[]:[meiliConnectorDescriptor]});
+      assert.equal((await bridge.drive(request)).turn.state,'running');
+      assert.equal((await bridge.drive(request)).turn.state,'succeeded');
+      assert.equal(creates,2);
+      return JSON.parse(continued.find(item=>item.type==='function_call_output').output);
+    };
+    assert.deepEqual((await driveProvider(meiliAllowedRequest,'allowed')).output,searchOutput);
+    assert.equal(providerCalls,1);
+    assert.equal((await driveProvider(meiliUnboundRequest,'unbound')).error,'forbidden');
+    assert.equal(providerCalls,1);
+    const providerCurrent=await providerAcl.readPolicy(login.token);assert.equal(providerCurrent.ok,true);
+    const withoutSearch=structuredClone(providerCurrent.policy);
+    withoutSearch.roles.find(role=>role.id==='bridge-role').permissionIds=
+      withoutSearch.roles.find(role=>role.id==='bridge-role').permissionIds.filter(id=>id!==searchPermission);
+    assert.equal((await providerAcl.replacePolicy(login.token,{expectedEpoch:providerCurrent.epoch,
+      policy:withoutSearch})).ok,true);
+    assert.equal((await driveProvider(meiliRevokedRequest,'revoked')).error,'forbidden');
+    assert.equal(providerCalls,1);
   }finally{await runtime.dispose();}
 });

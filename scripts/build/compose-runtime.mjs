@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { readFileSync, writeFileSync, mkdirSync, existsSync, lstatSync, realpathSync, statSync } from 'node:fs';
+import { readFileSync, writeFileSync, mkdirSync, existsSync, lstatSync, realpathSync, statSync, unlinkSync } from 'node:fs';
 import { compileCompositionSchema } from '../data/composition-schema.mjs';
 import { compileOperationSchemas } from '../operations/schemas.mjs';
 import { compileHttpBindings } from '../operations/http-bindings.mjs';
@@ -14,7 +14,9 @@ import { packageExports, verifyCandidatePackageReceipt } from '../modules/packag
 import { captureHostInventory } from '../../core/operations/host-inventory.ts';
 import {captureFileCategory} from '../../core/files/mapping.ts';
 import {captureConnectorDescriptor} from '../../core/connectors/host.ts';
+import {compileSearchProjectionSources} from '../../core/search/projection.ts';
 import path from 'node:path';
+import {createHash} from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import { loadJson } from '../../sdk/contracts/load.mjs';
 import { validateComposition, contractIntegrity } from '../../sdk/contracts/validate.mjs';
@@ -24,12 +26,74 @@ import Ajv2020 from 'ajv/dist/2020.js';
 import addFormats from 'ajv-formats';
 import ts from 'typescript';
 import {buildSync} from 'esbuild';
+import {assertWorkerBoundary} from './worker-boundary.mjs';
 
 export class CompositionBuildError extends Error {
   constructor(code, message, diagnostics = []) { super(message); this.name = 'CompositionBuildError'; this.code = code; this.diagnostics = diagnostics; }
 }
 const fail = (code, message) => { throw new CompositionBuildError(code, message); };
 const slash = value => value.split(path.sep).join('/');
+/** Share one verified central script segment per module; every HTML resource stays byte exact. */
+export function sharedWidgetScriptSources(resources) {
+  const scriptOf = text => {
+    const open = '<script>', close = '</script>', start = text.indexOf(open);
+    if (start < 0 || text.indexOf('<script') !== start
+      || text.indexOf('<script', start + open.length) !== -1) return null;
+    const end = text.indexOf(close, start + open.length);
+    if (end < 0 || text.indexOf(close, end + close.length) !== -1) return null;
+    return {start,text:text.slice(start, end + close.length)};
+  };
+  const scripts = resources.map(resource => scriptOf(resource.text)), groups = new Map();
+  resources.forEach((resource,index) => groups.set(resource.moduleId,
+    [...(groups.get(resource.moduleId) ?? []),index]));
+  const sharedParts = [], assigned = new Map();
+  for (const indexes of groups.values()) {
+    if (indexes.length < 2 || indexes.some(index => !scripts[index])) continue;
+    const anchor = scripts[indexes[0]].text, offset = 4096, witnessLength = 8192;
+    if (anchor.length < offset + witnessLength) continue;
+    const witness = anchor.slice(offset, offset + witnessLength);
+    if (anchor.indexOf(witness) !== offset || anchor.indexOf(witness,offset+1) !== -1) continue;
+    const matches = [{delta:0,left:0,right:anchor.length}];
+    let valid = true;
+    for (const index of indexes.slice(1)) {
+      const other = scripts[index].text, found = other.indexOf(witness);
+      if (found < 0 || other.indexOf(witness,found+1) !== -1) { valid = false; break; }
+      let left = 0, right = witnessLength;
+      while (offset-left>0 && found-left>0 && anchor[offset-left-1]===other[found-left-1]) left++;
+      while (offset+right<anchor.length && found+right<other.length
+        && anchor[offset+right]===other[found+right]) right++;
+      matches.push({delta:found-offset,left:offset-left,right:offset+right});
+    }
+    if (!valid) continue;
+    const left = Math.max(...matches.map(match=>match.left));
+    const right = Math.min(...matches.map(match=>match.right));
+    if (right-left < 64*1024) continue;
+    const part = anchor.slice(left,right);
+    const positions = indexes.map((index,i)=>scripts[index].start+left+matches[i].delta);
+    if (indexes.some((index,i)=>resources[index].text.slice(positions[i],positions[i]+part.length)!==part)) continue;
+    const partIndex = sharedParts.length;
+    sharedParts.push(part);
+    indexes.forEach((index,i)=>assigned.set(index,{partIndex,position:positions[i]}));
+  }
+  const resourceSources = resources.map((resource,index) => {
+    const shared = assigned.get(index);
+    if (!shared) {
+      if (`sha256-${createHash('sha256').update(resource.text).digest('hex')}` !== resource.digest)
+        fail('widget.resource-digest','Compiled widget resource digest differs from its HTML.');
+      return JSON.stringify(resource);
+    }
+    const before = resource.text.slice(0,shared.position);
+    const after = resource.text.slice(shared.position + sharedParts[shared.partIndex].length);
+    const rebuilt = before + sharedParts[shared.partIndex] + after;
+    if (rebuilt !== resource.text
+      || `sha256-${createHash('sha256').update(rebuilt).digest('hex')}` !== resource.digest)
+      fail('widget.resource-digest','Shared widget resource differs from its compiled HTML.');
+    const textSource = `${JSON.stringify(before)}+widgetSharedParts[${shared.partIndex}]+${JSON.stringify(after)}`;
+    return `{${Object.entries(resource).map(([key,value])=>
+      `${JSON.stringify(key)}:${key==='text'?textSource:JSON.stringify(value)}`).join(',')}}`;
+  });
+  return {sharedParts,resourceSources};
+}
 const contained = (root, target) => { const rel = path.relative(root, target); return rel !== '..' && !rel.startsWith(`..${path.sep}`) && !path.isAbsolute(rel); };
 const exactKeys=(value,keys)=>value&&typeof value==='object'&&!Array.isArray(value)
   &&Object.keys(value).length===keys.length&&keys.every(key=>Object.hasOwn(value,key));
@@ -197,7 +261,7 @@ export async function composeRuntime({ root = process.cwd(), compositionPath = '
   const dataPlan = compileCompositionSchema({ composition, lock, modules: located.map(item => item.descriptor) });
   const operationPlan = compileOperationSchemas({ composition, lock, modules: located.map(item => item.descriptor) });
   const output = confined(root, outputDir, { directory: true, missing: true });
-  const destinations = Object.fromEntries(['server.ts', 'client.tsx', 'widget-catalog.ts', 'data-catalog.ts', 'file-catalog.ts', 'provider-catalog.ts', 'module-inventory.ts', 'operations.ts', 'operation-validators.mjs', 'operation-validators.d.mts', 'widget-context-validators.mjs', 'widget-context-validators.d.mts', 'composition.json'].map(name => [name, confined(root, path.join(output, name), { missing: true })]));
+  const destinations = Object.fromEntries(['server.ts', 'client.tsx', 'widget-catalog.ts', 'data-catalog.ts', 'file-catalog.ts', 'provider-catalog.ts', 'public-pages.ts', 'module-inventory.ts', 'operations.ts', 'operation-validators.mjs', 'operation-validators.d.mts', 'widget-context-validators.mjs', 'widget-context-validators.d.mts', 'composition.json'].map(name => [name, confined(root, path.join(output, name), { missing: true })]));
   if (located.some(item => contained(item.directory, output))
     || Object.values(destinations).some(destination => destination === compositionFile || destination === lockFile)) {
     fail('output.source-collision', 'Generated output must not overwrite selected module sources or composition inputs.');
@@ -207,6 +271,7 @@ export async function composeRuntime({ root = process.cwd(), compositionPath = '
   const active = (moduleId, pointer) => !inactive.some(item => item.moduleId === moduleId && (item.path === pointer || pointer.startsWith(`${item.path}/`)));
   const resolveOperation = reference => indexes.get(reference.moduleId)?.descriptor.contracts.operations.find(item => item.id === reference.id);
   const serverImports = [], clientImports = [], operationImports = [], operationHandlers = [], modules = [], views = [], navigation = [], slots = [], permissions = [];
+  const publicPageImports = [], publicPages = [];
   const permissionTitles = Object.create(null);
   let importIndex = 0;
   function importCode(destination, owner, reference, imports) {
@@ -220,10 +285,49 @@ export async function composeRuntime({ root = process.cwd(), compositionPath = '
     for (const entry of descriptor.packaging.runtime.files) moduleFile(root, item, entry);
     codeFile(root, item, descriptor.entrypoints.server);
     if (descriptor.entrypoints.ui) codeFile(root, item, descriptor.entrypoints.ui);
+    if (descriptor.entrypoints.publicPage) {
+      codeFile(root, item, descriptor.entrypoints.publicPage.renderer);
+      codeFile(root, item, descriptor.entrypoints.publicPage.imageIds);
+      moduleFile(root, item, descriptor.entrypoints.publicPage.stylesheet, {exported:true});
+    }
     if (!selection.enabled) continue;
     const moduleIntegrity = lock.modules.find(node => node.moduleId === selection.moduleId)?.runtime.integrity;
     if (!/^sha256-[a-f0-9]{64}$/.test(moduleIntegrity ?? ''))
       fail('build.module-integrity', 'Every active module view needs the exact locked runtime integrity.');
+    if (descriptor.entrypoints.publicPage && composition.exposure.app.moduleIds.includes(selection.moduleId)
+      && active(selection.moduleId, '/entrypoints/publicPage')) {
+      const entry=descriptor.entrypoints.publicPage;
+      const names={page:'page',pagePublication:'page_publication',publicPage:'public_page',
+        navigation:'navigation',publishedPageMedia:'published_page_media',fileMetadata:'file_metadata'};
+      const fields={page:['context_id','id','published_slug','published_title','published_sections',
+          'published_settings','published_seo','published_at','published_revision'],
+        pagePublication:['context_id','page_id','state','published_revision'],
+        publicPage:['context_id','page_id','published_revision'],
+        navigation:['context_id','id','published_items','published_at'],
+        publishedPageMedia:['context_id','page_id','file_id','content_type','byte_size','digest',
+          'intent_id','generation'],
+        fileMetadata:['context_id','file_id','object_key','state','content_type','byte_size',
+          'digest','intent_id','generation']};
+      const selected={};
+      for (const [name,target] of Object.entries(names)) {
+        const reference=entry.models[name];
+        const model=descriptor.contracts.models.find(model=>model.id===reference.id);
+        if (reference.moduleId!==selection.moduleId || reference.kind!=='model' || !model
+          || model.scope!=='context'||model.contextField!=='context_id'||model.public
+          || fields[name].some(field=>!model.fields.some(item=>item.id===field)))
+          fail('public-page.model', 'Public page model references must belong to the selected module.');
+        selected[target]=reference.id;
+      }
+      const rendererSource=codeFile(root,item,entry.renderer);
+      const renderer='public_page_renderer';
+      publicPageImports.push(`import { ${entry.renderer.export} as ${renderer} } from './public-page-renderer.mjs';`);
+      const imageIds=importCode(output,item,entry.imageIds,publicPageImports);
+      const stylesheet=readFileSync(moduleFile(root,item,entry.stylesheet,{exported:true}),'utf8');
+      if(Buffer.byteLength(stylesheet)>64*1024)fail('public-page.stylesheet','Public page stylesheet exceeds its bound.');
+      publicPages.push({moduleId:selection.moduleId,models:selected,renderer,rendererSource,
+        rendererExport:entry.renderer.export,imageIds,stylesheet});
+      if(publicPages.length>1)fail('public-page.conflict','Only one selected public page renderer may own /p.');
+    }
     for (const stylesheet of descriptor.contracts.ui.styles) {
       const file = moduleFile(root, item, stylesheet, {exported: true});
       clientImports.push(`import ${JSON.stringify(importSpecifier(output, file))};`);
@@ -312,6 +416,57 @@ export async function composeRuntime({ root = process.cwd(), compositionPath = '
     return (item.descriptor.contracts.connectors??[]).map(captureConnectorDescriptor);
   });
   if(connectors.length>16)fail('connector.limit','An application supports at most sixteen declared connectors.');
+  const searchDeclarations=located.flatMap(item=>{
+    const moduleId=item.descriptor.identity.id;
+    if(!composition.modules.some(selection=>selection.moduleId===moduleId&&selection.enabled))return [];
+    return (item.descriptor.contracts.search??[]).filter((declaration,index)=>
+      declaration.engine==='provider'&&active(moduleId,`/contracts/search/${index}`));
+  });
+  const searchSources=compileSearchProjectionSources(searchDeclarations,dataPlan.runtimeCatalog);
+  const searchProjections=[...new Set(connectors.map(connector=>connector.moduleId))].flatMap(moduleId=>{
+    const providers=new Set(connectors.filter(connector=>connector.moduleId===moduleId)
+      .map(connector=>connector.id));
+    const sources=searchDeclarations.filter(declaration=>providers.has(declaration.provider))
+      .map(declaration=>searchSources.find(source=>source.id===`${declaration.model.moduleId}:${declaration.id}`
+        &&source.moduleId===declaration.model.moduleId));
+    if(sources.some(source=>!source))fail('search.source','An active search source failed compilation.');
+    return sources.length?[{moduleId,sources}]:[];
+  });
+  if(searchDeclarations.some(declaration=>!connectors.some(connector=>connector.id===declaration.provider)))
+    fail('search.provider','A provider-backed search source needs its active declared connector.');
+  const webhookMappings=connectors.filter(connector=>connector.webhook).map(connector=>{
+    const webhook=connector.webhook,owner=indexes.get(connector.moduleId);
+    const matching=(owner?.descriptor.contracts.api??[]).filter(api=>api.path===webhook.path
+      &&api.operation?.moduleId===connector.moduleId&&api.operation?.id===webhook.operationId
+      &&api.auth?.length===1&&api.auth[0]==='webhook-signature');
+    if(matching.length!==1)fail('webhook.binding','A signed webhook needs one exact declared HTTP binding.');
+    return {moduleId:connector.moduleId,operationId:webhook.operationId,path:webhook.path,
+      mapper:importCode(output,owner,webhook.mapper,providerImports)};
+  });
+  const deliveryMappings=located.flatMap(item=>{
+    const moduleId=item.descriptor.identity.id;
+    if(!composition.modules.some(selection=>selection.moduleId===moduleId&&selection.enabled))return [];
+    return (item.descriptor.contracts.deliveries??[]).flatMap((delivery,index)=>{
+      if(!active(moduleId,`/contracts/deliveries/${index}`))return [];
+      const provider=connectors.find(connector=>connector.moduleId===delivery.provider.publicContract.moduleId
+        &&connector.id===delivery.provider.connectorId);
+      const resource=provider?.resources.find(resource=>resource.id===delivery.provider.resourceId);
+      const source=resolveOperation(delivery.command),prepare=resolveOperation(delivery.prepare);
+      const receipt=item.descriptor.contracts.schemas.find(schema=>schema.id===delivery.receipt.schemaId);
+      const receiptValidator=operationPlan.catalog.modules.find(module=>module.moduleId===moduleId)
+        ?.schemas.find(schema=>schema.schemaId===delivery.receipt.schemaId)?.validator;
+      if(!provider||!resource||resource.method==='GET'||!resource.idempotencyHeader
+        ||!source||source.kind!=='command'||!prepare||prepare.kind!=='query'||!receipt||!receiptValidator)
+        fail('delivery.binding','An active delivery needs an own command, preparation query, receipt schema and idempotent provider resource.');
+      return [{id:delivery.id,moduleId,commandId:delivery.command.id,prepareId:delivery.prepare.id,
+        providerModuleId:provider.moduleId,connectorId:provider.id,resourceId:resource.id,
+        readinessId:delivery.provider.readiness.id,configRevisionField:delivery.provider.configRevisionField,
+        prepareInput:delivery.prepareInput,matchFields:delivery.matchFields,
+        envelopeField:delivery.envelopeField,modelIds:delivery.models.map(ref=>ref.id),
+        projectorInput:delivery.projectorInput,acceptance:delivery.acceptance,receiptValidator,
+        projector:importCode(output,item,delivery.projector,providerImports)}];
+    });
+  });
   let providerDefinition = 'null';
   const openAi = indexes.get('creezio.openai');
   if (openAi && composition.modules.some(selection => selection.moduleId === 'creezio.openai' && selection.enabled)) {
@@ -397,6 +552,14 @@ export async function composeRuntime({ root = process.cwd(), compositionPath = '
     views: workspaceViews.map(({id, surfaces, audiences, permissions}) => ({id, surfaces, audiences, permissions})),
     navigation: navigation.filter(item => item.surfaces.includes('workspace') && item.audiences.length > 0 && workspaceIds.has(item.viewId))
       .map(({id, viewId, surfaces, audiences, permissions}) => ({id, viewId, surfaces, audiences, permissions})) };
+  const workspaceNavigationCatalog={compositionDigest,entries:navigation
+    .filter(item=>item.surfaces.includes('workspace')&&item.audiences.length>0&&workspaceIds.has(item.viewId))
+    .map(item=>{
+      const view=workspaceViews.find(candidate=>candidate.id===item.viewId);
+      return {id:item.id,moduleId:item.moduleId,viewId:item.viewId,title:item.title,order:item.order,
+        route:view.route,audiences:item.audiences.filter(audience=>view.audiences.includes(audience)),
+        permissionIds:[...new Set([...view.permissions,...item.permissions].map(ref=>`${ref.moduleId}:${ref.id}`))]};
+    })};
   const frontViews=views.filter(view=>view.surfaces.includes('front')&&view.audiences.includes('app'));
   const frontViewIds=new Set(frontViews.map(view=>view.id));
   const frontNavigation=navigation.filter(item=>item.surfaces.includes('front')&&item.audiences.includes('app')
@@ -447,7 +610,12 @@ export async function composeRuntime({ root = process.cwd(), compositionPath = '
       handlers: Object.fromEntries(operationHandlers.map(item => [item.name, sentinel])) });
   } catch { fail('build.operation-registry', 'The operation registry exceeds host capabilities or contains invalid bindings.'); }
   try { createMcpCatalog(mcpCatalog, registry); }
-  catch { fail('build.mcp-catalog', 'The compiled MCP catalog exceeds host capabilities or contains invalid bindings.'); }
+  catch {
+    const bytes=Buffer.byteLength(JSON.stringify(mcpCatalog));
+    throw new CompositionBuildError('build.mcp-catalog',
+      'The compiled MCP catalog exceeds host capabilities or contains invalid bindings.',
+      [{code:'mcp.catalog-summary',message:`${bytes} bytes; ${mcpCatalog.tools.length} tools; ${mcpCatalog.resources.length} resources.`}]);
+  }
   const banner = '// Generated from an explicit validated composition. Do not edit.\n';
   const serverModules = modules.map(module => `{ id: ${JSON.stringify(module.id)}, version: ${JSON.stringify(module.version)}, operations: [${module.operations.map(operation => {
     const { handler, ...metadata } = operation; return `{ ...${JSON.stringify(metadata)}, handler: ${handler} }`;
@@ -486,9 +654,15 @@ export async function composeRuntime({ root = process.cwd(), compositionPath = '
   }).join(',\n');
   const contextDeclarations = [...contextValidators.names.values()]
     .map(name => `export declare const ${name}: (value:unknown)=>boolean;`).join('\n') || 'export {};';
+  const widgetCatalogBase = {widgets:widgetCatalog.widgets};
+  const {sharedParts:widgetSharedParts,resourceSources:widgetResourceSources} =
+    sharedWidgetScriptSources(widgetCatalog.resources);
   const rendered = {
-    'widget-catalog.ts': `${banner}import {widgetKey, type CompiledWidgetCatalog, type WidgetValidatorMap} from ${JSON.stringify(importSpecifier(output, path.join(root, 'sdk/widgets/catalog.ts')))};\nimport * as compiledValidators from './operation-validators.mjs';\nimport * as contextValidators from './widget-context-validators.mjs';\n${freezeSource}export const widgetCatalog: CompiledWidgetCatalog = freeze(${JSON.stringify(widgetCatalog)});\nexport const widgetValidators: WidgetValidatorMap = new Map([${widgetValidatorEntries}]);\n`,
-    'provider-catalog.ts': `${banner}import type {ProviderOperationSchema} from ${JSON.stringify(importSpecifier(output, path.join(root,'core/providers/tools.ts')))};\nimport type {ConnectorDescriptor} from ${JSON.stringify(importSpecifier(output,path.join(root,'sdk/connectors/types.ts')))};\n${providerImports.join('\n')}\n${freezeSource}export const toolCatalog: readonly ProviderOperationSchema[] = freeze(${JSON.stringify(providerToolCatalog)});\nexport const openAiProvider = ${providerDefinition};\nexport const connectors: readonly ConnectorDescriptor[] = freeze(${JSON.stringify(connectors)});\n`,
+    'public-pages.ts': `${banner}import type {PublicPageProjection} from ${JSON.stringify(importSpecifier(output,path.join(root,'core/runtime/public-pages.ts')))};\n${publicPageImports.join('\n')}\nexport const publicPageProjection: PublicPageProjection | null = ${publicPages.length
+      ? `Object.freeze({moduleId:${JSON.stringify(publicPages[0].moduleId)},models:Object.freeze(${JSON.stringify(publicPages[0].models)}),css:${JSON.stringify(publicPages[0].stylesheet)},render:${publicPages[0].renderer} as unknown as PublicPageProjection['render'],imageIds:${publicPages[0].imageIds} as unknown as PublicPageProjection['imageIds']})`
+      : 'null'};\n`,
+    'widget-catalog.ts': `${banner}import {widgetKey, type CompiledWidgetCatalog, type WidgetValidatorMap} from ${JSON.stringify(importSpecifier(output, path.join(root, 'sdk/widgets/catalog.ts')))};\nimport * as compiledValidators from './operation-validators.mjs';\nimport * as contextValidators from './widget-context-validators.mjs';\n${freezeSource}const widgetSharedParts = ${JSON.stringify(widgetSharedParts)};\nconst widgetResources: CompiledWidgetCatalog['resources'] = [${widgetResourceSources.join(',')}];\nconst widgetCatalogBase: Pick<CompiledWidgetCatalog,'widgets'> = ${JSON.stringify(widgetCatalogBase)};\nexport const widgetCatalog: CompiledWidgetCatalog = freeze({...widgetCatalogBase,resources:widgetResources});\nexport const widgetValidators: WidgetValidatorMap = new Map([${widgetValidatorEntries}]);\n`,
+    'provider-catalog.ts': `${banner}import type {ProviderOperationSchema} from ${JSON.stringify(importSpecifier(output, path.join(root,'core/providers/tools.ts')))};\nimport type {ConnectorDescriptor} from ${JSON.stringify(importSpecifier(output,path.join(root,'sdk/connectors/types.ts')))};\nimport * as compiledValidators from './operation-validators.mjs';\n${providerImports.join('\n')}\n${freezeSource}export const toolCatalog: readonly ProviderOperationSchema[] = freeze(${JSON.stringify(providerToolCatalog)});\nexport const openAiProvider = ${providerDefinition};\nexport const connectors: readonly ConnectorDescriptor[] = freeze(${JSON.stringify(connectors)});\nexport const searchProjections = freeze(${JSON.stringify(searchProjections)});\nexport const webhookMappings = Object.freeze([${webhookMappings.map(item=>`Object.freeze({moduleId:${JSON.stringify(item.moduleId)},operationId:${JSON.stringify(item.operationId)},path:${JSON.stringify(item.path)},map:${item.mapper}})`).join(',')}]);\nexport const deliveryMappings = Object.freeze([${deliveryMappings.map(item=>`Object.freeze({id:${JSON.stringify(item.id)},moduleId:${JSON.stringify(item.moduleId)},commandId:${JSON.stringify(item.commandId)},prepareId:${JSON.stringify(item.prepareId)},providerModuleId:${JSON.stringify(item.providerModuleId)},connectorId:${JSON.stringify(item.connectorId)},resourceId:${JSON.stringify(item.resourceId)},readinessId:${JSON.stringify(item.readinessId)},configRevisionField:${JSON.stringify(item.configRevisionField)},prepareInput:freeze(${JSON.stringify(item.prepareInput)}),matchFields:freeze(${JSON.stringify(item.matchFields)}),envelopeField:${JSON.stringify(item.envelopeField)},projectorInput:freeze(${JSON.stringify(item.projectorInput)}),acceptance:freeze(${JSON.stringify(item.acceptance)}),modelIds:freeze(${JSON.stringify(item.modelIds)}),validateReceipt:compiledValidators.${item.receiptValidator},projector:${item.projector}})`).join(',')}]);\n`,
     'file-catalog.ts': `${banner}import type {RuntimeFileCatalog} from ${JSON.stringify(importSpecifier(output, path.join(root, 'core/files/catalog.ts')))};\n${freezeSource}export const fileCatalog: RuntimeFileCatalog = freeze(${JSON.stringify(fileCatalog)});\n`,
     'module-inventory.ts': `${banner}import type { ModuleSettingsHostInventory } from ${JSON.stringify(importSpecifier(output, path.join(root, 'sdk/module-settings/types.ts')))};\n${freezeSource}${runtimeInventory
       ? `const inventory: ModuleSettingsHostInventory['inventory'] = freeze(${JSON.stringify(runtimeInventory.inventory)});\nexport const runtimeInventory: ModuleSettingsHostInventory = freeze({current: {composition: ${JSON.stringify(composition)}, lock: ${JSON.stringify(lock)}, descriptors: ${JSON.stringify(currentModuleCandidateKeys(composition,lock,runtimeInventory.inventory))}.map(key => inventory.candidates.find(candidate => candidate.candidateKey === key)!.descriptor)}, inventory, currentInstalledDocuments: ${JSON.stringify(runtimeInventory.currentInstalledDocuments)}});\n`
@@ -499,7 +673,7 @@ export async function composeRuntime({ root = process.cwd(), compositionPath = '
     'widget-context-validators.d.mts': `${banner}${contextDeclarations}\n`,
     'operations.ts': `${banner}import type { RuntimeOperationCatalog } from ${JSON.stringify(importSpecifier(output, path.join(root, 'core/operations/types.ts')))};\nimport * as compiledValidators from './operation-validators.mjs';\n${operationImports.join('\n')}\nconst freeze = <T>(value: T): T => { if (value && typeof value === 'object') { for (const child of Object.values(value)) freeze(child); Object.freeze(value); } return value; };\nexport const operationCatalog: RuntimeOperationCatalog = freeze(${JSON.stringify(operationPlan.catalog)});\nexport const operationValidators = Object.freeze({${validatorEntries}});\nexport const operationHandlers = Object.freeze({${operationHandlers.map(item => `${JSON.stringify(item.name)}: ${item.handler}`).join(',\n')}});\n`,
     'data-catalog.ts': `${banner}import type { RuntimeDataCatalog } from ${JSON.stringify(importSpecifier(output, path.join(root, 'core/data/types.ts')))};\nconst freeze = <T>(value: T): T => { if (value && typeof value === 'object') { for (const child of Object.values(value)) freeze(child); Object.freeze(value); } return value; };\nexport const dataCatalog: RuntimeDataCatalog = freeze(${JSON.stringify(dataPlan.runtimeCatalog)});\n`,
-    'server.ts': `${banner}import type { RuntimeModule, RuntimeNativeAccess } from ${JSON.stringify(importSpecifier(output, path.join(root, 'core/runtime/types.ts')))};\nimport type { OperationHttpBinding } from ${JSON.stringify(importSpecifier(output, path.join(root, 'core/operations/http-types.ts')))};\nimport type { PermissionDefinition } from ${JSON.stringify(importSpecifier(output, path.join(root, 'core/authorization/types.ts')))};\nimport type { WorkspaceAuthorizationCatalog } from ${JSON.stringify(importSpecifier(output, path.join(root, 'core/workspace/authorization.ts')))};\nimport type { McpCatalog } from ${JSON.stringify(importSpecifier(output, path.join(root, 'core/mcp/types.ts')))};\nimport type { RuntimeFrontCatalog } from ${JSON.stringify(importSpecifier(output, path.join(root, 'sdk/runtime/ui.ts')))};\nimport {widgetCatalog} from './widget-catalog.ts';\nexport {widgetCatalog};\nexport {widgetValidators} from './widget-catalog.ts';\n${serverImports.join('\n')}\n${freezeSource}export const compositionDigest = ${JSON.stringify(compositionDigest)};\nexport const nativeAccess: RuntimeNativeAccess = Object.freeze(${JSON.stringify(nativeAccess)});\nexport const modules: readonly RuntimeModule[] = [${serverModules.join(',\n')}];\nexport const httpBindings: readonly OperationHttpBinding[] = freeze(${JSON.stringify(httpBindings)});\nexport const mcpCatalog: McpCatalog = freeze(${mcpCatalogLiteral});\nexport const permissions: readonly PermissionDefinition[] = freeze(${JSON.stringify(permissions)});\nexport const permissionTitles: Readonly<Record<string, string>> = freeze(${JSON.stringify(permissionTitles)});\nexport const workspaceCatalog: WorkspaceAuthorizationCatalog = freeze(${JSON.stringify(workspaceCatalog)});\nexport const frontCatalog: RuntimeFrontCatalog = freeze(${JSON.stringify(frontCatalog)});\n`,
+    'server.ts': `${banner}import type { RuntimeModule, RuntimeNativeAccess } from ${JSON.stringify(importSpecifier(output, path.join(root, 'core/runtime/types.ts')))};\nimport type { OperationHttpBinding } from ${JSON.stringify(importSpecifier(output, path.join(root, 'core/operations/http-types.ts')))};\nimport type { PermissionDefinition } from ${JSON.stringify(importSpecifier(output, path.join(root, 'core/authorization/types.ts')))};\nimport type { WorkspaceAuthorizationCatalog } from ${JSON.stringify(importSpecifier(output, path.join(root, 'core/workspace/authorization.ts')))};\nimport type { WorkspaceNavigationCatalogV1 } from ${JSON.stringify(importSpecifier(output, path.join(root, 'sdk/workspace/navigation-catalog.ts')))};\nimport type { McpCatalog } from ${JSON.stringify(importSpecifier(output, path.join(root, 'core/mcp/types.ts')))};\nimport type { RuntimeFrontCatalog } from ${JSON.stringify(importSpecifier(output, path.join(root, 'sdk/runtime/ui.ts')))};\nimport {widgetCatalog} from './widget-catalog.ts';\nexport {widgetCatalog};\nexport {widgetValidators} from './widget-catalog.ts';\n${serverImports.join('\n')}\n${freezeSource}export const compositionDigest = ${JSON.stringify(compositionDigest)};\nexport const nativeAccess: RuntimeNativeAccess = Object.freeze(${JSON.stringify(nativeAccess)});\nexport const modules: readonly RuntimeModule[] = [${serverModules.join(',\n')}];\nexport const httpBindings: readonly OperationHttpBinding[] = freeze(${JSON.stringify(httpBindings)});\nexport const mcpCatalog: McpCatalog = freeze(${mcpCatalogLiteral});\nexport const permissions: readonly PermissionDefinition[] = freeze(${JSON.stringify(permissions)});\nexport const permissionTitles: Readonly<Record<string, string>> = freeze(${JSON.stringify(permissionTitles)});\nexport const workspaceCatalog: WorkspaceAuthorizationCatalog = freeze(${JSON.stringify(workspaceCatalog)});\nexport const workspaceNavigationCatalog: WorkspaceNavigationCatalogV1 = freeze(${JSON.stringify(workspaceNavigationCatalog)});\nexport const frontCatalog: RuntimeFrontCatalog = freeze(${JSON.stringify(frontCatalog)});\n`,
     'client.tsx': `${banner}import type { RuntimeView, RuntimeNavigation, RuntimeFrontSelection, RuntimeFrontView, RuntimeFrontNavigation, RuntimeFrontSlot, RuntimeFrontTheme } from ${JSON.stringify(importSpecifier(output, path.join(root, 'sdk/runtime/ui.ts')))};\nimport type { OperationHttpBinding } from ${JSON.stringify(importSpecifier(output, path.join(root, 'core/operations/http-types.ts')))};\n${clientImports.join('\n')}\n${freezeSource}export const compositionDigest = ${JSON.stringify(compositionDigest)};\nexport const nativeAccess = Object.freeze(${JSON.stringify(nativeAccess)});\nexport const views: readonly RuntimeView[] = freeze([${clientWorkspaceViews.join(',\n')}]);\nexport const navigation: readonly RuntimeNavigation[] = freeze(${JSON.stringify(navigation)});\nexport const front: RuntimeFrontSelection = freeze(${JSON.stringify(composition.front)});\nexport const frontViews: readonly RuntimeFrontView[] = freeze([${clientFrontViews.join(',\n')}]);\nexport const frontNavigation: readonly RuntimeFrontNavigation[] = freeze(${JSON.stringify(frontNavigation)});\nexport const frontSlots: readonly RuntimeFrontSlot[] = freeze(${JSON.stringify(frontSlots)});\nexport const frontTheme: RuntimeFrontTheme | null = ${frontTheme ? `freeze(${clientFrontTheme})` : 'null'};\nexport const httpBindings: readonly OperationHttpBinding[] = freeze(${JSON.stringify(httpBindings)});\n`,
     'composition.json': `${stringify({ schemaVersion: 1, compositionDigest, nativeAccess, applicationId: composition.application.id, hostProfile: composition.host.profile,
       operations: { schemasDigest: operationPlan.schemasDigest, validatorsDigest: operationPlan.validatorsDigest, ...operationPlan.metrics },
@@ -507,6 +681,30 @@ export async function composeRuntime({ root = process.cwd(), compositionPath = '
       views: views.map(({ component, ...metadata }) => metadata), navigation, frontCatalog,
       httpBindings, packageArchivesVerified: false })}\n`,
   };
+  if (publicPages.length) {
+    let bundled;
+    try {
+      await assertWorkerBoundary({root,entryPoints:[slash(path.relative(root,publicPages[0].rendererSource))]});
+      bundled=buildSync({entryPoints:[publicPages[0].rendererSource],bundle:true,write:false,
+        format:'esm',platform:'browser',conditions:['worker'],jsx:'automatic',target:'es2022',
+        define:{'process.env.NODE_ENV':'"production"'},minify:true,metafile:true,logLevel:'silent'});
+    } catch (error) { fail('public-page.renderer-build', `Public page renderer compilation failed: ${error.message}`); }
+    if (bundled.outputFiles.length!==1||Object.values(bundled.metafile.outputs)
+      .some(item=>item.imports.length>0)) fail('public-page.renderer-build','Public page renderer must bundle without external imports.');
+    const bytes=bundled.outputFiles[0].contents;
+    const source=new TextDecoder().decode(bytes);
+    if (/\b(?:eval\s*\(|new\s+Function\s*\(|import\s*\(|require\s*\(\s*['"]node:)/u.test(source))
+      fail('public-page.renderer-build','Public page renderer uses dynamic code or Node imports.');
+    rendered['public-page-renderer.mjs']=source;
+    rendered['public-page-renderer.d.mts']=`export declare const ${publicPages[0].rendererExport}: (...args: unknown[]) => string;\n`;
+    destinations['public-page-renderer.mjs']=confined(root,path.join(output,'public-page-renderer.mjs'),{missing:true});
+    destinations['public-page-renderer.d.mts']=confined(root,path.join(output,'public-page-renderer.d.mts'),{missing:true});
+  } else {
+    for(const name of ['public-page-renderer.mjs','public-page-renderer.d.mts']){
+      const stale=confined(root,path.join(output,name),{missing:true});
+      if(existsSync(stale))unlinkSync(stale);
+    }
+  }
   mkdirSync(output, { recursive: true });
   for (const [name, content] of Object.entries(rendered)) {
     const target = confined(root, destinations[name], { missing: true });

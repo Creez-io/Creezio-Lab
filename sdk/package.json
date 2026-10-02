@@ -1,6 +1,6 @@
 {
   "name": "@creezio/sdk",
-  "version": "1.4.1",
+  "version": "1.9.0",
   "private": false,
   "type": "module",
   "description": "Creezio module authoring SDK",
@@ -20,6 +20,7 @@
     "dist/types/sdk/operations/command-journal.d.ts",
     "dist/types/sdk/operations/error.d.ts",
     "dist/types/sdk/operations/handler.d.ts",
+    "dist/types/sdk/search",
     "dist/types/sdk/ui",
     "dist/types/sdk/widgets",
     "dist/types/sdk/workspace",
@@ -48,6 +49,10 @@
       "types": "./dist/types/sdk/connectors/types.d.ts",
       "import": "./dist/esm/connectors/types.js"
     },
+    "./search/types": {
+      "types": "./dist/types/sdk/search/types.d.ts",
+      "import": "./dist/esm/search/types.js"
+    },
     "./delivery/context": {
       "types": "./dist/types/sdk/delivery/context.d.ts",
       "import": "./dist/esm/delivery/context.js"
@@ -55,6 +60,26 @@
     "./delivery/transport": {
       "types": "./dist/types/sdk/delivery/transport.d.ts",
       "import": "./dist/esm/delivery/transport.js"
+    },
+    "./delivery/types": {
+      "types": "./dist/types/sdk/delivery/types.d.ts",
+      "import": "./dist/esm/delivery/types.js"
+    },
+    "./delivery/controller": {
+      "types": "./dist/types/sdk/delivery/controller.d.ts",
+      "import": "./dist/esm/delivery/controller.js"
+    },
+    "./delivery/view-model": {
+      "types": "./dist/types/sdk/delivery/view-model.d.ts",
+      "import": "./dist/esm/delivery/view-model.js"
+    },
+    "./delivery/update-controller": {
+      "types": "./dist/types/sdk/delivery/update-controller.d.ts",
+      "import": "./dist/esm/delivery/update-controller.js"
+    },
+    "./delivery/update-view-model": {
+      "types": "./dist/types/sdk/delivery/update-view-model.d.ts",
+      "import": "./dist/esm/delivery/update-view-model.js"
     },
     "./files/types": {
       "types": "./dist/types/sdk/files/types.d.ts",
@@ -107,6 +132,10 @@
     "./contracts/node": {
       "types": "./dist/types/sdk/contracts/node.d.mts",
       "import": "./dist/esm/contracts/validate.js"
+    },
+    "./workspace/navigation-catalog": {
+      "types": "./dist/types/sdk/workspace/navigation-catalog.d.ts",
+      "import": "./dist/esm/workspace/navigation-catalog.js"
     }
   },
   "scripts": {

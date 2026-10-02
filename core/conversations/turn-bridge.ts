@@ -2,6 +2,7 @@ import {createDataAccess} from '../data/service.ts';
 import type {DataCredential,DataLease,DataRecord,JsonValue,PermissionDefinition,RuntimeDataCatalog} from '../data/types.ts';
 import type {AuthorizationAudience} from '../authorization/types.ts';
 import type {IdentityDatabase} from '../identity/d1-store.ts';
+import type {StorageRouteIdentity} from '../storage-authority/target.ts';
 import {createOperationStore} from '../operations/store.ts';
 import type {DeliveryClaim,OperationDelivery} from '../operations/store-types.ts';
 import {OperationError} from '../operations/types.ts';
@@ -15,6 +16,7 @@ import type {CompiledWidgetCatalog,WidgetValidatorMap} from '../../sdk/widgets/c
 import {createWidgetOperationPort} from '../widgets/host.ts';
 import {widgetKey} from '../../sdk/widgets/catalog.ts';
 import {operationDigest} from '../operations/digest.ts';
+import type {ConnectorDescriptor} from '../../sdk/connectors/types.ts';
 
 const ID=/^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/;
 const PROVIDER='openai.responses.v1';
@@ -28,11 +30,14 @@ const view=(row:Row)=>({id:row.id,conversationId:row.conversation_id,state:row.s
 
 /** A client driven, request bounded step. Read routes never call this bridge. */
 export function createTurnBridge(options:{readonly db:IdentityDatabase;readonly catalog:RuntimeDataCatalog;
+  readonly authorityDb?:IdentityDatabase;readonly storageRoute?:StorageRouteIdentity;
   readonly permissions:readonly PermissionDefinition[];readonly provider:ReturnType<typeof createOpenAiProviderHost>;
   readonly registry:OperationRegistry;readonly toolCatalog:readonly ProviderOperationSchema[];
+  readonly connectors?:readonly ConnectorDescriptor[];
   readonly engine:ReturnType<typeof createOperationEngine>;
   readonly widgets?:{readonly catalog:CompiledWidgetCatalog;readonly validators:WidgetValidatorMap}}){
-  const data=createDataAccess(options.db,{catalog:options.catalog,permissions:options.permissions});
+  const data=createDataAccess(options.db,{catalog:options.catalog,permissions:options.permissions,
+    authorityDb:options.authorityDb,storageRoute:options.storageRoute});
   const store=createOperationStore({db:options.db,data});
   const engine=options.engine;
   const authorize=(request:Request)=>data.authorize(request.credential,{
@@ -184,7 +189,7 @@ export function createTurnBridge(options:{readonly db:IdentityDatabase;readonly 
       ?item as PendingTool:null;
   };
   const project=(request:Request)=>projectAuthorizedReadTools({catalog:options.toolCatalog,
-    registry:options.registry,data,request,
+    registry:options.registry,data,request,connectors:options.connectors,
     ...(options.widgets?{widgets:options.widgets.catalog}:{})});
   const invokeTool=async(request:Request,name:string,args:JsonValue):Promise<{result:JsonValue;render?:ToolRender}>=>{
     const projected=await project(request),selected=projected.tools.find(item=>item.provider.name===name);
@@ -462,6 +467,13 @@ export function createTurnBridge(options:{readonly db:IdentityDatabase;readonly 
                 {state:'running'});
               current=(await store.readDelivery(lease,{executionId:delivery.executionId,outboxId:delivery.id}))!;
             }
+            // A known receipt can already be terminal. Read it before opening a
+            // potentially long stream, while the request's bounded signal is live.
+            if(request.signal.aborted)throw new OperationError('timeout');
+            const prior=await transport.status(known.providerReference,request.signal);
+            if(request.signal.aborted)throw new OperationError('timeout');
+            if(await reconcileSnapshot(prior))return true;
+            if(request.signal.aborted)throw new OperationError('timeout');
             events=transport.resume(known.providerReference,known.cursor,request.signal);
           }
           else{
@@ -592,7 +604,12 @@ export function createTurnBridge(options:{readonly db:IdentityDatabase;readonly 
           }
           const handle=receipt(current);
           if(!handle)return null;
-          return reconcileSnapshot(await transport.status(handle.providerReference,request.signal));
+          // The drive deadline also aborts the provider port. A status request with
+          // that same signal cannot reconcile anything; keep the durable unknown.
+          if(request.signal.aborted)throw new OperationError('timeout');
+          const finalSnapshot=await transport.status(handle.providerReference,request.signal);
+          if(request.signal.aborted)throw new OperationError('timeout');
+          return reconcileSnapshot(finalSnapshot);
         });
         if(result===null){
           // The provider remains active. A later client drive resumes by the durable cursor after claim expiry.

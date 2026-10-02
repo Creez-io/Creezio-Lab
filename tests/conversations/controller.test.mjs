@@ -21,7 +21,7 @@ test('a recovered query clears only its own error, never an uncertain mutation',
     if(bindingId.endsWith('event.list'))return eventFails
       ?{kind:'execution',execution:{id:'execution',state:'failed',output:null,errorCode:'invalid_input'}}
       :execution({items:[],nextSequence:null});
-    if(bindingId.endsWith('draft.save'))return {kind:'unknown',code:'outcome_unknown'};
+    if(bindingId.endsWith('conversation.create'))return {kind:'unknown',code:'outcome_unknown'};
     throw new Error(bindingId);
   }};
   const controller=createConversationsController({access:a,client,audience:'app',contextId:'application',active:true});
@@ -30,7 +30,7 @@ test('a recovered query clears only its own error, never an uncertain mutation',
   eventFails=false;
   assert.deepEqual(await controller.readEvents('thread','turn'),{items:[],nextSequence:null});
   assert.equal(controller.getSnapshot().error,null);
-  assert.equal((await controller.saveDraft('thread','Brouillon')).kind,'unknown');
+  assert.equal((await controller.create({mode:'chat'})).kind,'unknown');
   assert.equal(controller.getSnapshot().error,'outcome_unknown');
   await controller.readEvents('thread','turn');
   assert.equal(controller.getSnapshot().error,'outcome_unknown');
@@ -58,6 +58,55 @@ test('old search and old selected conversation cannot replace newer responses',a
   const oldOpen=controller.open('old'),newOpen=controller.open('new');await newOpen;
   selected.resolve(execution({conversation:summary('old'),provider:'no_provider'}));await oldOpen;
   assert.equal(controller.getSnapshot().selected.id,'new');
+  controller.dispose();
+});
+
+test('draft waits for a scoped read and keeps a local edit through a refused reread',async()=>{
+  const a=access(), first=deferred();let reads=0,writes=0;
+  const client={invoke:({bindingId,input})=>{
+    if(bindingId.endsWith('conversation.read'))return Promise.resolve(execution({
+      conversation:summary(input.conversationId),provider:'no_provider'}));
+    if(bindingId.endsWith('message.list'))return Promise.resolve(execution({items:[],nextCursor:null}));
+    if(bindingId.endsWith('draft.read')){
+      reads++;
+      if(input.conversationId==='other')return Promise.resolve(execution({
+        conversationId:'other',text:'Autre',updatedAt:null,revision:1}));
+      return reads===1?first.promise:Promise.resolve(reads===2
+        ?{kind:'execution',execution:{id:'execution',state:'failed',output:null,errorCode:'unavailable'}}
+        :execution({conversationId:'thread',text:'Serveur',updatedAt:null,revision:2}));
+    }
+    if(bindingId.endsWith('draft.save')){
+      writes++;assert.equal(input.revision,2);assert.equal(input.text,'Local');
+      return Promise.resolve(execution({conversationId:'thread',text:'Local',updatedAt:null,revision:3}));
+    }
+    throw new Error(bindingId);
+  }};
+  const controller=createConversationsController({access:a,client,audience:'app',contextId:'application',active:true});
+  const opening=controller.open('thread');await new Promise(resolve=>setImmediate(resolve));
+  assert.equal(controller.getSnapshot().selected?.id,'thread');
+  assert.equal(controller.getSnapshot().draft,null);
+  controller.setDraft('thread','Trop tôt');
+  assert.equal((await controller.saveDraft('thread','Trop tôt')).kind,'rejected');
+  assert.equal((await controller.startTurn('thread','Trop tôt','chosen-model')).kind,'rejected');
+  assert.equal(writes,0);
+  first.resolve(execution({conversationId:'thread',text:'Serveur',updatedAt:null,revision:2}));
+  await opening;
+  assert.equal(controller.getSnapshot().draft?.revision,2);
+  controller.setDraft('thread','Local');
+  await controller.open('thread');
+  assert.equal(controller.getSnapshot().draft,null);
+  assert.equal((await controller.saveDraft('thread')).kind,'rejected');
+  assert.equal((await controller.startTurn('thread','Local','chosen-model')).kind,'rejected');
+  assert.equal(writes,0);
+  await controller.open('thread');
+  assert.equal(controller.getSnapshot().draft?.text,'Local');
+  assert.equal(controller.getSnapshot().draft?.revision,2);
+  await controller.open('other');
+  assert.equal(controller.getSnapshot().draft?.text,'Autre');
+  await controller.open('thread');
+  assert.equal(controller.getSnapshot().draft?.text,'Local');
+  assert.equal((await controller.saveDraft('thread')).kind,'ok');
+  assert.equal(writes,1);
   controller.dispose();
 });
 
@@ -121,6 +170,68 @@ test('selected conversation is restored only after a scoped server read and clea
     assert.equal(values.size,0);
     second.dispose();
   }finally{if(previous===undefined)delete globalThis.sessionStorage;else globalThis.sessionStorage=previous;}
+});
+
+test('an interrupted selected conversation resumes its draft and messages when access or activity returns',async()=>{
+  for(const interruption of ['access','activity']){
+    const a=access(), firstDraft=deferred();let draftReads=0,commands=0;
+    const client={invoke:({bindingId,input})=>{
+      if(bindingId.endsWith('conversation.read'))return Promise.resolve(execution({
+        conversation:summary(input.conversationId),provider:'no_provider'}));
+      if(bindingId.endsWith('message.list'))return Promise.resolve(execution({
+        items:[message('saved-message')],nextCursor:null}));
+      if(bindingId.endsWith('draft.read'))return ++draftReads===1?firstDraft.promise:
+        Promise.resolve(execution({conversationId:input.conversationId,text:'Brouillon conservé',
+          updatedAt:null,revision:2}));
+      commands++;throw new Error(bindingId);
+    }};
+    const controller=createConversationsController({access:a,client,audience:'app',
+      contextId:'application',active:true});
+    const opening=controller.open('thread');
+    await new Promise(resolve=>setImmediate(resolve));
+    assert.equal(controller.getSnapshot().selected?.title,'thread');
+    assert.equal(controller.getSnapshot().draft,null);
+    if(interruption==='access'){
+      a.set({phase:'loading',session:null,pending:null});
+      a.set({phase:'authenticated',session:{id:'session',principalId:'alice',audience:'app'},pending:null});
+    }else{controller.setActive(false);controller.setActive(true);}
+    firstDraft.resolve(execution({conversationId:'thread',text:'Ancien résultat',updatedAt:null,revision:1}));
+    await opening;
+    await new Promise(resolve=>setImmediate(resolve));
+    assert.equal(controller.getSnapshot().phase,'ready');
+    assert.equal(controller.getSnapshot().selected?.id,'thread');
+    assert.equal(controller.getSnapshot().draft?.text,'Brouillon conservé');
+    assert.deepEqual(controller.getSnapshot().messages.map(item=>item.id),['saved-message']);
+    assert.equal(draftReads,2);
+    assert.equal(commands,0);
+    controller.dispose();
+  }
+});
+
+test('a new selection wins over a queued restoration after access returns',async()=>{
+  const a=access(), oldDraft=deferred();
+  const client={invoke:({bindingId,input})=>{
+    if(bindingId.endsWith('conversation.read'))return Promise.resolve(execution({
+      conversation:summary(input.conversationId),provider:'no_provider'}));
+    if(bindingId.endsWith('message.list'))return Promise.resolve(execution({items:[],nextCursor:null}));
+    if(bindingId.endsWith('draft.read'))return input.conversationId==='old'?oldDraft.promise:
+      Promise.resolve(execution({conversationId:'new',text:'Nouveau brouillon',updatedAt:null,revision:1}));
+    throw new Error(bindingId);
+  }};
+  const controller=createConversationsController({access:a,client,audience:'app',
+    contextId:'application',active:true});
+  const interrupted=controller.open('old');
+  await new Promise(resolve=>setImmediate(resolve));
+  a.set({phase:'loading',session:null,pending:null});
+  a.set({phase:'authenticated',session:{id:'session',principalId:'alice',audience:'app'},pending:null});
+  const selected=controller.open('new');
+  await selected;
+  oldDraft.resolve(execution({conversationId:'old',text:'Ancien brouillon',updatedAt:null,revision:1}));
+  await interrupted;
+  await new Promise(resolve=>setImmediate(resolve));
+  assert.equal(controller.getSnapshot().selected?.id,'new');
+  assert.equal(controller.getSnapshot().draft?.text,'Nouveau brouillon');
+  controller.dispose();
 });
 
 test('message pages open on the newest messages and prepend older messages once',async()=>{

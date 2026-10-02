@@ -4,8 +4,11 @@ import {execFileSync} from 'node:child_process';
 import {mkdtempSync,mkdirSync,writeFileSync,rmSync,readFileSync,renameSync} from 'node:fs';
 import {tmpdir} from 'node:os';
 import path from 'node:path';
+import {EventEmitter} from 'node:events';
 import {measureRuntimeArtifacts} from '../../scripts/quality/runtime.mjs';
-import {inspectCloudflareDelivery,inspectCloudflareCurrent,createCloudflarePublisher} from '../../scripts/cloudflare/publisher.mjs';
+import {inspectCloudflareDelivery,inspectCloudflareCurrent,createCloudflarePublisher,
+  runCloudflareUpload,
+  CloudflarePublicationError,publicationFailure} from '../../scripts/cloudflare/publisher.mjs';
 import {cloudflareArtifactRoot} from '../../scripts/cloudflare/artifact-path.mjs';
 import {cloudflareWorkerConfiguration} from '../../scripts/cloudflare/config.mjs';
 import {sourceIdentity} from '../../scripts/quality/evidence.mjs';
@@ -15,6 +18,38 @@ const target={schemaVersion:1,accountId:'a'.repeat(32),workerName:'first-app',da
   origin:'https://first-app.example.workers.dev',widgetSandboxOrigin:'https://sandbox.example.workers.dev'};
 const versionId='22222222-2222-4222-8222-222222222222';
 const delivery={id:'deployment-1',versions:[{percentage:100,version_id:versionId}]};
+test('publication diagnostics expose only bounded scalars',()=>{
+  const failure=new CloudflarePublicationError('outcome_unknown',{phase:'wrangler',
+    reason:'exit_nonzero',exitCode:1,apiCodes:[10001,10002,10003,10004,10005],
+    stderr:'Bearer very-secret-token'});
+  assert.deepEqual(publicationFailure(failure),{phase:'wrangler',reason:'exit_nonzero',
+    exitCode:1,apiCodes:[10001,10002,10003,10004]});
+  assert.deepEqual(publicationFailure(new Error('Bearer very-secret-token')),
+    {phase:'unknown',reason:'unavailable',exitCode:null,apiCodes:[]});
+});
+test('Wrangler 10021 extracts only a closed validation issue across stderr chunks',async t=>{
+  const root=mkdtempSync(path.join(tmpdir(),'creezio-wrangler-diagnostic-'));
+  t.after(()=>rmSync(root,{recursive:true,force:true}));
+  mkdirSync(path.join(root,'node_modules/wrangler/bin'),{recursive:true});
+  writeFileSync(path.join(root,'node_modules/wrangler/bin/wrangler.js'),'');
+  const child=new EventEmitter();child.stdout=new EventEmitter();child.stderr=new EventEmitter();
+  const spawnChild=()=>{queueMicrotask(()=>{
+    child.stderr.emit('data',Buffer.from('Bearer secret-value https://host.invalid/?token=secret'));
+    child.stderr.emit('data',Buffer.from(' Script startup exceeded CPU'));
+    child.stderr.emit('data',Buffer.from(' time limit (code: 10021)'));
+    child.emit('close',1);
+  });return child;};
+  let error;
+  try{await runCloudflareUpload({root,configPath:'wrangler.json',transferId:'update-one',
+    artifact:{artifactDigest:`sha256-${'a'.repeat(64)}`,sourceSha:'b'.repeat(40),
+      compositionDigest:`sha256-${'c'.repeat(64)}`},token:'x'.repeat(24),accountId:'a'.repeat(32)},
+    spawnChild);}catch(cause){error=cause;}
+  assert.equal(error?.code,'outcome_unknown');
+  const diagnostic=publicationFailure(error);
+  assert.deepEqual(diagnostic,{phase:'wrangler',reason:'exit_nonzero',exitCode:1,
+    apiCodes:[10021],validationIssue:'startup_cpu_limit'});
+  assert.equal(JSON.stringify(diagnostic).includes('secret'),false);
+});
 function fixture(t){
   const root=mkdtempSync(path.join(tmpdir(),'creezio-publisher-'));
   const artifactRoot=path.join(root,'.wrangler','delivery','build','artifact');
@@ -221,6 +256,34 @@ test('current deployment inspection returns a stable version and target bindings
   await assert.rejects(inspectCloudflareCurrent(input),{code:'deployment_changed'});
 });
 
+test('version 1 target refuses an unexpected surviving storage route',async t=>{
+  const input=fixture(t);
+  input.settings.bindings.push({type:'plain_text',name:'CREEZIO_STORAGE_ROUTES',
+    text:'{"schemaVersion":1,"routes":[]}'});
+  await assert.rejects(inspectCloudflareCurrent(input),{code:'binding_mismatch'});
+});
+
+test('current deployment inspection requires every active resource binding and route manifest',async t=>{
+  const input=fixture(t);
+  input.target={...target,schemaVersion:2,resources:[{contextId:'tenant-a',slot:1,status:'active',
+    databaseId:'33333333-3333-4333-8333-333333333333',databaseName:'tenant-a-db',bucketName:'tenant-a-files'},
+    {contextId:'tenant-b',slot:2,status:'revoked',databaseId:'44444444-4444-4444-8444-444444444444',
+      databaseName:'tenant-b-db',bucketName:'tenant-b-files'}]};
+  const expected=cloudflareWorkerConfiguration(input.target);
+  input.settings.bindings.push(
+    {type:'d1',name:'DB_RESOURCE_01',id:input.target.resources[0].databaseId},
+    {type:'r2_bucket',name:'BUCKET_RESOURCE_01',bucket_name:input.target.resources[0].bucketName},
+    {type:'plain_text',name:'CREEZIO_STORAGE_ROUTES',text:expected.vars.CREEZIO_STORAGE_ROUTES});
+  assert.equal((await inspectCloudflareCurrent(input)).bindings.length,9);
+  input.settings.bindings=input.settings.bindings.filter(item=>item.name!=='BUCKET_RESOURCE_01');
+  await assert.rejects(inspectCloudflareCurrent(input),{code:'binding_mismatch'});
+  input.settings.bindings.push({type:'r2_bucket',name:'BUCKET_RESOURCE_01',bucket_name:'wrong-bucket'});
+  await assert.rejects(inspectCloudflareCurrent(input),{code:'binding_mismatch'});
+  input.settings.bindings.at(-1).bucket_name=input.target.resources[0].bucketName;
+  input.settings.bindings.push({type:'d1',name:'DB_RESOURCE_02',id:input.target.resources[1].databaseId});
+  await assert.rejects(inspectCloudflareCurrent(input),{code:'binding_mismatch'});
+});
+
 test('update inspection refuses a missing production vault after deployment',async t=>{
   const input=fixture(t);
   input.settings.bindings=input.settings.bindings.filter(item=>item.name!=='CREEZIO_VAULT_KEYRING');
@@ -278,4 +341,46 @@ test('update publisher refuses a changed base before any upload and preserves in
   assert.throws(()=>createCloudflarePublisher({...input,
     artifactRoot:path.join(input.root,'.wrangler/delivery/updates/invalid!/artifact')}),
   {code:'invalid_configuration'});
+});
+
+test('preserved update checks its old receipt and remote head with a newer operator source',async t=>{
+  const input=fixture(t),updateId='33333333-3333-4333-8333-333333333333';
+  writeFileSync(path.join(input.root,'.gitignore'),'.wrangler/\n.quality/\n');
+  const git=(...args)=>execFileSync('git',args,{cwd:input.root,stdio:'ignore'});
+  git('init','-q');git('config','user.email','test@example.invalid');
+  git('config','user.name','Synthetic Fixture');git('add','.gitignore');git('commit','-qm','artifact source');
+  const updateRoot=cloudflareArtifactRoot(input.root,updateId);
+  mkdirSync(path.dirname(updateRoot),{recursive:true});renameSync(input.artifactRoot,updateRoot);
+  writeFileSync(path.join(updateRoot,'dist/server/wrangler.json'),
+    JSON.stringify(cloudflareWorkerConfiguration(input.target)));
+  const source=sourceIdentity(input.root);
+  input.artifact.sourceSha=source.head;
+  input.artifact.artifactDigest=measureRuntimeArtifacts(updateRoot).digest;
+  mkdirSync(path.join(updateRoot,'.quality'),{recursive:true});
+  writeFileSync(path.join(updateRoot,'.quality/cloudflare-build.json'),JSON.stringify({
+    source,artifact:{digest:input.artifact.artifactDigest},
+    compositionDigest:input.artifact.compositionDigest}));
+  writeFileSync(path.join(updateRoot,'receipt.json'),JSON.stringify({selected:{updateId,
+    target:input.target,sourceSha:source.head,sourceFingerprint:source.sha256,
+    compositionDigest:input.artifact.compositionDigest},
+    artifactDigest:input.artifact.artifactDigest}));
+  writeFileSync(path.join(input.root,'operator.txt'),'new operator source\n');
+  git('add','operator.txt');git('commit','-qm','operator source');
+  assert.notEqual(sourceIdentity(input.root).head,source.head);
+  let latest=versionId,uploads=0;
+  input.controlPlane.latestVersion=async()=>({id:latest});
+  const publisher=createCloudflarePublisher({...input,artifactRoot:updateRoot,
+    upload:async()=>{uploads++;throw new Error('synthetic upload stop');}});
+  latest='44444444-4444-4444-8444-444444444444';
+  await assert.rejects(publisher.deliverPreservedUpdate({transferId:updateId,
+    artifact:input.artifact,sourceFingerprint:source.sha256,
+    expectedPreviousVersionId:versionId,expectedPreviousDeploymentId:'deployment-1'}),
+  {code:'not_confirmed'});
+  assert.equal(uploads,0);
+  latest=versionId;
+  await assert.rejects(publisher.deliverPreservedUpdate({transferId:updateId,
+    artifact:input.artifact,sourceFingerprint:source.sha256,
+    expectedPreviousVersionId:versionId,expectedPreviousDeploymentId:'deployment-1'}),
+  /synthetic upload stop/);
+  assert.equal(uploads,1);
 });

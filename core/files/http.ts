@@ -5,7 +5,8 @@ import type {RuntimeEnvironment} from '../runtime/environment.ts';
 import {AccessHttpError, HTTP_POLICY, readAccessCookie, resolveAccessHttpConfiguration} from '../identity/http-policy.ts';
 import {oauthResource} from '../oauth/protocol.ts';
 import {createD1IdentityStore} from '../identity/d1-store.ts';
-import {identityAdmissionKey} from '../identity/input.ts';
+import type {createStorageAuthorityHost,StorageAuthoritySelection} from '../storage-authority/host.ts';
+import {admitFileRequest} from './admission.ts';
 import {FileError, FILE_POLICY} from './mapping.ts';
 import {fileOwnerId, resolveFileCategory, type RuntimeFileCatalog} from './catalog.ts';
 import {createFileService, type FileBucket, type StagedFile} from './service.ts';
@@ -69,12 +70,16 @@ async function body(request: Request, maximum: number): Promise<Uint8Array> {
 
 /** Private binary transport shared by modules. It stages content; only an operation can publish it. */
 export async function dispatchFileHttp(request: Request, environment: RuntimeEnvironment, rawEnvironment: unknown,
-  requestId: string, options: {catalog: RuntimeDataCatalog; files: RuntimeFileCatalog; permissions: readonly PermissionDefinition[]}): Promise<Response> {
+  requestId: string, options: {catalog: RuntimeDataCatalog; files: RuntimeFileCatalog; permissions: readonly PermissionDefinition[];
+    storageAuthority?:Pick<ReturnType<typeof createStorageAuthorityHost>,'forContext'>}): Promise<Response> {
   const url = new URL(request.url), match = /^\/api\/files\/(admin|app)\/([^/]+)\/([^/]+)$/.exec(url.pathname);
   if (!match || !id.test(match[2]!) || !id.test(match[3]!)) return json({error:{code:'not_found'},requestId},404,requestId);
   const audience = match[1] as AuthorizationAudience, moduleId=match[2]!, categoryId=match[3]!;
   const configuration = resolveAccessHttpConfiguration(rawEnvironment,environment.profile);
   if (!configuration) return json({error:{code:'runtime_unavailable'},requestId},503,requestId);
+  if (environment.storage && !environment.storageAuthority
+    || environment.storageAuthority !== options.storageAuthority)
+    return json({error:{code:'runtime_unavailable'},requestId},503,requestId);
   if (!['PUT','GET','DELETE'].includes(request.method)) return json({error:{code:'method_not_allowed'},requestId},405,requestId);
   let data: ReturnType<typeof createDataAccess> | undefined;
   let lease: Awaited<ReturnType<ReturnType<typeof createDataAccess>['authorize']>> | undefined, timer: ReturnType<typeof setTimeout> | undefined;
@@ -98,17 +103,22 @@ export async function dispatchFileHttp(request: Request, environment: RuntimeEnv
     }
     const contextId=value(request.headers.get('x-creezio-context'));
     if (!/^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/.test(contextId)) fail('invalid_context',400);
-    const store=createD1IdentityStore(environment.bindings.DB), domain=`${moduleId}:${categoryId}:${audience}`;
-    for (const [kind,key,limit] of [['global',domain,120],['credential',`${domain}:${credential.token}`,30]] as const) {
-      const admitted=await store.consumeThrottle({key:await identityAdmissionKey(`files-${kind}`,key),limit,windowMs:60000});
-      if (!admitted.allowed) fail('rate_limited',429);
-    }
-    data=createDataAccess(environment.bindings.DB,{catalog:options.catalog,permissions:options.permissions});
+    const credentialToken=credential.token as string;
+    if(typeof credentialToken!=='string')fail('authentication_required',401);
+    const store=createD1IdentityStore(environment.bindings.DB);
+    if(!await admitFileRequest(store,moduleId,categoryId,audience,credentialToken))fail('rate_limited',429);
+    let selected:StorageAuthoritySelection|undefined;
+    try{selected=options.storageAuthority?.forContext(contextId);}
+    catch{fail('forbidden',403);}
+    const targetDb=selected?.db??environment.bindings.DB;
+    data=createDataAccess(targetDb,{catalog:options.catalog,permissions:options.permissions,
+      ...(selected?.storageRoute?{authorityDb:selected.authorityDb,storageRoute:selected.storageRoute}:{})});
     const actors: AuthorizationActor[] = ['user','machine','delegated-user'];
     lease=await data.authorize(credential,{contextId,audience,actors,requiredPermissionIds:linked
       ?[`${moduleId}:${category.linkedRead!.permission.id}`]:category.permissions.map(p=>`${moduleId}:${p.id}`),purpose:'operation'},{moduleId});
     const ownerId=await fileOwnerId(data.describeLease(lease).principalId,audience,category.ownerScope);
-    const files=createFileService({data,catalog:options.catalog,moduleId,category,bucket:environment.bindings.BUCKET as unknown as FileBucket,
+    const files=createFileService({data,catalog:options.catalog,moduleId,category,
+      bucket:(selected?.bucket??environment.bindings.BUCKET) as unknown as FileBucket,
       ...(!linked?{ownerId}:{})});
     const currentLease=lease;
     const execute=async (): Promise<Response> => {
@@ -132,7 +142,9 @@ export async function dispatchFileHttp(request: Request, environment: RuntimeEnv
       const ref=reference(url,linked);
       if (request.method==='DELETE') {mutating=true;return json(await files.abandon(currentLease,ref),200,requestId);}
       const result=linked?await files.readLinked(currentLease,ref,recordId!):await files.readPrivate(currentLease,ref);
-      return new Response(new Uint8Array(result.bytes),{status:200,headers:{...result.headers,'x-creezio-request-id':requestId}});
+      return new Response(new Uint8Array(result.bytes),{status:200,headers:{...result.headers,
+        ...(linked&&category.linkedRead?.mcpImage?{'x-creezio-file-content-type':result.contentType}:{}),
+        'x-creezio-request-id':requestId}});
     };
     const deadline=new Promise<never>((_,reject)=>{timer=setTimeout(()=>reject(new AccessHttpError(mutating?'unknown':'operation_timeout',mutating?202:504)),25000);});
     return await Promise.race([execute(),deadline]);

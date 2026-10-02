@@ -48,12 +48,38 @@ export interface ProviderSecretsPort {
 }
 import type {OperationFilesPort} from '@creezio/sdk/files/types';
 import type {ConnectorPort} from '@creezio/sdk/connectors/types';
+import type {SearchProjectionPort} from '@creezio/sdk/search/types';
+import type {WorkspaceNavigationCatalogPortV1} from '@creezio/sdk/workspace/navigation-catalog';
+export interface OperationProviderAvailability {
+  readonly providerId:string;readonly state:'ready'|'missing'|'invalid'|'unavailable';
+  readonly modelIds:readonly string[];
+}
+/** Intent only: the host validates its provider, durable identity and declared delivery before emission. */
+export interface OperationOutboxIntent {
+  readonly id:string;readonly provider:string;readonly payload:JsonValue;readonly providerIdempotencyKey:string;
+}
 export interface OperationContext {
   readonly moduleId:string;readonly operationId:string;readonly executionId:string;
   readonly contextId:string;readonly audience:'admin'|'app';
   readonly principalId:string;readonly actorPrincipalId:string;readonly signal:AbortSignal;
   readonly data:OperationDataPort;readonly files?:OperationFilesPort;readonly connector?:ConnectorPort;
   readonly providerSecrets?:ProviderSecretsPort;
+  readonly search?:SearchProjectionPort;
+  readonly providerAvailability?:OperationProviderAvailability;
+  readonly diagnostics?:{
+    collectionFlags():Promise<{navigation:boolean;clicks:boolean}>;
+    listExecutions(input:Readonly<{period:'day'|'week'|'month'|'year';limit:number;cursor?:string}>):Promise<{
+      period:{period:string;from:string;to:string};items:readonly {id:string;moduleId:string;operationId:string;
+        audience:'admin'|'app';state:string;errorCode:string|null;createdAt:string;updatedAt:string;
+        durationMs:number|null}[];nextCursor:string|null;complete:boolean}>;
+    listEndpoints(input:Readonly<{limit:number;cursor?:string}>):Promise<{
+      items:readonly {moduleId:string;operationId:string;audience:'admin'|'app';method:string;
+        path:string;kind:'query'|'command'}[];nextCursor:string|null;complete:boolean;
+      source:'compiled-http-bindings'|'unavailable'}>;
+  };
+  readonly operations?:{query(request:{moduleId:string;operationId:string;input:JsonValue}):Promise<JsonValue>};
+  readonly workspaceNavigation?:WorkspaceNavigationCatalogPortV1;
 }
-export interface OperationHandlerResult {readonly output:unknown;readonly plans?:readonly DataPlan[]}
+export interface OperationHandlerResult {readonly output:unknown;readonly plans?:readonly DataPlan[];
+  readonly outbox?:readonly OperationOutboxIntent[]}
 export type OperationHandler=(input:JsonValue,context:OperationContext)=>OperationHandlerResult|Promise<OperationHandlerResult>;

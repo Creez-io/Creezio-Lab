@@ -10,6 +10,7 @@ import {buildOperator,stageSitesMetadata} from '../../scripts/sites/artifacts.mj
 import {planSitesExport,writeSitesArchive} from '../../scripts/sites/export.mjs';
 import {measureRuntimeArtifacts} from '../../scripts/quality/runtime.mjs';
 import {sourceIdentity} from '../../scripts/quality/evidence.mjs';
+import {contractIntegrity} from '../../sdk/contracts/validate.mjs';
 import {planSitesSource,prepareSitesSource,verifySitesSource} from '../../scripts/sites/source.mjs';
 import {pins} from '../../scripts/lab/bootstrap-public-packages.mjs';
 
@@ -36,12 +37,14 @@ function dispose(root,boundary=root){
   }
   rmdirSync(root);
 }
-function fixture({previous=false,unknown=false}={}){
+function fixture({previous=false,unknown=false,qualification=false}={}){
   const home=mkdtempSync(path.join(tmpdir(),'creezio-sites-source-'));
   const core=path.join(home,'core'),site=path.join(home,'descriptor'),stage=path.join(home,'stage');
   for(const root of [core,site,stage])mkdirSync(root);
   const hosting=JSON.stringify({project_id:'appgprj_test',d1:'DB',r2:'BUCKET'})+'\n';
-  const compositionDigest='sha256-'+'a'.repeat(64);
+  const nativeComposition={host:{profile:'sites'},modules:[]};
+  const selectedComposition=qualification?{...nativeComposition,modules:[{moduleId:'example.qualification'}]}:nativeComposition;
+  const compositionDigest=contractIntegrity(selectedComposition);
   put(site,'.openai/hosting.json',hosting);
   const historyFiles=['drizzle/0000_base.sql','drizzle/meta/0000_snapshot.json','drizzle/meta/_journal.json']
     .map((name,index)=>({path:name,digest:digest(Buffer.from(`generation-${index}\n`))}));
@@ -51,17 +54,21 @@ function fixture({previous=false,unknown=false}={}){
   put(site,'db/creezio-schema-history.json',JSON.stringify({schemaVersion:1,applicationId:'app',
     compositionDigest,files:historyFiles})+'\n');
   put(core,'.gitignore','dist/\n.quality/\n');
-  const sdk=`${pins[11][1]}${pins[11][0]}`,purchase=`${pins[8][1]}${pins[8][0]}`;
+  const sdk=`${pins[12][1]}${pins[12][0]}`,purchase=`${pins[8][1]}${pins[8][0]}`;
   put(core,'package.json',JSON.stringify({name:'example',scripts:{build:'node build.js'},
     dependencies:{'@creezio/purchase-requests':purchase},devDependencies:{'@creezio/sdk':sdk}},null,2)+'\n');
   put(core,'package-lock.json',JSON.stringify({lockfileVersion:3,packages:{'':{
     dependencies:{'@creezio/purchase-requests':purchase},devDependencies:{'@creezio/sdk':sdk}},
     'node_modules/@creezio/purchase-requests':{version:'0.1.3',resolved:purchase},
-    'node_modules/@creezio/sdk':{version:'1.4.1',resolved:sdk}}},null,2)+'\n');
+    'node_modules/@creezio/sdk':{version:'1.9.0',resolved:sdk}}},null,2)+'\n');
   put(core,'scripts/lab/bootstrap-public-packages.mjs','export async function bootstrapPublicPackages() {}\n');
   put(core,'scripts/sites/build.mjs',"import {bootstrapPublicPackages} from '../lab/bootstrap-public-packages.mjs';\nawait bootstrapPublicPackages();\n");
-  put(core,'configuration/composition.sites.json','{}\n');
+  put(core,'configuration/composition.sites.json',JSON.stringify(nativeComposition)+'\n');
   put(core,'configuration/composition.sites.lock.json','{}\n');
+  if(qualification){
+    put(core,'configuration/composition.sites-qualification.json',JSON.stringify(selectedComposition)+'\n');
+    put(core,'configuration/composition.sites-qualification.lock.json','{}\n');
+  }
   put(core,'app.js','export default "source";\n');
   git(core,'init','-q');commit(core,'synthetic Core source');
   put(core,'dist/server/index.js','export default "Worker";\n');
@@ -132,6 +139,27 @@ test('Sites source plan prepares only attested files and verifies the separate s
     assert.throws(()=>verifySitesSource(f.planFile,f.receiptFile),/does not descend/);
   }finally{dispose(f.home);}
 });
+test('Sites source selects the qualified profile only when it matches the built composition',()=>{
+  const f=fixture({qualification:true});
+  try{
+    const compositionPath='configuration/composition.sites-qualification.json';
+    assert.throws(()=>planSitesSource({applicationRoot:f.core,siteRoot:f.site,
+      stageRoot:f.stage}),/differs from the built profile/);
+    assert.throws(()=>planSitesSource({applicationRoot:f.core,siteRoot:f.site,
+      stageRoot:f.stage,compositionPath:'configuration/composition.connectors.json'}),
+      /Unsupported Sites source composition/);
+    const plan=planSitesSource({applicationRoot:f.core,siteRoot:f.site,
+      stageRoot:f.stage,compositionPath});
+    assert.equal(plan.compositionPath,compositionPath);
+    const packageFile=plan.files.find(file=>file.path==='package.json');
+    assert(packageFile);
+    writeFileSync(f.planFile,JSON.stringify(plan,null,2)+'\n',{flag:'wx'});
+    prepareSitesSource(plan,f.planFile,f.receiptFile);
+    const pkg=JSON.parse(readFileSync(path.join(f.stage,'package.json'),'utf8'));
+    assert.match(pkg.scripts.build,/composition\.sites-qualification\.json/);
+    assert.match(pkg.scripts.build,/composition\.sites-qualification\.lock\.json/);
+  }finally{dispose(f.home);}
+});
 test('Sites source refuses unowned tracked staging files before writing',()=>{
   const f=fixture({unknown:true});
   try{
@@ -187,7 +215,7 @@ test('Sites operator export binds its code and DDL history to a separate archive
     const code='export default {fetch(){return new Response("ready")}};\n';
     put(f.site,'operator.mjs',code);
     put(f.site,'operator-provenance.json',JSON.stringify({projectId:'appgprj_test',
-      applicationId:'app',compositionDigest:'sha256-'+'a'.repeat(64),
+      applicationId:'app',compositionDigest:contractIntegrity({host:{profile:'sites'},modules:[]}),
       operatorDigest:digest(Buffer.from(code)),planDigest:'sha256-'+'b'.repeat(64),
       schemaObjects:1})+'\n');
     git(f.site,'init','-q');commit(f.site,'synthetic operator source');

@@ -30,9 +30,14 @@ function planFor(nullable, { removed = false } = {}) {
   module.contracts.api = []; module.contracts.mcp = { tools: [], resources: [], prompts: [], skills: [] };
   module.contracts.ui = { ...module.contracts.ui, views: [], navigation: [], slots: [], styles: [] };
   const selection = { ...structuredClone(composition.modules[0]), moduleId };
-  const pinned = { ...structuredClone(lock.modules[0]), moduleId, contractIntegrity: contractIntegrity(module) };
+  const pinned = { ...structuredClone(lock.modules[0]), moduleId,
+    source: module.identity.source, contractIntegrity: contractIntegrity(module) };
   composition.modules = removed ? [composition.modules[0]] : [composition.modules[0], selection];
   lock.modules = removed ? [lock.modules[0]] : [lock.modules[0], pinned];
+  // This isolated schema fixture does not select Lab's front theme.
+  composition.front = { kind: 'workspace' };
+  lock.modules[0].source = access.identity.source;
+  lock.modules[0].contractIntegrity = contractIntegrity(access);
   composition.exposure.admin.moduleIds = ['creezio.access'];
   composition.exposure.app.moduleIds = ['creezio.access'];
   lock.compositionIntegrity = contractIntegrity(composition);

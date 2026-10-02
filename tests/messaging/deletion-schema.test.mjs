@@ -16,15 +16,21 @@ function planFor(models){
   const module=structuredClone(current);
   module.contracts.models=models;
   const access=json('../../extensions/native/access/module/manifest.json');
-  const selection=composition.modules.find(item=>item.moduleId===module.identity.id);
-  const pinned=lock.modules.find(item=>item.moduleId===module.identity.id);
+  // Messaging is available in the Core connectors profile but intentionally
+  // absent from the two active Lab profiles.
+  const selection=json('../../configuration/composition.connectors.json').modules
+    .find(item=>item.moduleId===module.identity.id);
+  const pinned=json('../../configuration/composition.connectors.lock.json').modules
+    .find(item=>item.moduleId===module.identity.id);
   assert.ok(selection&&pinned);
-  composition.modules=composition.modules.filter(item=>
-    ['creezio.access',module.identity.id].includes(item.moduleId));
-  lock.modules=lock.modules.filter(item=>
-    ['creezio.access',module.identity.id].includes(item.moduleId))
-    .map(item=>item.moduleId===module.identity.id
-      ?{...item,contractIntegrity:contractIntegrity(module)}:item);
+  composition.modules=[composition.modules.find(item=>item.moduleId==='creezio.access'),
+    {...selection,integrations:selection.integrations.map(item=>({...item,enabled:false}))}];
+  lock.modules=[lock.modules.find(item=>item.moduleId==='creezio.access'),
+    {...pinned,source:module.identity.source,contractIntegrity:contractIntegrity(module),
+      dependencies:pinned.dependencies.filter(item=>item.moduleId==='creezio.access')}];
+  lock.modules[0].source=access.identity.source;
+  lock.modules[0].contractIntegrity=contractIntegrity(access);
+  composition.front={kind:'workspace'};
   for(const audience of ['admin','app'])
     composition.exposure[audience].moduleIds=['creezio.access',module.identity.id];
   lock.compositionIntegrity=contractIntegrity(composition);

@@ -8,7 +8,12 @@ const json=path=>JSON.parse(readFileSync(new URL(path,import.meta.url),'utf8'));
 function composition(withProviders){
   const value=json('../../configuration/composition.json');
   const ids=['creezio.access','creezio.support',...(withProviders?['creezio.crm','creezio.messaging']:[])];
-  value.modules=value.modules.filter(item=>ids.includes(item.moduleId));
+  // Optional Core modules are intentionally absent from the active Lab profile.
+  const available=json('../../configuration/composition.connectors.json').modules;
+  value.modules=ids.map(id=>structuredClone(available.find(item=>item.moduleId===id)));
+  assert.ok(value.modules.every(Boolean));
+  for(const selected of value.modules)selected.integrations=selected.integrations.map(item=>
+    ({...item,enabled:withProviders&&ids.includes(item.moduleId)}));
   for(const audience of ['admin','app'])value.exposure[audience].moduleIds=ids;
   value.front={kind:'workspace'};
   const support=value.modules.find(item=>item.moduleId==='creezio.support');

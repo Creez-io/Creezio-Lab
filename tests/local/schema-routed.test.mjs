@@ -36,9 +36,14 @@ function planFor(includeOutcome){
   module.contracts.ui={...module.contracts.ui,views:[],navigation:[],slots:[],styles:[]};
   const selection={...structuredClone(composition.modules[0]),moduleId,origin:module.identity.origin};
   const node={...structuredClone(lock.modules[0]),moduleId,origin:module.identity.origin,
+    source:module.identity.source,
     contractIntegrity:contractIntegrity(module)};
   composition.modules=[composition.modules[0],selection];
   lock.modules=[lock.modules[0],node];
+  // Routed D1 publication is independent of Lab's front theme selection.
+  composition.front={kind:'workspace'};
+  lock.modules[0].source=access.identity.source;
+  lock.modules[0].contractIntegrity=contractIntegrity(access);
   composition.exposure.admin.moduleIds=['creezio.access'];
   composition.exposure.app.moduleIds=['creezio.access'];
   lock.compositionIntegrity=contractIntegrity(composition);

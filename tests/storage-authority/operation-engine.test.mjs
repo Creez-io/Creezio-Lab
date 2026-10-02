@@ -27,7 +27,9 @@ composition.modules=composition.modules.filter(item=>item.moduleId===moduleId);
 for(const audience of ['admin','app'])composition.exposure[audience].moduleIds=
   composition.exposure[audience].moduleIds.filter(id=>id===moduleId);
 lock.modules=lock.modules.filter(item=>item.moduleId===moduleId);
+lock.modules[0].source=manifest.identity.source;
 lock.modules[0].contractIntegrity=contractIntegrity(manifest);
+composition.front={kind:'workspace'};
 lock.compositionIntegrity=contractIntegrity(composition);
 const input={composition,lock,modules:[manifest]};
 const appSchema=compileCompositionSchema(input);

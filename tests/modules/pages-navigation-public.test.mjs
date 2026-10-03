@@ -16,7 +16,8 @@ test('selected Pages workspace module compiles a resolvable public projection',{
   assert.equal(path.dirname(directory),quality);
   assert.equal((await lstat(directory)).isSymbolicLink(),false);
   try{
-    const result=await composeRuntime({root,outputDir:path.relative(root,directory)});
+    const result=await composeRuntime({root,compositionPath:'configuration/composition.front-chatgpt-like.json',
+      outputDir:path.relative(root,directory)});
     assert.ok(result.outputs.some(item=>item.endsWith('/public-pages.ts')));
     const source=await readFile(path.join(directory,'public-pages.ts'),'utf8');
     assert.match(source,/publicPageProjection: PublicPageProjection \| null = Object\.freeze/);
@@ -61,9 +62,10 @@ test('composition without Pages emits no anonymous page renderer',{timeout:30000
   assert.equal(path.dirname(directory),quality);
   assert.equal((await lstat(directory)).isSymbolicLink(),false);
   try{
-    await composeRuntime({root,outputDir:path.relative(root,directory)});
+    await composeRuntime({root,compositionPath:'configuration/composition.front-chatgpt-like.json',
+      outputDir:path.relative(root,directory)});
     assert.ok((await readFile(path.join(directory,'public-page-renderer.mjs'),'utf8')).length>0);
-    await composeRuntime({root,compositionPath:'configuration/composition.widgets-local.json',
+    await composeRuntime({root,compositionPath:'configuration/composition.witness.json',
       outputDir:path.relative(root,directory)});
     const source=await readFile(path.join(directory,'public-pages.ts'),'utf8');
     assert.match(source,/publicPageProjection: PublicPageProjection \| null = null/);

@@ -1,5 +1,9 @@
 # Changelog
 
+## Candidat local — adoption Core `8756f008` et SDK public 1.9.0 (T38)
+
+Les sources Core jusqu'au commit exact sont reprises dans le fork Lab, avec le paquet SDK 1.9.0 de release publique vérifié et le module achats 0.1.3 inchangé. Les douze verrous de composition sont régénérés ; les deux profils actifs gardent `creezio.lab`, le front ChatGPT-like et leurs sélections Docker/Sites. Les modules nouveaux du Core restent hors des profils actifs. Les mesures du Worker, la CI avec installation SDK 1.9.0 et la recette hébergée doivent encore qualifier cette source ; aucun hôte ni donnée n'est modifié par ce candidat.
+
 ## En préparation — sélection des outils de rendu du chat natif (T14/T16)
 
 Quand une lecture autorisée dispose d'alias de widgets admissibles, le chat natif propose ces alias avant l'outil canonique et masque ce doublon pour le même contrat d'entrée. Plusieurs widgets de la même opération restent proposés ; l'outil canonique reste disponible si aucun alias ne passe les contrôles d'audience, de contrat, de droits ou de budget. Le tour Lab observé avait appelé le doublon canonique et n'avait donc créé aucun widget malgré un résultat d'outil réussi. Le correctif est qualifié localement sur le projecteur et le pont de conversation ; sa PR, sa CI et une nouvelle recette du chat natif hébergé restent à faire. La prose de montant erronée demeure un défaut distinct. Aucun contrat API/MCP, schéma, SDK 1.4.1, module achats 0.1.3 ou hôte publié n'est modifié par cette préparation.

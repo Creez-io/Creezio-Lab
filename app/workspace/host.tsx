@@ -12,6 +12,9 @@ import {readProjection, WorkspaceAccessRefused} from './projection-client';
 import {CreezioShell} from '../../admin/workspace/workspace-shell';
 import {WidgetHostProvider} from '../../sdk/widgets/provider';
 import {createLocalDeliveryTransport} from '../../admin/delivery/transport';
+import {resolveWorkspaceLocation} from '../../sdk/workspace/controller';
+import {startAnalyticsCollection} from '../analytics/collection';
+import {shouldRefreshHostAccess} from '../access/operation-refusal';
 
 export function WorkspaceHost({audience}: {audience: AccessAudience}) {
   const [access, setAccess] = useState<AccessController | null>(null);
@@ -33,6 +36,12 @@ function BoundWorkspace({access}: {access: AccessController}) {
   },[access]);
   const state = useSyncExternalStore(access.subscribe, access.getSnapshot, access.getSnapshot);
   const [projection, setProjection] = useState<WorkspaceProjection | null>(null);
+  const [sidebar,setSidebar]=useState<{key:string;items:readonly {id:string;viewId:string;title:string;order:number}[]}|null>(null);
+  const [sidebarVersion,setSidebarVersion]=useState(0);
+  useEffect(()=>{const refresh=()=>setSidebarVersion(value=>value+1);
+    window.addEventListener('creezio:sidebar-updated',refresh);
+    return()=>window.removeEventListener('creezio:sidebar-updated',refresh);
+  },[]);
   const [error, setError] = useState(false);
   const [attempt, setAttempt] = useState(0);
   const [revocationVersion,setRevocationVersion] = useState(0);
@@ -43,26 +52,29 @@ function BoundWorkspace({access}: {access: AccessController}) {
   }, []);
   const {contextId, initialUrl} = selection;
   const currentProjection = useRef(projection); currentProjection.current = projection;
+  const analyticsCollector=useRef<ReturnType<typeof startAnalyticsCollection>|null>(null);
+  const analyticsUrl=useRef<string|null>(null);
   const assistantSession = useRef<string | null>(null);
   if (state.phase === 'authenticated' && state.session && !state.pending) assistantSession.current=state.session.id;
   else if (state.phase === 'anonymous' || state.pending === 'logout' || state.pending === 'login') assistantSession.current=null;
   const client = useMemo(() => {
     const base = createOperationClient({origin: access.origin, audience: access.audience, access,
       bindings: httpBindings.filter(binding => binding.audience === access.audience && binding.auth.includes('session'))});
-    function rejectedAccess(result: Awaited<ReturnType<typeof base.invoke>>) {
-      if (result.kind === 'rejected' && ['unauthorized','forbidden','authentication_required'].includes(result.code)) {
+    function rejectedAccess(result: Awaited<ReturnType<typeof base.invoke>>, bindingId: string,
+      source: 'invoke' | 'status' = 'invoke') {
+      if (shouldRefreshHostAccess(result, bindingId, source)) {
         setRevocationVersion(value => value+1); setProjection(null); void access.refresh();
       }
     }
     return {...base, async invoke(request: Parameters<typeof base.invoke>[0]) {
       const initial = currentProjection.current;
       const result = await base.invoke({...request, isCurrent: () => !!initial && currentProjection.current === initial && (request.isCurrent?.() ?? true)});
-      rejectedAccess(result);
+      rejectedAccess(result, request.bindingId);
       return result;
     }, async status(request: Parameters<typeof base.status>[0]) {
       const initial = currentProjection.current;
       const result = await base.status({...request, isCurrent: () => !!initial && currentProjection.current === initial && (request.isCurrent?.() ?? true)});
-      rejectedAccess(result);
+      rejectedAccess(result, request.bindingId, 'status');
       return result;
     }};
   }, [access]);
@@ -82,6 +94,65 @@ function BoundWorkspace({access}: {access: AccessController}) {
     return () => { current = false; clearTimeout(timer); abort.abort(); };
   }, [access, state, contextId, attempt]);
   const authenticated = state.phase === 'authenticated' && state.session && !state.pending;
+  const analyticsReady=!!(authenticated&&projection&&projection.sessionId===state.session?.id
+    &&projection.contextId===contextId&&projection.audience===access.audience
+    &&projection.compositionDigest===compositionDigest);
+  useEffect(()=>{
+    if(!analyticsReady||!projection||!httpBindings.some(binding=>binding.moduleId==='creezio.analytics'
+      &&binding.operationId==='collection.effective'&&binding.audience===access.audience))return;
+    const collector=startAnalyticsCollection({client,contextId,audience:access.audience,
+      surface:'workspace',target:document});analyticsCollector.current=collector;
+    const locate=(url:string|null)=>{
+      const location=url?resolveWorkspaceLocation(url,views,new Set(projection.viewIds),'workspace'):null;
+      const view=location&&views.find(item=>item.id===location.viewId);
+      collector.location(view?{viewId:view.id,route:view.route}:null);void collector.refresh();
+    };
+    locate(analyticsUrl.current);
+    const refresh=()=>{void collector.refresh();};
+    window.addEventListener('creezio:analytics-policy-updated',refresh);
+    return()=>{window.removeEventListener('creezio:analytics-policy-updated',refresh);
+      if(analyticsCollector.current===collector)analyticsCollector.current=null;collector.dispose();};
+  },[analyticsReady,projection,client,contextId,access.audience]);
+  const sidebarKey=projection&&authenticated
+    ?`${projection.sessionId}:${projection.contextId}:${projection.audience}:${projection.compositionDigest}:${projection.epoch}`:'';
+  useEffect(()=>{
+    setSidebar(null);
+    if(!projection||!authenticated||projection.compositionDigest!==compositionDigest||
+      projection.sessionId!==state.session?.id||projection.contextId!==contextId)return;
+    const binding=httpBindings.find(item=>item.moduleId==='creezio.pages-navigation'
+      &&item.operationId==='sidebar.resolved'&&item.audience===access.audience
+      &&item.auth.includes('session')&&item.contributorModuleId==='creezio.pages-navigation');
+    if(!binding)return;
+    let current=true;
+    void client.invoke({bindingId:`${binding.contributorModuleId}:${binding.id}`,contextId,input:{},
+      isCurrent:()=>current}).then(result=>{
+      if(!current||result.kind!=='execution'||result.execution.state!=='succeeded')return;
+      const value=result.execution.output;
+      if(!value||typeof value!=='object'||Array.isArray(value))return;
+      const data=value as Record<string,unknown>;
+      if(data.sessionId!==projection.sessionId||data.contextId!==contextId||
+        data.audience!==access.audience||data.compositionDigest!==compositionDigest||
+        data.epoch!==projection.epoch||!Array.isArray(data.items)||data.items.length>navigation.length)return;
+      const visible=new Set(projection.navigationIds),known=new Map(navigation.map(item=>[item.id,item]));
+      const items: {id:string;viewId:string;title:string;order:number}[]=[],seen=new Set<string>();
+      for(const raw of data.items){
+        if(!raw||typeof raw!=='object'||Array.isArray(raw))return;
+        const item=raw as Record<string,unknown>,source=known.get(String(item.id));
+        if(!source||!visible.has(source.id)||seen.has(source.id)||item.viewId!==source.viewId
+          ||typeof item.title!=='string'||!item.title||item.title.length>240||!item.title.isWellFormed()
+          ||!Number.isSafeInteger(item.order)||Number(item.order)<0||Number(item.order)>10000)return;
+        seen.add(source.id);items.push({id:source.id,viewId:source.viewId,title:item.title,order:Number(item.order)});
+      }
+      setSidebar({key:sidebarKey,items});
+    }).catch(()=>{});
+    return()=>{current=false;};
+  },[projection,authenticated,state.session?.id,contextId,access.audience,client,sidebarKey,sidebarVersion]);
+  const workspaceNavigation=useMemo(()=>{
+    if(!projection||sidebar?.key!==sidebarKey)return navigation;
+    const selected=new Map(sidebar.items.map(item=>[item.id,item]));
+    return navigation.filter(item=>selected.has(item.id)).map(item=>({...item,
+      title:selected.get(item.id)!.title,order:selected.get(item.id)!.order}));
+  },[projection,sidebar,sidebarKey]);
   const assistantView = views.find(view => view.id === 'creezio.conversations:admin' && view.moduleId === 'creezio.conversations'
     && view.audiences.includes(access.audience) && view.surfaces.includes('workspace'));
   const renderShell = (shell: WorkspaceRenderProps) => {
@@ -117,11 +188,18 @@ function BoundWorkspace({access}: {access: AccessController}) {
     {!contextId ? <p role="alert">Le contexte demandé est invalide.</p> : error ? <div role="alert">Impossible de vérifier l’accès aux vues.
       <button type="button" onClick={() => setAttempt(value => value + 1)}>Réessayer</button></div> : null}
     <div hidden={!authenticated} inert={!authenticated}>
-    <Workspace access={access} projection={projection} views={views} navigation={navigation} client={client} contextId={contextId}
+    <Workspace access={access} projection={projection} views={views} navigation={workspaceNavigation} client={client} contextId={contextId}
       revocationVersion={revocationVersion}
       homeViewId={navigation.find(item => item.viewId.endsWith(':dashboard') || item.viewId.endsWith(':home'))?.viewId}
       renderShell={renderShell}
       initialUrl={initialUrl} onLocationChange={url => {
+        analyticsUrl.current=url;
+        if(analyticsCollector.current){
+          const location=projection?resolveWorkspaceLocation(url,views,new Set(projection.viewIds),'workspace'):null;
+          const view=location&&views.find(item=>item.id===location.viewId);
+          analyticsCollector.current.location(view?{viewId:view.id,route:view.route}:null);
+          void analyticsCollector.current.refresh();
+        }
         const current = new URL(window.location.href); current.searchParams.set('context', contextId); current.searchParams.set('view', url);
         window.history.replaceState(null, '', current);
       }} />

@@ -11,6 +11,8 @@ import {LANDING_PREFAB_COMPONENTS} from './prefabs.tsx';
 import {call,operationResult,errorText,requestKey,type DraftPage,type Media,type Navigation,type NavItem,
   type PageResult,type PageSummary,type PublishedPage,type Seo,type Result} from './contracts.ts';
 import {createReadGeneration,pageScopeAfter,panelBelongsToScope,parseContentInput,requiresPageReset,samePageSelection} from './state.ts';
+import {createPublishedImageLoad,publishedImageIds,referencedMedia,type ImageStates} from './published-images.ts';
+import {SidebarEditor,type SidebarCatalog,type SidebarEdit} from './sidebar.tsx';
 import './landing.css';
 
 const button='rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm text-slate-800 hover:bg-slate-50 disabled:opacity-50';
@@ -41,14 +43,14 @@ function ContentField(props:{name:string;value:unknown;onChange:(value:unknown)=
         setInvalid(!parsed.valid);props.onValidity(parsed.valid);if(parsed.valid)props.onChange(parsed.value);}}/>:
       <input className={input} value={String(props.value??'')} onChange={event=>props.onChange(event.target.value)}/>}</label>;
 }
-function LandingPreview(props:{page:DraftPage|PublishedPage;local?:boolean}){
+function LandingPreview(props:{page:DraftPage|PublishedPage;local?:boolean;images:ImageStates}){
   const style={...(props.page.settings.accent?{'--lnd-accent':String(props.page.settings.accent)}:{}),
     ...(props.page.settings.background?{'--lnd-bg':String(props.page.settings.background)}:{})} as React.CSSProperties;
   return <div className="overflow-hidden rounded-lg border border-slate-200">
     <p className="bg-amber-50 px-4 py-2 text-xs text-amber-900">{props.local?'Aperçu du brouillon enregistré — non public':'Snapshot éditorial publié'}</p>
     <div className="lnd-root" style={style}>{sorted(props.page.sections).filter(section=>section.enabled)
       .map(section=>{const Component=LANDING_PREFAB_COMPONENTS[section.kind];return Component?
-        <Component key={section.id} content={section.content} settings={props.page.settings}/>:null;})}</div>
+        <Component key={section.id} content={section.content} settings={props.page.settings} images={props.images}/>:null;})}</div>
   </div>;
 }
 
@@ -65,21 +67,27 @@ export function PagesNavigationAdminView(props:RuntimeViewProps){
   const journalScope=useRef({sessionId,audience:props.audience,contextId:props.contextId});
   const [pending,setPending]=useState<PendingCommand|null>(journal.current?.pending??null);
   const [checking,setChecking]=useState(false);
-  const [tab,setTab]=useState<'pages'|'navigation'>(()=>initialPanelOwned&&
-    initialPanel.current?.activeSubview==='navigation'?'navigation':'pages');
+  const [tab,setTab]=useState<'pages'|'navigation'|'sidebar'>(()=>initialPanelOwned&&
+    ['navigation','sidebar'].includes(initialPanel.current?.activeSubview??'')
+      ?initialPanel.current!.activeSubview as 'navigation'|'sidebar':'pages');
   const [pages,setPages]=useState<PageSummary[]>([]),[selected,setSelected]=useState(()=>
     initialPanelOwned&&typeof initialPanel.current?.data?.pageId==='string'?initialPanel.current.data.pageId:'') ,
     [saved,setSaved]=useState<DraftPage|null>(null),[edited,setEdited]=useState<DraftPage|null>(null),
     [preview,setPreview]=useState<DraftPage|PublishedPage|null>(null),
+    [previewImages,setPreviewImages]=useState<{key:string;states:ImageStates}>({key:'',states:{}}),
     [navigation,setNavigation]=useState<Navigation>(blankNav),[navEdited,setNavEdited]=useState<Navigation>(blankNav),
+    [sidebar,setSidebar]=useState<SidebarCatalog|null>(null),[sidebarUnavailable,setSidebarUnavailable]=useState(false),
     [media,setMedia]=useState<Media[]>([]),[notice,setNotice]=useState(''),
     [newSlug,setNewSlug]=useState('/'),[newTitle,setNewTitle]=useState(''),
+    [publicVisibility,setPublicVisibility]=useState<boolean|null>(null),
+    [publicSlug,setPublicSlug]=useState<string|null>(null),
     [newKind,setNewKind]=useState<string>('hero'),[busy,setBusy]=useState(!!journal.current?.pending),[loading,setLoading]=useState(false);
   const [pageCursor,setPageCursor]=useState<string|null>(null);
   const [invalidContent,setInvalidContent]=useState<ReadonlySet<string>>(()=>new Set());
   const tabRef=useRef(tab);tabRef.current=tab;
   const epoch=useRef(0),selectionEpoch=useRef(0),listSerial=useRef(0),busySerial=useRef(0),busyRef=useRef(!!journal.current?.pending);
-  const pageReadSerial=useRef(createReadGeneration()),navReadSerial=useRef(createReadGeneration());
+  const pageReadSerial=useRef(createReadGeneration()),navReadSerial=useRef(createReadGeneration()),
+    sidebarReadSerial=useRef(createReadGeneration());
   const selectedRef=useRef(selected);
   if(selectedRef.current!==selected){selectionEpoch.current++;selectedRef.current=selected;}
   const live=useRef({active:props.active,authorized:props.authorized,sessionId,client:props.client,
@@ -123,6 +131,7 @@ export function PagesNavigationAdminView(props:RuntimeViewProps){
     if(!controller||!current())return {kind:'rejected',code:'stale'};
     if(operation.startsWith('page.')||operation.startsWith('media.'))pageReadSerial.current.invalidate();
     if(operation.startsWith('navigation.'))navReadSerial.current.invalidate();
+    if(operation.startsWith('sidebar.'))sidebarReadSerial.current.invalidate();
     const targetId=typeof input.pageId==='string'?input.pageId:typeof input.id==='string'?input.id:undefined;
     const outcome=await controller.execute(props.client,{sessionId,audience:props.audience,contextId:props.contextId,
       bindingId:`creezio.pages-navigation:${props.audience}.${operation}`,requestKey:requestKey(),intent:operation,
@@ -146,6 +155,7 @@ export function PagesNavigationAdminView(props:RuntimeViewProps){
       }
       await loadPages();
       if(issued.intent?.startsWith('navigation.'))await loadNavigation(true);
+      else if(issued.intent?.startsWith('sidebar.'))await loadSidebar();
       else if(issued.targetId&&issued.targetId===selectedRef.current){
         const pageId=issued.targetId,selection=selectionEpoch.current,readSerial=pageReadSerial.current.begin(),
           valid=()=>pageCurrent(pageId,selection)&&pageReadSerial.current.accepts(readSerial);
@@ -179,6 +189,14 @@ export function PagesNavigationAdminView(props:RuntimeViewProps){
     if(result.kind==='ok'){setNavigation(result.value.navigation);setNavEdited(result.value.navigation);}
     else setNotice(errorText(result.code));
   },[props.client,props.access,props.audience,props.contextId,sessionId,enabled]);
+  const loadSidebar=useCallback(async()=>{
+    if(!current())return;
+    const serial=sidebarReadSerial.current.begin();
+    const result=await call<SidebarCatalog>(scope,'sidebar.catalog',{},current);
+    if(!current()||!sidebarReadSerial.current.accepts(serial))return;
+    if(result.kind==='ok'){setSidebar(result.value);setSidebarUnavailable(false);}
+    else {setSidebar(null);setSidebarUnavailable(true);setNotice(errorText(result.code));}
+  },[props.client,props.access,props.audience,props.contextId,sessionId,enabled]);
   useEffect(()=>{const phase=access.pending?'loading':access.phase;
     const next={sessionId,phase,client:props.client,access:props.access,audience:props.audience,
       contextId:props.contextId};
@@ -199,14 +217,17 @@ export function PagesNavigationAdminView(props:RuntimeViewProps){
       if(fromAnonymous&&panelBelongsToScope(savedPanel?.data,journalScope.current)){
         const pageId=savedPanel?.data?.pageId;
         if(typeof pageId==='string'&&pageId){selectedRef.current=pageId;selectionEpoch.current++;setSelected(pageId);}
-        setTab(savedPanel?.activeSubview==='navigation'?'navigation':'pages');
+        setTab(savedPanel?.activeSubview==='navigation'?'navigation':
+          savedPanel?.activeSubview==='sidebar'?'sidebar':'pages');
       }
     }
     if(reset){listSerial.current++;selectionEpoch.current++;pageReadSerial.current.invalidate();
-      navReadSerial.current.invalidate();selectedRef.current='';busySerial.current++;busyRef.current=false;
+      navReadSerial.current.invalidate();sidebarReadSerial.current.invalidate();selectedRef.current='';busySerial.current++;busyRef.current=false;
       busyRef.current=!!journal.current?.pending;setBusy(busyRef.current);setPages([]);setPageCursor(null);setSelected('');setSaved(null);setEdited(null);
-      setPreview(null);setNavigation(blankNav);setNavEdited(blankNav);setMedia([]);setInvalidContent(new Set());
-      setNotice('');setNewTitle('');setNewSlug('/');tabRef.current='pages';setTab('pages');skipSelectionOnce.current=true;
+      setPreview(null);setNavigation(blankNav);setNavEdited(blankNav);setSidebar(null);setSidebarUnavailable(false);
+      setMedia([]);setInvalidContent(new Set());
+      setNotice('');setNewTitle('');setNewSlug('/');setPublicVisibility(null);setPublicSlug(null);
+      tabRef.current='pages';setTab('pages');skipSelectionOnce.current=true;
       pendingPanelReset.current=true;}
     if(!enabled){setLoading(false);return;}
     if(pendingPanelReset.current){persistPending(journal.current?.pending??null);
@@ -214,18 +235,23 @@ export function PagesNavigationAdminView(props:RuntimeViewProps){
     void loadPages();
     if(reset||!navDirty)void loadNavigation(reset);
   },[enabled,sessionId,access.phase,access.pending,props.client,props.access,props.audience,props.contextId]);
+  useEffect(()=>{if(enabled&&tab==='sidebar')void loadSidebar();},[enabled,tab,loadSidebar]);
   useEffect(()=>{
     if(skipSelectionOnce.current){skipSelectionOnce.current=false;return;}
     if(!enabled||!selected)return;
     if(saved?.id===selected&&edited?.id===selected&&(dirty||hasInvalidContent))return;
     const generation=selectionEpoch.current,wanted=selected,readSerial=pageReadSerial.current.begin();
     const valid=()=>pageCurrent(wanted,generation)&&pageReadSerial.current.accepts(readSerial);
-    setSaved(null);setEdited(null);setPreview(null);setMedia([]);setInvalidContent(new Set());
+    setSaved(null);setEdited(null);setPreview(null);setMedia([]);setInvalidContent(new Set());setPublicVisibility(null);setPublicSlug(null);
     void(async()=>{
       const result=await call<{page:DraftPage}>(scope,'page.read',{pageId:wanted},valid);
       if(!valid())return;
       if(result.kind==='ok'&&asPage(result.value.page)){setSaved(result.value.page);setEdited(result.value.page);setPreview(null);}
       else setNotice(result.kind==='ok'?'Page invalide.':errorText(result.code));
+      const visibility=await call<{visibility:'protected'|'public';slug:string|null}>(scope,'page.visibility',{pageId:wanted},valid);
+      if(valid()&&visibility.kind==='ok'){
+        setPublicVisibility(visibility.value.visibility==='public');setPublicSlug(visibility.value.slug);}
+      else if(valid())setNotice('Visibilité indisponible. Actualisez la page avant de publier.');
       const files=await call<PageResult<Media>>(scope,'media.list',{pageId:wanted,limit:50},valid);
       if(valid()&&files.kind==='ok')setMedia(files.value.items);
     })();
@@ -263,13 +289,18 @@ export function PagesNavigationAdminView(props:RuntimeViewProps){
       else setNotice(errorText(result.code));
     }finally{finishBusy(serial);}
   }
-  async function publishPage(){if(!saved||dirty||hasInvalidContent)return;
+  async function publishPage(){if(!saved||dirty||hasInvalidContent||publicVisibility===null)return;
+    if(publicVisibility&&!window.confirm('Rendre ce snapshot et ses images sélectionnées accessibles sans connexion ?'))return;
     const serial=beginBusy();if(serial===null)return;setNotice('');
     const pageId=saved.id,selection=selectionEpoch.current,valid=()=>pageCurrent(pageId,selection);
     try{const result=await mutate<{page:PublishedPage}>('page.publish',
-      {requestKey:requestKey(),pageId,revision:saved.revision},valid);
+      {requestKey:requestKey(),pageId,revision:saved.revision,
+        visibility:publicVisibility?'public':'protected'},valid);
       if(!valid())return;
-      if(result.kind==='ok'){setPreview(result.value.page);setNotice('Snapshot publié dans D1. Accès public anonyme non qualifié.');
+      if(result.kind==='ok'){setPreview(result.value.page);
+        setPublicSlug(publicVisibility?result.value.page.slug:null);
+        setNotice(publicVisibility?'Snapshot public confirmé. Le lien public suit le chemin publié.':
+          'Snapshot publié pour les lecteurs connectés ; toute exposition anonyme précédente est retirée.');
         const readSerial=pageReadSerial.current.begin(),readValid=()=>valid()&&pageReadSerial.current.accepts(readSerial);
         const read=await call<{page:DraftPage}>(scope,'page.read',{pageId},readValid);
         if(readValid()&&read.kind==='ok'){setSaved(read.value.page);setEdited(read.value.page);void loadPages();}}
@@ -332,7 +363,7 @@ export function PagesNavigationAdminView(props:RuntimeViewProps){
       const readSerial=pageReadSerial.current.begin(),readValid=()=>valid()&&pageReadSerial.current.accepts(readSerial);
       const read=await call<{page:DraftPage}>(scope,'page.read',{pageId},readValid);
       if(readValid()&&read.kind==='ok'){setSaved(read.value.page);setEdited(read.value.page);setMedia(items=>[result.value.media,...items]);
-        setNotice('Média privé joint à la page. Une route publique contrôlée reste à raccorder.');}
+        setNotice('Média joint à la page. Sélectionnez-le dans une section, puis enregistrez et publiez.');}
     }finally{finishBusy(serial);}
   }
   async function unlinkMedia(item:Media){if(!saved||dirty||!window.confirm(`Détacher ${item.filename} ? Le fichier privé reste conservé.`))return;
@@ -381,23 +412,58 @@ export function PagesNavigationAdminView(props:RuntimeViewProps){
   }
   function choosePage(pageId:string){if(pageId!==selectedRef.current&&(dirty||hasInvalidContent)&&
       !window.confirm('Changer de page et abandonner les modifications locales ?'))return;
-    if(selectedRef.current!==pageId){selectedRef.current=pageId;selectionEpoch.current++;}
+    if(selectedRef.current!==pageId){selectedRef.current=pageId;selectionEpoch.current++;
+      setPublicVisibility(false);}
     setSelected(pageId);props.navigation.savePanelState({activeSubview:'pages',data:{
       sessionId,audience:props.audience,contextId:props.contextId,pageId,tab:'pages',
       ...(journal.current?.pending?{pending:{...journal.current.pending}}:{})}});}
-  function changeTab(next:'pages'|'navigation'){tabRef.current=next;setTab(next);props.navigation.savePanelState({activeSubview:next,
+  function changeTab(next:'pages'|'navigation'|'sidebar'){tabRef.current=next;setTab(next);props.navigation.savePanelState({activeSubview:next,
     data:{sessionId,audience:props.audience,contextId:props.contextId,
       ...(selected?{pageId:selected}:{}),tab:next,...(journal.current?.pending?{pending:{...journal.current.pending}}:{})}});}
+  async function saveSidebar(edits:SidebarEdit[],resetIds:string[]):Promise<boolean>{
+    if(!current()||!sidebar||sidebarUnavailable)return false;
+    const serial=beginBusy();if(serial===null)return false;setNotice('');
+    try{
+      const result=await mutate<{revision:number}>('sidebar.save',{
+        requestKey:requestKey(),expectedRevision:sidebar.revision,edits,resetIds},current);
+      if(!current())return false;
+      if(result.kind!=='ok'){setNotice(errorText(result.code));return false;}
+      setNotice('Sidebar enregistrée ; droits et routes inchangés.');
+      window.dispatchEvent(new Event('creezio:sidebar-updated'));
+      await loadSidebar();return true;
+    }finally{finishBusy(serial);}
+  }
   const ownScope=scopeIdentity.current.sessionId===sessionId&&
     scopeIdentity.current.audience===props.audience&&scopeIdentity.current.contextId===props.contextId;
+  const previewKey=preview?JSON.stringify([sessionId,props.audience,props.contextId,preview.id,
+    'revision' in preview?`draft:${preview.revision}`:`published:${preview.publishedRevision}`]):'';
+  useEffect(()=>{
+    if(!enabled||!ownScope||!preview||!previewKey)return;
+    const pageId=preview.id,selection=selectionEpoch.current,draft='revision' in preview,
+      imageIds=publishedImageIds(preview);
+    const valid=()=>pageCurrent(pageId,selection);
+    let files:ReturnType<typeof createFileClient>|null=null;
+    try{files=createFileClient({access:props.access,moduleId:'creezio.pages-navigation',
+      categoryId:'media',contextId:props.contextId});}catch{ /* The loader reports unavailable. */ }
+    const loader=createPublishedImageLoad({ids:imageIds,isCurrent:valid,
+      list:()=>draft?Promise.resolve({kind:'ok' as const,value:{items:referencedMedia(media,imageIds)}}):
+        call<{items:Media[]}>(scope,'media.published.list',{pageId},valid),
+      download:item=>files?(draft?files.download(item.reference,valid):
+        files.downloadLinked(item.reference,pageId,valid)):Promise.resolve({kind:'rejected'}),
+      createUrl:(blob,mime)=>URL.createObjectURL(new Blob([blob],{type:mime})),
+      revokeUrl:url=>URL.revokeObjectURL(url),
+      update:states=>{if(valid())setPreviewImages({key:previewKey,states});}});
+    void loader.run();return()=>loader.dispose();
+  },[previewKey,preview,media,enabled,ownScope,props.client,props.access,props.contextId,props.audience,sessionId]);
   if(!enabled||!ownScope)return <div className={card}>Éditeur indisponible pour cette session.</div>;
   return <div className="space-y-4 p-4 text-slate-900">
     <header className="flex flex-wrap items-center gap-3"><h1 className="text-xl font-semibold">Pages et navigation</h1>
       <p className="text-sm text-slate-600">Édition native, brouillons et snapshots publiés conservés en D1.</p>
       <div className="ml-auto flex gap-2"><button type="button" className={button} onClick={()=>changeTab('pages')}>Landing</button>
-        <button type="button" className={button} onClick={()=>changeTab('navigation')}>Navigation</button></div></header>
+        <button type="button" className={button} onClick={()=>changeTab('navigation')}>Navigation</button>
+        <button type="button" className={button} onClick={()=>changeTab('sidebar')}>Sidebar</button></div></header>
     <p className="rounded-md border border-amber-200 bg-amber-50 p-2 text-xs text-amber-900">
-      La publication met à jour le snapshot applicatif. La lecture anonyme sur le Site et les médias publics attendent un port d’hébergement contrôlé.</p>
+      Publier enregistre une version de la page. Avec « Accès public sans connexion », cette version et les images qu’elle utilise sont visibles sans connexion ; sinon, elles restent réservées aux lecteurs autorisés.</p>
     {notice&&<p role="status" className="rounded-md border border-sky-200 bg-sky-50 p-2 text-sm">{notice}</p>}
     {pending&&<div role="status" className="flex items-center gap-3 rounded-md border border-amber-200 bg-amber-50 p-3 text-sm">
       <p>Une action attend sa confirmation. Les nouvelles modifications sont suspendues.</p>
@@ -423,7 +489,12 @@ export function PagesNavigationAdminView(props:RuntimeViewProps){
           <p className="text-xs text-slate-500">Brouillon v{edited.revision} · publié v{edited.publishedRevision}{dirty?' · modifications locales':''}</p></div>
           <button type="button" className={button} disabled={!dirty||busy||hasInvalidContent} onClick={()=>void savePage()}><Save size={14}/> Enregistrer</button>
           <button type="button" className={button} disabled={dirty||busy||hasInvalidContent} onClick={()=>void previewPage()}><Eye size={14}/> Aperçu</button>
-          <button type="button" className={button} disabled={dirty||busy||hasInvalidContent} onClick={()=>void publishPage()}><Upload size={14}/> Publier</button>
+          <label className="flex items-center gap-1 text-xs"><input type="checkbox" checked={publicVisibility===true}
+            disabled={publicVisibility===null}
+            onChange={e=>setPublicVisibility(e.target.checked)}/> Accès public sans connexion</label>
+          {publicSlug&&<a className="text-xs underline" href={`/p?slug=${encodeURIComponent(publicSlug)}`}
+            target="_blank" rel="noreferrer">Ouvrir la page publique</a>}
+          <button type="button" className={button} disabled={dirty||busy||hasInvalidContent||publicVisibility===null} onClick={()=>void publishPage()}><Upload size={14}/> Publier</button>
           <button type="button" className={button} disabled={busy} onClick={()=>void resetPage()}><ArchiveRestore size={14}/> Reset brouillon</button></div>
         <section className={`${card} grid gap-3 md:grid-cols-2`}><h3 className="md:col-span-2 font-semibold">Réglages et SEO</h3>
           <label className="text-xs">Titre<input className={input} value={edited.title} onChange={e=>setEdited({...edited,title:e.target.value})}/></label>
@@ -431,6 +502,12 @@ export function PagesNavigationAdminView(props:RuntimeViewProps){
           {(['brandName','tagline','accent','background','logoUrl'] as const).map(name=><label key={name} className="text-xs">{name}
             <input className={input} value={String(edited.settings[name]??'')} onChange={e=>setEdited({...edited,
               settings:{...edited.settings,[name]:e.target.value}})}/></label>)}
+          <label className="text-xs">Logo privé de la page
+            <select className={input} value={edited.settings.logoFileId??''} onChange={e=>setEdited({...edited,
+              settings:{...edited.settings,logoFileId:e.target.value}})}>
+              <option value="">Aucun — conserver l’URL si renseignée</option>
+              {media.map(item=><option key={item.fileId} value={item.fileId}>{item.filename}</option>)}
+            </select></label>
           {(['title','description','canonical'] as const).map(name=><label key={name} className="text-xs">SEO {name}
             <input className={input} value={String(edited.seo[name]??'')} onChange={e=>setEdited({...edited,
               seo:{...edited.seo,[name]:e.target.value}})}/></label>)}
@@ -443,10 +520,20 @@ export function PagesNavigationAdminView(props:RuntimeViewProps){
             <button type="button" className={button} disabled={index===0} onClick={()=>moveSection(index,-1)} aria-label="Monter"><ChevronUp size={14}/></button>
             <button type="button" className={button} disabled={index===edited.sections.length-1} onClick={()=>moveSection(index,1)} aria-label="Descendre"><ChevronDown size={14}/></button>
             <button type="button" className={button} onClick={()=>setEdited({...edited,sections:edited.sections.filter(item=>item.id!==section.id)})}><Trash2 size={14}/> Retirer</button></div>
-          <div className="grid gap-3 md:grid-cols-2">{Object.entries(section.content).map(([name,value])=><ContentField key={`${section.id}-${name}`}
+          <div className="grid gap-3 md:grid-cols-2">{Object.entries(section.content)
+            .filter(([name])=>section.kind!=='hero'||name!=='imageFileId'&&name!=='logoFileId')
+            .map(([name,value])=><ContentField key={`${section.id}-${name}`}
             name={name} value={value} onValidity={valid=>setInvalidContent(previous=>{const next=new Set(previous),key=`${section.id}:${name}`;
               if(valid)next.delete(key);else next.add(key);return next;})}
             onChange={next=>updateSection(section.id,{content:{...section.content,[name]:next}})}/>)}</div>
+          {section.kind==='hero'&&<div className="grid gap-3 md:grid-cols-2">
+            {(['imageFileId','logoFileId'] as const).map(name=><label key={name} className="text-xs">
+              {name==='imageFileId'?'Image privée du hero':'Logo privé du hero'}
+              <select className={input} value={String(section.content[name]??'')}
+                onChange={e=>updateSection(section.id,{content:{...section.content,[name]:e.target.value}})}>
+                <option value="">Aucune — conserver l’URL si renseignée</option>
+                {media.map(item=><option key={item.fileId} value={item.fileId}>{item.filename}</option>)}
+              </select></label>)}</div>}
         </section>)}
         <div className={`${card} flex gap-2`}><select aria-label="Type de section" className={input} value={newKind} onChange={e=>setNewKind(e.target.value)}>
           {kinds.map(kind=><option key={kind} value={kind}>{kind}</option>)}</select>
@@ -454,19 +541,22 @@ export function PagesNavigationAdminView(props:RuntimeViewProps){
             {id:crypto.randomUUID(),kind:newKind,position:edited.sections.length,enabled:true,content:{...defaults[newKind]}}]})}>
             <Plus size={14}/> Section</button></div>
         <section className={`${card} space-y-2`}><h3 className="font-semibold">Médias privés</h3>
-          <p className="text-xs text-slate-600">Téléversement R2 et aperçu privé. Aucun lien public n’est généré par ce module.</p>
+          <p className="text-xs text-slate-600">Vos fichiers restent privés. Sélectionnez les images dans les champs de la page ;
+            jusqu’à cinq images différentes peuvent apparaître dans une page publiée. Seules les images utilisées par une page avec accès public sont visibles sans connexion.</p>
           <label className={button}><ImagePlus size={14}/> Joindre un média<input hidden type="file" accept="image/png,image/jpeg,image/webp"
             disabled={busy||dirty} onChange={event=>void uploadMedia(event)}/></label>
-          {media.map(item=><div key={item.fileId} className="flex items-center gap-2 text-sm"><span className="flex-1 truncate">{item.filename}</span>
+          {media.map(item=><div key={item.fileId} className="flex items-center gap-2 text-sm"><span className="flex-1 truncate">{item.filename}
+            <span className="block truncate text-xs text-slate-500" title={item.fileId}>{item.fileId}</span></span>
             <button type="button" className={button} onClick={()=>void downloadMedia(item)}>Télécharger</button>
             <button type="button" className={button} onClick={()=>void unlinkMedia(item)}>Détacher</button></div>)}</section>
-        {preview&&<LandingPreview page={preview} local={'revision' in preview}/>}
+        {preview&&<LandingPreview page={preview} local={'revision' in preview}
+          images={previewImages.key===previewKey?previewImages.states:{}}/>}
       </>:<div className={card}>Créez ou choisissez une page.</div>}</fieldset></main>
     </div><section className={tab==='navigation'?`${card} space-y-4`:'hidden'}><fieldset disabled={busy} className="space-y-4"><div className="flex flex-wrap items-center gap-2"><h2 className="mr-auto font-semibold">Navigation éditoriale</h2>
       <button type="button" className={button} disabled={!navDirty||busy} onClick={()=>void saveNav()}><Save size={14}/> Enregistrer</button>
       <button type="button" className={button} disabled={navDirty||busy||navigation.revision<1} onClick={()=>void publishNav()}><Upload size={14}/> Publier</button>
       <button type="button" className={button} disabled={busy||navigation.revision<1} onClick={()=>void resetNav()}><ArchiveRestore size={14}/> Reset brouillon</button></div>
-      <p className="text-xs text-slate-600">Liens publiés du front. Le catalogue sidebar du workspace reste régi par le SDK hôte.</p>
+      <p className="text-xs text-slate-600">Liens publiés du front. La présentation du menu du workspace se règle dans l’onglet Sidebar.</p>
       <div className="overflow-x-auto"><table className="w-full text-sm"><thead><tr className="border-b text-left text-slate-500">
         <th className="p-2">Lien</th><th className="p-2">Libellé</th><th className="p-2">Visible</th><th className="p-2">Ordre</th><th className="p-2">Actions</th></tr></thead>
         <tbody>{navEdited.items.map((item,index)=><tr key={item.id} className="border-b">
@@ -489,5 +579,9 @@ export function PagesNavigationAdminView(props:RuntimeViewProps){
         items:[...navEdited.items,{id:crypto.randomUUID(),label:'Nouveau lien',href:'/',icon:'Circle',
           group:'brand',order:navEdited.items.length,hidden:false}]})}><Plus size={14}/> Ajouter un lien</button>
     </fieldset></section>
+    <div className={tab==='sidebar'?'':'hidden'}>{sidebarUnavailable?
+      <section role="alert" className={card}>Catalogue sidebar indisponible pour cette session.
+        <button type="button" className={button} onClick={()=>void loadSidebar()}>Relire</button></section>:
+      <SidebarEditor catalog={sidebar} busy={busy||!!pending} reload={()=>void loadSidebar()} save={saveSidebar}/>}</div>
   </div>;
 }

@@ -20,6 +20,24 @@ async function compiled(relative){
 const view=await compiled('../../ui/presentation.tsx');
 const contracts=await compiled('../../ui/contracts.ts');
 const workspace=await compiled('../../ui/index.tsx');
+const editor=await compiled('../../ui/rich-editor.tsx');
+
+test('rich editor accepts only parsed HTTP(S) links',()=>{
+  assert.equal(editor.safeHttpUrl('https://example.test/path'),'https://example.test/path');
+  for(const value of ['javascript:alert(1)','data:text/html,x','https://','https://example.test\njavascript:alert(1)'])
+    assert.equal(editor.safeHttpUrl(value),null,value);
+});
+
+test('linking or removing an attachment advances revision without erasing unsaved composition',()=>{
+  const editor={id:'draft-one',revision:2,to:'a@example.test',cc:'',bcc:'',subject:'Unsaved subject',
+    text:'Unsaved body',html:'<p>Unsaved body</p>'};
+  const linked=contracts.attachmentRevision(editor,{id:'draft-one',revision:3});
+  assert.equal(linked.revision,3);
+  assert.equal(linked.subject,editor.subject);
+  assert.equal(linked.html,editor.html);
+  assert.strictEqual(contracts.attachmentRevision(linked,{id:'other-draft',revision:4}),linked);
+  assert.strictEqual(contracts.attachmentRevision(linked,{id:'draft-one',revision:2}),linked);
+});
 
 test('the first authenticated render hides panel data until its session scope is hydrated',()=>{
   const snapshot={phase:'authenticated',pending:false,session:{id:'session-new',principalId:'owner'}};
@@ -54,6 +72,17 @@ test('message reader isolates incoming HTML in a strict sandbox',()=>{
   assert.match(html,/Marquer lu/);
   assert.match(html,/Archiver/);
   assert.match(html,/Corbeille/);
+  const trash=renderToStaticMarkup(React.createElement(view.ReaderPanel,{message:{...message,folder:'trash'},
+    draft:null,thread:[],threadHasMore:false,threadLoading:false,onThreadMore:()=>{},attachments:[],
+    loading:false,busy:false,onReply:()=>{},onEdit:()=>{},onDownload:()=>{},onUpdate:()=>{},
+    onDeleteDraft:()=>{},onDeleteMessage:()=>{},onThreadSelect:()=>{}}));
+  assert.match(trash,/Supprimer définitivement/);
+  const sent=renderToStaticMarkup(React.createElement(view.ReaderPanel,{message:{...message,
+    direction:'outbound',folder:'trash'},draft:null,thread:[],threadHasMore:false,threadLoading:false,
+    onThreadMore:()=>{},attachments:[],loading:false,busy:false,onReply:()=>{},onEdit:()=>{},
+    onDownload:()=>{},onUpdate:()=>{},onDeleteDraft:()=>{},onDeleteMessage:()=>{},onThreadSelect:()=>{}}));
+  assert.match(sent,/Historique d’envoi et accusés conservés/);
+  assert.match(sent,/disabled=""[^>]*>.*Supprimer définitivement/s);
 });
 
 test('long threads and searched lists expose their continuation instead of appearing complete',()=>{
@@ -107,7 +136,7 @@ test('panel restore survives first mount, while a real identity or context chang
 });
 
 test('panel schema stores scoped selection and bounded journal metadata',()=>{
-  assert.equal(manifest.compatibility.sdk,'^1.2.0');
+  assert.equal(manifest.compatibility.sdk,'^1.9.0');
   const view=manifest.contracts.ui.views.find(item=>item.id==='admin');
   const schema=manifest.contracts.schemas.find(item=>item.id===view.panel.stateSchema.schemaId).schema;
   assert.deepEqual(schema.required,['sessionId','audience','contextId']);

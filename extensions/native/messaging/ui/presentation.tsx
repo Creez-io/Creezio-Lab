@@ -53,7 +53,7 @@ export function ListPanel(props:{folder:Folder;messages:Message[];drafts:Draft[]
     <div className="min-h-0 flex-1 overflow-y-auto">
       {props.loading&&rows.length===0?<p className="p-8 text-center text-sm text-[#5c6478]">Chargement…</p>:
         rows.length===0?<div className="space-y-2 p-8 text-center"><Mail size={32} className="mx-auto text-[#c9c2b4]"/>
-          <p className="text-sm font-medium">Aucun mail</p><p className="text-xs text-[#5c6478]">{props.folder==='inbox'?'La réception est indisponible sans transport configuré.':props.folder==='sent'||props.folder==='outbox'?'Aucun envoi confirmé : le transport est indisponible.':props.folder==='archive'||props.folder==='trash'?'Ce classement attend son opération serveur.':'Créez un brouillon depuis Nouveau message.'}</p></div>:
+          <p className="text-sm font-medium">Aucun mail</p><p className="text-xs text-[#5c6478]">{props.folder==='inbox'?'La réception est indisponible sans transport configuré.':props.folder==='sent'||props.folder==='outbox'?'Aucun envoi confirmé : le transport est indisponible.':props.folder==='trash'?'Aucun message dans la corbeille.':props.folder==='archive'?'Aucun message archivé.':'Créez un brouillon depuis Nouveau message.'}</p></div>:
         <ul className="divide-y divide-[#f0ebe1]">{rows.map(row=><li key={row.id}><button type="button" onClick={()=>props.onSelect(row.id)}
           className={`flex w-full flex-col gap-0.5 px-4 py-3 text-left hover:bg-[#faf7f1] ${props.selectedId===row.id?'bg-sky-50':''}`}>
           <span className="flex w-full items-baseline justify-between gap-2"><span className={`truncate text-sm ${row.unread?'font-semibold':'font-medium'}`}>{row.who}</span><span className="shrink-0 text-[11px] text-[#9aa1b2]">{dateLabel(row.date)}</span></span>
@@ -72,7 +72,8 @@ export function ReaderPanel(props:{message:Message|null;draft:Draft|null;thread:
   threadLoading:boolean;onThreadMore:()=>void;onThreadSelect:(id:string)=>void;
   attachments:Attachment[];loading:boolean;busy:boolean;
   onReply:()=>void;onEdit:()=>void;onDownload:(item:Attachment)=>void;
-  onUpdate:(change:{folder?:Folder;read?:boolean})=>void;onDeleteDraft:()=>void}) {
+  onUpdate:(change:{folder?:Folder;read?:boolean})=>void;onReconcile:()=>void;
+  onDeleteDraft:()=>void;onDeleteMessage:()=>void}) {
   if(!props.message&&!props.draft)return <section aria-label="Lecture du message" className="flex h-full flex-col items-center justify-center gap-2 bg-[#fcfbf8] p-8 text-center">
     <MailOpen size={40} className="text-[#d5cec0]"/><p className="text-sm text-[#5c6478]">{props.loading?'Ouverture…':'Sélectionnez un message'}</p></section>;
   const item=props.message??props.draft!;
@@ -84,11 +85,18 @@ export function ReaderPanel(props:{message:Message|null;draft:Draft|null;thread:
     </div><div className="flex flex-wrap gap-1">{props.draft?<><button type="button" className={button} onClick={props.onEdit}>Reprendre le brouillon</button>
       <button type="button" disabled={props.busy} className={button} onClick={props.onDeleteDraft}>Supprimer</button></>:
       props.message?<>
+        {props.message.direction==='outbound'&&['sent','delivered','bounced'].includes(props.message.state)
+          &&<button type="button" disabled={props.busy} className={button}
+            onClick={props.onReconcile}>Rapprocher la livraison</button>}
         {props.message.direction==='inbound'&&<button type="button" className={button} onClick={props.onReply}>Répondre</button>}
         {props.message.direction==='inbound'&&<button type="button" disabled={props.busy} className={button} onClick={()=>props.onUpdate({read:!props.message!.read})}>{props.message.read?'Marquer non lu':'Marquer lu'}</button>}
         {props.message.folder==='archive'||props.message.folder==='trash'?<button type="button" disabled={props.busy} className={button} onClick={()=>props.onUpdate({folder:props.message!.direction==='inbound'?'inbox':'sent'})}><ArchiveRestore size={14}/> Restaurer</button>:
           <button type="button" disabled={props.busy} className={button} onClick={()=>props.onUpdate({folder:'archive'})}><Archive size={14}/> Archiver</button>}
         {props.message.folder!=='trash'&&<button type="button" disabled={props.busy} className={button} onClick={()=>props.onUpdate({folder:'trash'})}><Trash2 size={14}/> Corbeille</button>}
+        {props.message.folder==='trash'&&<button type="button" className={button}
+          disabled={props.busy||props.message.direction!=='inbound'}
+          title={props.message.direction==='inbound'?'Supprimer le message local et détacher ses pièces privées':'Historique d’envoi et accusés conservés'}
+          onClick={props.onDeleteMessage}><Trash2 size={14}/> Supprimer définitivement</button>}
       </>:null}</div></header>
     {props.message&&(props.thread.length>1||props.threadHasMore)&&<div className="border-b border-[#ebe4d8] px-4 py-2">
       <p className="px-1 pb-1 text-[11px] font-semibold uppercase tracking-wide text-[#9aa1b2]">Fil ({props.thread.length} chargés{props.threadHasMore?', suite disponible':''})</p>

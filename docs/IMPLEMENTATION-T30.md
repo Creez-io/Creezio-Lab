@@ -1,5 +1,17 @@
 # Réalisation T30 — SDK distribué et starter de module
 
+## SDK 1.9.0 public depuis Core main `9ce856c` — 1er octobre 2026
+
+Le tag `sdk-v1.9.0` vise `9ce856cb1cbb2f9fa576c5fae0f7b4be09488cb9` (arbre `59bf248ef823980e2ff243d811f7edd663e427f4`). L'archive qualifiée sur Linux est SHA-256 `b10cc8ca47bad85d3f22124e0b3da214cea15610330fc650a8c107cba189eb2a`, 88 108 octets et 93 entrées. Les douze modules consommateurs ont clos 72 suites : 68 réussies et quatre non applicables, 296 tests. Le helper a vérifié l'asset `602546338`, la release `400682948` et le téléchargement public après publication. Le SDK distribue les ports utilisés par la source qualifiée ; il ne publie ni application ni fournisseur et n'est pas adopté implicitement par Lab, Starter ou un Site.
+
+## SDK 1.6 public — 30 septembre 2026
+
+La PR #80 est intégrée sur main `684901c46cff026dc0209f3e2deabbf894826af9`, arbre `115f5764d1dc5a2d256f2f5724d13d16c304a0c9`. Les CI du candidat et du main passent 1 360 tests sans omission. Le [SDK 1.6.0 public](https://github.com/creezio/Creezio-D1R2/releases/download/sdk-v1.6.0/creezio-sdk-1.6.0.tgz) contient 82 entrées, 78 067 octets, SHA-256 `d1d8dba645f4a710cd8c5a37f9eaabdeb15c6745c08a8bd5922d2fbcf2a53be8`. Le tag annoté vise ce main ; les téléchargements de l'archive en brouillon et après publication ont été vérifiés (release `400339777`, asset `601576924`).
+
+Les huit consommateurs Messaging, Resend, Granola, Hermes, Meili, Stripe, Catalogue et n8n ont exécuté leurs six suites depuis leurs archives avec ce SDK : 45 suites réussies, trois suites widgets explicitement non applicables et 170 contrôles. La première tentative du helper avait confondu un champ nommé `from` avec un import ; le helper réutilise désormais l'analyseur TypeScript canonique du dépôt. Aucun résultat de cette tentative interrompue n'est compté comme une réussite.
+
+Cette version distribue les contrats de lecture intermodule, diagnostics, mutations de connecteurs, webhooks signés, recherche et livraisons durables. Elle ne publie pas une application ni ne qualifie un fournisseur réel. Les archives antérieures, le Starter et Lab restent inchangés. Le port de catalogue de navigation destiné à T21 est préparé dans la source SDK 1.7 candidate ; il n'appartient pas à l'archive 1.6 publiée.
+
 ## Chaîne de trois éditeurs — témoin REQ-3004
 
 `tests/modules/three-publishers.test.mjs` construit trois paquets npm de test d'origines distinctes, avec dépendances obligatoires A → B → C et une intégration D facultative absente. Un seul hôte léger les installe hors ligne depuis leurs archives ; les reçus runtime et validation sont vérifiés octet par octet, puis la composition produit réellement ses routes, vues et ressources de widget. Les contrôles refusent B ou C absent, mauvaise origine, mauvaise version, contrat public incompatible, conflit de version et octet installé altéré. L'absence de D désactive seulement la navigation qui le demande.
@@ -43,6 +55,18 @@ La PR #52 est intégrée sur main `62bc13c3fb71641fbca3174a5d5a2ebafed1d81c`, ar
 Le correctif accepte les noms de champs JSON tels que `requestKey` dans les schémas de widgets, sans modifier les règles des identifiants de modules, d'opérations ou de permissions. Il permet aux widgets Support de réutiliser les commandes existantes et leur journal. Les entrées restent validées par le moteur commun ; aucun nouveau port ni modèle de données n'est ajouté au SDK.
 
 La PR #57 est intégrée sur main `f99a455356120f89a0ed35a7f64fe38c06299c4d`, arbre `805caa28d3c05b0646f2aef5b3b3cd213b629f77`, avec 1 257/1 257 tests CI, sans omission. Le [SDK 1.4.1 public](https://github.com/creezio/Creezio-D1R2/releases/download/sdk-v1.4.1/creezio-sdk-1.4.1.tgz) contient 79 fichiers et 73 013 octets, SHA-256 `3196390908a13cf32290f100584a3edb20931c8b3f56c37c6fab131c3fe4b37d`. Sept consommateurs ont été vérifiés avec cette archive : 38 suites réussies, quatre suites widgets explicitement non applicables avec justification, 123 tests exécutés. Tag annoté et téléchargements draft/public vérifiés, release `399075187`, asset `598041140`. Les anciennes versions publiques restent immuables ; Lab conserve SDK 1.2 et son module d'achats 0.1.3 jusqu'à une adoption distincte.
+
+## SDK 1.5.0 — images privées des widgets Catalogue
+
+La PR #68 intègre le contrat optionnel `linkedRead.mcpImage` et `widgetCalls` : plusieurs widgets peuvent appeler le même outil de lecture sans rendu supplémentaire. L'image liée est réservée au composant dans `_meta['creezio/linkedImage']` ; ses octets ne rejoignent ni `content`, ni `structuredContent`, ni le contexte du modèle, ni la persistance. Les droits, le parent et le lien sont contrôlés par le service de fichiers existant.
+
+Le [SDK 1.5.0 public](https://github.com/creezio/Creezio-D1R2/releases/download/sdk-v1.5.0/creezio-sdk-1.5.0.tgz) provient du main `b2ae2efe5bf37885407c515207a10768e35b065e` (CI 1 284/1 284) : archive de 79 fichiers et 73 518 octets, SHA-256 `bdbbee87ac2eabc96c916b05046443686489e5c0cf6a2caba7ac0304e3d77c27`, release `399570868`, asset `599366618`. Ses sept consommateurs ont passé 39 suites sur 42 déclarées ; trois suites widgets sont non applicables avec justification. Cette publication ne livre pas le correctif CSP de l'hôte ni une application. Core main `7451334` a ensuite qualifié les images des deux widgets sur Linux et livré séparément le Worker Cloudflare ; sa recette distante a vérifié les témoins par API, sans affichage de ces images sur Cloudflare ou ChatGPT. Catalogue 0.1.2 reste un module du workspace Core, sans release autonome. Starter et Lab conservent leurs versions installées ; voir [T25](IMPLEMENTATION-T25.md) et [T32](IMPLEMENTATION-T32.md) pour ces preuves distinctes.
+
+## SDK 1.6.0 — candidate locale, sans publication
+
+La candidate ajoute les lectures intermodules déclarées, les diagnostics natifs, les mutations bornées de connecteurs, les webhooks signés, la projection de recherche fournisseur et `contracts.deliveries`. Ce dernier contrat lie une commande à une intention durable, une requête de préparation et un projecteur de reçu ; sa sortie exige l'identifiant d'intention et une révision entière de configuration comparée avant l'envoi. Ces ajouts sont en source candidate ; le SDK 1.5.0 ci-dessus demeure la dernière archive publique établie ici.
+
+L'archive locale `creezio-sdk-1.6.0.tgz` a été empaquetée le 30 septembre 2026 dans le checkout de qualification : 82 entrées, 78 462 octets, SHA-256 `76fbdd631e4440a44dd4323ee72e65b7fde9b552604e8f37e818938944527b82`. Ses 42 chemins d'exports JavaScript/types sont présents. Huit modules (Messagerie, Resend, Granola, Hermes, Meili, Stripe, Catalogue, n8n) ont exécuté leurs six suites depuis leurs archives fermées contre cette même empreinte : 45 suites réussies, trois suites widgets non applicables déclarées, 170 contrôles au total. Les intégrités runtime/validation figurent dans le reçu de qualification. Ce résultat ne prouve ni CI sur un main qualifié, ni release GitHub, ni adoption par Starter ou Lab, ni recette avec un fournisseur réel, ni déploiement. Les verrous de distribution seront régénérés et vérifiés séparément après le gel des sources.
 
 ## SDK 1.2 — journal public et contrats de connecteurs
 

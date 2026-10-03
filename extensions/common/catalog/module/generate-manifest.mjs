@@ -3,7 +3,7 @@ import {createHash} from 'node:crypto';
 
 const root=new URL('../',import.meta.url);
 const template=JSON.parse(readFileSync(new URL('module/manifest.json',root),'utf8'));
-const id='creezio.catalog',version='0.1.1',revision='t25-catalog-v2';
+const id='creezio.catalog',version='0.1.3',revision='t25-catalog-v4';
 const ref=(kind,name)=>({moduleId:id,kind,id:name});
 const length=(max,min=1)=>({minLength:min,maxLength:max});
 const int=(min=0,max=Number.MAX_SAFE_INTEGER)=>({minimum:min,maximum:max});
@@ -73,7 +73,8 @@ const categoryView=obj({id:str(36),...categoryFields,parentId:nullable(str(36)),
 const fullProduct=obj({id:str(36),...productFields,status,revision:num(1),
   createdAt:str(35),updatedAt:str(35)});
 const publishedProduct=obj({...fullProduct.properties,status:{const:'published'}});
-const summary=obj({id:str(36),sku:str(80),name:str(160),categoryId:nullable(str(36)),
+const summary=obj({id:{...str(36),description:'Internal product ID, not SKU; pass it to product.get for a published product.'},
+  sku:str(80),name:str(160),categoryId:nullable(str(36)),
   priceMinor:num(0,1_000_000_000_000),currency:str(3,3),status,
   revision:num(1),updatedAt:str(35)});
 const publishedSummary=obj({...summary.properties,status:{const:'published'}});
@@ -93,13 +94,15 @@ const categoryListOutput=schema('category-list-output',obj({items:{type:'array',
   nextCursor:nullable(str(2048)),complete:{type:'boolean'},scanned:num(0,500)}));
 const productCreateInput=schema('product-create-input',obj({requestKey,...productFields}));
 const productUpdateInput=schema('product-update-input',obj({requestKey,id:identity,revision:revField,...productFields}));
-const productInput=schema('product-id-input',obj({id:identity}));
+const productInput=schema('product-id-input',obj({id:{...identity,
+  description:'Internal product ID, never SKU. For a published product, use items[].id from product.search.'}}));
 const productOutput=schema('product-output',obj({product:fullProduct}));
 const publishedOutput=schema('published-product-output',obj({product:publishedProduct}));
 const productListInput=schema('product-list-input',obj({limit:num(1,25),cursor:str(2048),
   query:str(120,0),categoryId:str(36),status},['limit']));
 const productSearchInput=schema('product-search-input',obj({limit:num(1,25),cursor:str(2048),
-  query:str(120,0),categoryId:str(36)},['limit']));
+  query:{...str(120,0),description:'Search text, such as a product name or SKU; use the returned items[].id for product.get.'},
+  categoryId:str(36)},['limit']));
 const productListOutput=schema('product-list-output',obj({items:{type:'array',items:summary,maxItems:25},
   nextCursor:nullable(str(2048)),complete:{type:'boolean'},scanned:num(0,500)}));
 const productSearchOutput=schema('product-search-output',obj({items:{type:'array',items:publishedSummary,maxItems:25},
@@ -188,7 +191,8 @@ const file={id:'images',metadataModel:ref('model','file_metadata'),contextField:
   deletion:'restrict',linkedRead:{audiences:['app'],permission:ref('permission','view'),
     linkModel:ref('model','product_media'),parentRelation:'product',
     referenceFields:{fileId:'file_id',intentId:'intent_id',generation:'generation',digest:'digest'},
-    when:{field:'status',equals:'published'}}};
+    when:{field:'status',equals:'published'},
+    mcpImage:{toolName:'catalog_linked_image_read',widgetIds:['product-list','product-detail']}}};
 const api=[];
 for(const op of operations)for(const audience of op.audiences){
   const spec=schemas.find(item=>item.id===op.input.schemaId).schema;
@@ -205,12 +209,15 @@ const widgetResource=(name)=>({id:`${name}-ui`,uri:`ui://${id}/${name}`,
   source:{kind:'asset',path:`ui/widgets/${name}.html`},widget:ref('widget',name),
   ui:{csp:{connectDomains:[],resourceDomains:[],frameDomains:[],baseUriDomains:[]},
     permissions:{},prefersBorder:true}});
-const widget=(name,output,readInput,readOp,renderer)=>({id:name,version:'1.0.0',compatibility:'^1.0.0',
+const widget=(name,output,readInput,readOp,renderer)=>({id:name,version:'1.1.0',compatibility:'^1.0.0',
   resource:`${name}-ui`,renderer:{path:`ui/widgets/${name}.ts`,export:renderer},input:output,
   state:widgetState,result:output,audiences:['admin','app'],permissions:[ref('permission','view')],
   requiredCapabilities:[],assets:[],actions:[{id:'refresh',label:'Actualiser',input:readInput,
     requiredCapabilities:[],fallback:'unavailable',mode:'direct',target:{kind:'operation',
-      operation:ref('operation',readOp)}}],
+      operation:ref('operation',readOp)}},
+    {id:'media-list',label:'Lire les images du produit',input:mediaListInput,
+      requiredCapabilities:[],fallback:'unavailable',mode:'direct',target:{kind:'operation',
+        operation:ref('operation','media.list')}}],
   instance:{identity:'host-generated',revision:'monotonic',correlation:'request-instance-conversation',
     objectVersion:'distinct',lateResponse:'reject-stale'},
   transport:{protocol:'mcp-apps',maxPayloadBytes:65536,timeoutMs:15000,
@@ -221,21 +228,35 @@ m.identity={id,title:'Catalogue métier',publisher:'creezio',origin:'https://git
   version,source:{kind:'snapshot',revision,
     integrity:`sha256-${createHash('sha256').update(revision).digest('hex')}`},
   license:{expression:'NOASSERTION',file:'LICENSE'}};
-m.compatibility={core:'^0.0.0',sdk:'^1.3.0',
+m.compatibility={core:'^0.0.0',sdk:'^1.5.0',
   requiredCapabilities:['runtime.worker','data.d1.shared','files.r2.shared'],optionalCapabilities:[]};
 m.entrypoints={server:{path:'module/entry.server.ts',export:'catalog'},
   ui:{path:'ui/index.tsx',export:'CatalogAdminView'},
   plugin:{manifest:'plugin/plugin.json',mcp:'plugin/mcp.json',
     contributions:{path:'plugin/contributions.ts',export:'contributions'}}};
 m.dependencies=[{moduleId:'creezio.access',origin:'https://github.com/creezio/Creezio-D1R2',
-  versionRange:'^0.0.0',optional:false,contracts:[],whenAbsent:'block',whenIncompatible:'block',autoInstall:false}];
+  versionRange:'^0.0.0',optional:false,contracts:[],whenAbsent:'block',whenIncompatible:'block',autoInstall:false},
+  {moduleId:'creezio.meili',origin:'https://github.com/creezio/Creezio-D1R2',
+    versionRange:'^0.3.0',optional:true,contracts:[{id:'meili.index',versionRange:'^1.0.0'}],
+    whenAbsent:'disable-contributions',whenIncompatible:'block',autoInstall:false}];
 const mcpTools=operations.map(op=>({id:op.id,name:`catalog_${op.id.replaceAll('.','_')}`,
   operation:ref('operation',op.id),audiences:op.audiences,auth:['oauth','api-token'],input:op.input,output:op.output,
   annotations:{readOnly:op.kind==='query',destructive:op.id.endsWith('.archive')||op.id==='media.unlink',
     idempotent:op.kind==='query',openWorld:false},
   ...(op.id==='product.search'?{widget:ref('widget','product-list')}:
-    op.id==='product.get'?{widget:ref('widget','product-detail')}:{ }),textFallback:true}));
-m.contracts={schemas,models,files:[file],events:[],settings:[],search:[],permissions,operations,api,
+    op.id==='product.get'?{widget:ref('widget','product-detail')}:
+      op.id==='media.list'?{widgetCalls:[ref('widget','product-list'),ref('widget','product-detail')]}:{}),
+  textFallback:true}));
+m.contracts={schemas,models,files:[file],events:[],settings:[],
+  search:[{id:'catalog-products',model:ref('model','product'),
+    fields:['id','name','description','category_id','price_minor','currency','status','revision','updated_at'],
+    facets:['category_id'],permissions:[ref('permission','view')],context:'required',engine:'provider',
+    provider:'meili.api.v1',projection:{orderIndexId:'by-updated',idField:'id',revisionField:'revision',
+      visibilityField:'status',visibleValue:'published'},
+    rebuildOperation:{moduleId:'creezio.meili',kind:'operation',id:'index.rebuild.start'},
+    deleteOperation:{moduleId:'creezio.meili',kind:'operation',id:'index.emit'},invalidatedBy:[],
+    projectionVersion:'1.0.0',filterBeforeCount:true,resumable:true,requiresModules:['creezio.meili']}],
+  permissions,operations,api,
   mcp:{tools:mcpTools,resources:[widgetResource('product-list'),widgetResource('product-detail')],prompts:[],
     skills:[{id:'catalog',path:skillPath,audiences:['admin','app'],operations:[ref('operation','product.search'),
       ref('operation','product.get'),ref('operation','category.list')],
@@ -263,19 +284,22 @@ m.contracts={schemas,models,files:[file],events:[],settings:[],search:[],permiss
 m.documentation.versionBinding={moduleVersion:version,sourceRevision:revision};
 for(const suite of ['backend','ui','api-mcp','widgets','package','docs'])
   m.validation.suites[suite].tests=[`tests/${suite}/contract.test.mjs`];
+m.validation.suites.widgets.tests.push('tests/widgets/image-view.test.mjs');
+m.validation.suites.widgets.tests.push('tests/widgets/runtime.test.mjs');
 m.validation.suites.widgets.mode='required';delete m.validation.suites.widgets.justification;
 m.packaging.runtime.files=['module/manifest.json','module/models.json','module/entry.server.ts',
   'module/operations.ts','module/service.ts','module/public-contract.ts',
   'ui/index.tsx','ui/front.tsx','ui/contracts.ts','ui/money.ts','ui/panel-state.ts','ui/session.ts',
   'ui/image-gate.ts',
-  'ui/widgets/runtime.ts','ui/widgets/product-list.ts','ui/widgets/product-detail.ts',
+  'ui/widgets/runtime.ts','ui/widgets/image-view.ts','ui/widgets/product-list.ts','ui/widgets/product-detail.ts',
   'ui/widgets/product-list.html','ui/widgets/product-detail.html',
   'README.md','prd.md','CHANGELOG.md','LICENSE','plugin/plugin.json','plugin/mcp.json',
   'plugin/contributions.ts',skillPath];
 m.packaging.validation.files=['AGENTS.md','FILES.md','interview.md','TODO.md','gate.mjs',
   'module/generate-manifest.mjs','ci/run-suite.mjs','tests/helpers.mjs',
   ...['backend','ui','api-mcp','widgets','package','docs']
-    .flatMap(name=>[`ci/${name}.mjs`,`tests/${name}/contract.test.mjs`])];
+    .flatMap(name=>[`ci/${name}.mjs`,`tests/${name}/contract.test.mjs`]),
+  'tests/widgets/image-view.test.mjs','tests/widgets/runtime.test.mjs'];
 m.packaging.validationBinding={moduleId:id,moduleVersion:version,sourceRevision:revision};
 m.lifecycle.absent={};m.lifecycle.configuration='explicit-state';
 writeFileSync(new URL('module/models.json',root),JSON.stringify(models,null,2)+'\n');

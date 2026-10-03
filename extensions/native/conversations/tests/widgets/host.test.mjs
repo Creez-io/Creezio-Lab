@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import {readFileSync} from 'node:fs';
 import {sandboxProfileHeaders} from '../../../../../sdk/widgets/proxy/profile-policy.mjs';
 import {validWidgetMessageContent} from '../../../../../sdk/widgets/validation.ts';
 import {createWidgetApprovalClient} from '../../../../../sdk/widgets/approval-client.ts';
@@ -15,6 +16,35 @@ const content = {
     resourceUri: `ui://creezio/example.catalog/comparison/1.0.0/${resourceDigest}.html`,
     resourceDigest, state: {selectedIds: ['a', 'b']}}],
 };
+
+test('initial chat render uses the same host instance passed to the widget bridge',()=>{
+  const source=readFileSync(new URL('../../ui/widget-message.tsx',import.meta.url),'utf8');
+  assert.match(source,/structuredContent:\s*\{kind:\s*'creezio\.widget\.render\.v1',\s*instance:\s*instanceRef,\s*input:\s*output\}/u);
+  assert.match(source,/createMcpAppsBridge\(\{iframe:[\s\S]*?instance:\s*instanceRef,/u);
+});
+
+test('external links require an active host confirmation and a click on the host anchor',()=>{
+  const source=readFileSync(new URL('../../ui/widget-message.tsx',import.meta.url),'utf8');
+  const conversation=readFileSync(new URL('../../ui/index.tsx',import.meta.url),'utf8');
+  const bridge=readFileSync(new URL('../../../../../sdk/widgets/mcp-apps-bridge.ts',import.meta.url),'utf8');
+  assert.match(bridge,/openLinks: \{\}/u);
+  assert.match(bridge,/bridge\.onopenlink = async \(params, extra\)/u);
+  assert.match(bridge,/normalizeWidgetOpenLink\(params\.url\)/u);
+  assert.match(source,/createHostOpenLinkGate\(\{isCurrent, show: prompt => \{/u);
+  assert.match(source,/host\.takeLink\(linkScope\)/u);
+  assert.ok(source.indexOf('bridge.current = mounted;') < source.indexOf('host.takeLink(linkScope)'),
+    'a held link is offered only after the fresh widget resource and bridge mount');
+  assert.match(source,/const linkGeneration = host\.linkGeneration\(\)/u);
+  assert.match(source,/host\.retainLink\(linkScope, prompt\.url, config, linkGeneration,/u);
+  assert.match(source,/host\.keyboardLinkFocus\(linkScope\)/u);
+  assert.match(source,/openLink: async \(url, signal\) =>/u);
+  assert.match(source,/<a href=\{linkPrompt\.url\} target="_blank" rel="noopener noreferrer"/u);
+  assert.match(source,/linkGate\.current\?\.accept\(linkPrompt\.id\)/u);
+  assert.match(source,/if \(!current\) event\.preventDefault\(\)/u);
+  assert.match(source,/links\.dispose\(\)/u);
+  assert.match(conversation,/widgetHost\?\.discardLinksForConversation\(lastConversation\.current\)/u);
+  assert.match(conversation,/widgetHost\?\.discardLinksForConversation\(selectedId\)/u);
+});
 
 test('widget snapshot accepts a pinned multi-instance message and rejects identity substitution', () => {
   assert.equal(validWidgetMessageContent(content), true);

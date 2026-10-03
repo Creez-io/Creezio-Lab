@@ -13,7 +13,7 @@ const read=relative=>JSON.parse(readFileSync(path.join(repository,relative),'utf
 const generated=readFileSync(path.join(repository,'.creezio/generated/provider-catalog.ts'),'utf8');
 const catalog=JSON.parse(generated.match(/export const toolCatalog: readonly ProviderOperationSchema\[\] = freeze\((\[[^\n]+\])\);/)?.[1]??'null');
 const widgetsSource=readFileSync(path.join(repository,'.creezio/generated/widget-catalog.ts'),'utf8');
-const widgets=JSON.parse(widgetsSource.match(/export const widgetCatalog: CompiledWidgetCatalog = freeze\((\{[^\n]+\})\);/)?.[1]??'null');
+const widgets=JSON.parse(widgetsSource.match(/const widgetCatalogBase: Pick<CompiledWidgetCatalog,'widgets'> = (\{[^\n]+\});/)?.[1]??'null');
 
 test('output descriptions preserve declared field meaning in read and list schemas without copying schema data',()=>{
   const request={type:'object',properties:{amountMinor:{type:'integer',minimum:0,
@@ -102,12 +102,16 @@ test('composition without OpenAI emits no provider import or host definition',as
   writeFileSync(path.join(root,'package.json'),'{"type":"module"}\n');
   const composition=read('tests/fixtures/core-composition/composition.json');
   const lock=read('tests/fixtures/core-composition/composition.lock.json');
+  composition.sdk.version='1.9.0';
+  lock.sdkVersion=composition.sdk.version;
   composition.modules=composition.modules.filter(item=>item.moduleId==='creezio.access');
   lock.modules=lock.modules.filter(item=>item.moduleId==='creezio.access');
   for(const exposure of Object.values(composition.exposure))
     exposure.moduleIds=exposure.moduleIds.filter(id=>id==='creezio.access');
   lock.compositionIntegrity=contractIntegrity(composition);
   const access=read('extensions/native/access/module/manifest.json');
+  lock.modules[0].source=access.identity.source;
+  lock.modules[0].contractIntegrity=contractIntegrity(access);
   for(const file of access.packaging.runtime.files){
     const relative=path.join('extensions/native/access',file),destination=path.join(root,relative);
     mkdirSync(path.dirname(destination),{recursive:true});

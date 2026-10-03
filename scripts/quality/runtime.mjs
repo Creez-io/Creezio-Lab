@@ -8,20 +8,27 @@ const hash = bytes => createHash('sha256').update(bytes).digest('hex');
 // Lab adds the public purchase-requests package, its views and widgets to the
 // native composition. The T41 source build with public SDK 1.2.0 and purchase
 // requests 0.1.3 measures 7,046,827 raw / 1,327,438 gzip bytes across 71
-// Worker files. The T38 source with SDK 1.4.1 needs its own measurement; do
-// not raise these ceilings from a source diff. No local runtime, browser or
+// Worker files. The T38 adoption with Core 8756 and public SDK 1.9.0 needs
+// its own measurement; do not raise these ceilings from a source diff. No local runtime, browser or
 // hosted behavior is inferred from the earlier build.
 // Other compositions still require explicit measurements.
 // They are neither provider quotas nor production latency guarantees.
 export const RUNTIME_BUDGETS = Object.freeze({ workerBytes: 7_150_000, workerGzipBytes: 1_350_000,
   selectedGraphInputs: 32, startupMs: 15_000, routeMs: 3_000 });
 
+const check = (name, value, limit) => {
+  if (!Number.isFinite(value) || value < 0 || value > limit) throw new Error(`Local runtime budget ${name} exceeded: ${value} > ${limit}.`);
+};
+
+/** Early size gate and the exact same size gate used by the final runtime witness. */
+export function assertArtifactBudgets(artifact) {
+  check('workerBytes', artifact.worker.bytes, RUNTIME_BUDGETS.workerBytes);
+  check('workerGzipBytes', artifact.worker.gzipBytes, RUNTIME_BUDGETS.workerGzipBytes);
+  return RUNTIME_BUDGETS;
+}
+
 export function assertRuntimeBudgets(report) {
-  const check = (name, value, limit) => {
-    if (!Number.isFinite(value) || value < 0 || value > limit) throw new Error(`Local runtime budget ${name} exceeded: ${value} > ${limit}.`);
-  };
-  check('workerBytes', report.artifact.worker.bytes, RUNTIME_BUDGETS.workerBytes);
-  check('workerGzipBytes', report.artifact.worker.gzipBytes, RUNTIME_BUDGETS.workerGzipBytes);
+  assertArtifactBudgets(report.artifact);
   check('selectedGraphInputs', report.witness.boundary.inputs.length, RUNTIME_BUDGETS.selectedGraphInputs);
   for (const name of ['startup', 'restart']) check(name, report.durationsMs[name], RUNTIME_BUDGETS.startupMs);
   for (const name of ['homepage', 'staticAsset', 'health', 'witness', 'storageRoundtrip']) check(name, report.durationsMs[name], RUNTIME_BUDGETS.routeMs);

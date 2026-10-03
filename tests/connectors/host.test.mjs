@@ -1,8 +1,10 @@
 import '../../scripts/local-environment.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import {Miniflare} from 'miniflare';
 import {captureConnectorDescriptor,connectorOrigin,createConnectorHost} from '../../core/connectors/host.ts';
 import {createVaultKeyring,createVaultReference} from '../../core/vault/crypto.ts';
+import {meiliConnectorDescriptor} from '../../extensions/connectors/meili/module/storage.ts';
 
 const moduleId='test.connector',connectorId='test.api.v1';
 const config={moduleId,modelId:'connector_config',contextField:'context_id',
@@ -19,16 +21,21 @@ const field=(id,type='string',protectedValue=false,nullable=false,constraints)=>
 const context=field('context_id','string',true);
 const configModel={id:'connector_config',scope:'context',contextField:'context_id',
   primaryKey:['context_id','id'],fields:[context,field('id'),field('origin'),field('key_ref','string',false,true),
-    field('secret_version','integer',false,true),field('enabled','boolean'),field('revision','integer'),
+    field('secret_version','integer',false,true),field('connection_id'),field('enabled','boolean'),field('revision','integer'),
     field('updated_at','date-time')]};
 const vaultModel={id:'connector_secret',scope:'context',contextField:'context_id',
   primaryKey:['context_id','id'],fields:[context,field('id','string',true),field('binding_id','string',true),
     field('ciphertext','string',true),field('key_id','string',true),
     field('version','integer',true,false,{minimum:1}),
     field('state','string',true,false,{enum:['active','revoked']})]};
+const eventModel={id:'events',scope:'context',contextField:'context_id',
+  primaryKey:['context_id','id'],fields:[context,field('id'),field('connection_id'),
+    field('parent_id'),field('event_type'),field('created_at','date-time')],
+  indexes:[{id:'by-parent',fields:['context_id','connection_id','parent_id','created_at','id']}]};
 const catalog={schemaVersion:1,compositionDigest:'sha256-test',modules:[{moduleId,enabled:true,version:'0.0.0',
   permissions:[],models:[{modelId:'connector_config',model:configModel,table:'config'},
-    {modelId:'connector_secret',model:vaultModel,table:'secret'}]}]};
+    {modelId:'connector_secret',model:vaultModel,table:'secret'},
+    {modelId:'events',model:eventModel,table:'events'}]}]};
 
 async function fixture(fetcher,described=descriptor){
   const keyring=createVaultKeyring({activeKeyId:'key',keys:{key:new Uint8Array(32).fill(17)}});
@@ -36,8 +43,10 @@ async function fixture(fetcher,described=descriptor){
   const ciphertext=await keyring.seal({moduleId,contextId:'application',bindingId:connectorId,
     reference,version:1},'secret-value');
   const state={revoked:false,alive:true,config:{id:connectorId,origin:'https://n8n.example.invalid',key_ref:reference,
-    secret_version:1,enabled:true,revision:1,updated_at:'2026-09-28T00:00:00.000Z'},
-  secret:{id:reference,binding_id:connectorId,ciphertext,key_id:'key',version:1,state:'active'}};
+    secret_version:1,connection_id:'connection-one',enabled:true,revision:1,updated_at:'2026-09-28T00:00:00.000Z'},
+  secret:{id:reference,binding_id:connectorId,ciphertext,key_id:'key',version:1,state:'active'},
+  events:[{id:'event-one',connection_id:'connection-one',parent_id:'mail-one',event_type:'received',
+    created_at:'2026-09-28T00:00:00.000Z'}]};
   const identity={moduleId,contextId:'application',audience:'admin',principalId:'owner',
     actorPrincipalId:'owner',credentialKind:'session'};
   const plans=[];
@@ -45,7 +54,7 @@ async function fixture(fetcher,described=descriptor){
     async authorize(){if(state.revoked)throw Object.assign(new Error('revoked'),{code:'forbidden'});
       return {kind:'data-lease'};},
     describeLease(){return identity;},dispose(){},
-    internalPort(_lease,options){return {async get(_model,input){
+    internalPort(_lease,options){return {async list(){return {items:state.events,nextAfter:null};},async get(_model,input){
       const row=options.modelId==='connector_config'?state.config:state.secret;
       if(!row)return null;
       if(Object.entries(input.where??{}).some(([key,value])=>row[key]!==value))return null;
@@ -54,11 +63,13 @@ async function fixture(fetcher,described=descriptor){
       plans.push(plan);return plan;}};}
   };
   const host=createConnectorHost({data,catalog,descriptor:described,keyring,fetcher});
-  const port=(extra={})=>host.port({lease:{kind:'data-lease'},credential:{kind:'session',token:'opaque'},
+  const scope=(extra={})=>({lease:{kind:'data-lease'},credential:{kind:'session',token:'opaque'},
     contextId:'application',audience:'admin',actors:['user'],
     requiredPermissionIds:[`${moduleId}:read`],signal:new AbortController().signal,
+    executionId:'claim-123',
     ensureActive(){if(!state.alive)throw new Error('operation closed');},...extra});
-  return {host,state,port,plans};
+  const port=(extra={})=>host.port(scope(extra));
+  return {host,state,port,scope,plans};
 }
 
 test('the descriptor and configured origin cannot redirect a secret to an arbitrary host or header',()=>{
@@ -96,6 +107,96 @@ test('one named GET uses the vaulted header and bounded typed output without exp
     {headers:{'content-type':'application/json'}}));
   assert.deepEqual(await nullable.port().request({resource:'workflows'}),
     {kind:'ok',status:200,body:null});
+});
+
+test('a signed-event source proof is checked before the provider GET',async()=>{
+  let requests=0;
+  const described={...descriptor,config:{...config,fields:{...config.fields,connectionId:'connection_id'}}};
+  const {port,state}=await fixture(async()=>{requests++;
+    return new Response('{}',{headers:{'content-type':'application/json'}});},described);
+  state.config.revision=2;
+  assert.deepEqual(await port().request({resource:'workflow',id:'mail-one',
+    sourceProof:{connectionId:'connection-one',configRevision:1}}),
+    {kind:'error',code:'not_configured'});
+  assert.equal(requests,0);
+  state.config.revision=1;state.config.connection_id='connection-two';
+  assert.deepEqual(await port().request({resource:'workflow',id:'mail-one',
+    sourceProof:{connectionId:'connection-one',configRevision:1}}),
+    {kind:'error',code:'not_configured'});
+  assert.equal(requests,0);
+});
+
+test('the host source guard rejects config rotation and sealed-secret revocation at commit',async()=>{
+  const described={...descriptor,config:{...config,fields:{...config.fields,connectionId:'connection_id'}},
+    binaryDownloads:[{id:'attachment',proofOperationId:'mail.read',
+      metadataPath:'/mail/{parentId}/attachments/{childId}',
+      cdnOrigin:'https://cdn.example.invalid',cdnPath:'/{parentId}/attachments/{childId}',
+      maxBytes:1024,event:{modelId:'events',indexId:'by-parent',connectionField:'connection_id',
+        parentField:'parent_id',typeField:'event_type',typeValue:'received'}}]};
+  const {host,state,scope}=await fixture(async()=>{throw new Error('no network');},described);
+  const runtime=new Miniflare({host:'127.0.0.1',port:0,cf:false,modules:true,
+    compatibilityDate:'2026-05-15',script:'export default {fetch(){return new Response(null)}}',
+    d1Databases:{DB:'connector-guard-proof'},d1Persist:false});
+  try{
+    const db=await runtime.getD1Database('DB');
+    await db.batch([
+      `CREATE TABLE config (context_id TEXT,id TEXT,connection_id TEXT,revision INTEGER,origin TEXT,
+        key_ref TEXT,secret_version INTEGER,enabled INTEGER)`,
+      `CREATE TABLE secret (context_id TEXT,id TEXT,version INTEGER,state TEXT,binding_id TEXT)`]
+      .map(sql=>db.prepare(sql)));
+    await db.prepare(`INSERT INTO config VALUES (?,?,?,?,?,?,?,?)`).bind('application',connectorId,
+      'connection-one',1,state.config.origin,state.config.key_ref,1,1).run();
+    await db.prepare(`INSERT INTO secret VALUES (?,?,?,?,?)`).bind('application',state.config.key_ref,
+      1,'active',connectorId).run();
+    const guard=await host.sourceGuard(scope(),{remoteId:'attachment',
+      sourceProof:{connectionId:'connection-one',configRevision:1}});
+    const verify=()=>db.prepare(`SELECT CASE WHEN (${guard.condition}) THEN 1
+      ELSE json('source_changed') END AS accepted`).bind(...guard.bindings).first();
+    assert.equal((await verify()).accepted,1);
+    await db.prepare(`UPDATE config SET revision=2`).run();
+    await assert.rejects(verify());
+    await db.prepare(`UPDATE config SET revision=1`).run();
+    await db.prepare(`UPDATE secret SET state='revoked'`).run();
+    await assert.rejects(verify());
+  }finally{await runtime.dispose();}
+});
+
+test('one declared binary child uses a bounded API GET and exact CDN origin',async()=>{
+  const described={...descriptor,config:{...config,fields:{...config.fields,connectionId:'connection_id'}},
+    binaryDownloads:[{id:'attachment',proofOperationId:'mail.read',
+      metadataPath:'/mail/{parentId}/attachments/{childId}',
+      cdnOrigin:'https://cdn.example.invalid',cdnPath:'/{parentId}/attachments/{childId}',
+      maxBytes:8,event:{modelId:'events',indexId:'by-parent',connectionField:'connection_id',
+        parentField:'parent_id',typeField:'event_type',typeValue:'received'}}]};
+  const input={remoteId:'attachment',parentId:'mail-one',childId:'child-one',
+    sourceProof:{connectionId:'connection-one',configRevision:1},
+    expected:{filename:'proof.txt',contentType:'text/plain',byteSize:8}};
+  const urls=[];
+  const {host,scope}=await fixture(async(url,init)=>{
+    urls.push(String(url));assert.equal(init.redirect,'manual');
+    if(urls.length===1)return Response.json({id:'child-one',filename:'proof.txt',
+      content_type:'text/plain',size:8,
+      download_url:'https://cdn.example.invalid/mail-one/attachments/child-one?signature=x'});
+    assert.equal(init.headers,undefined,'signed CDN URLs receive no provider credential');
+    return new Response(new TextEncoder().encode('proof-01'),{headers:{'content-length':'8'}});
+  },described);
+  assert.equal(new TextDecoder().decode(await host.downloadBinary(scope(),input)),'proof-01');
+  assert.deepEqual(urls,['https://n8n.example.invalid/mail/mail-one/attachments/child-one',
+    'https://cdn.example.invalid/mail-one/attachments/child-one?signature=x']);
+  let attempts=0;
+  const blocked=await fixture(async()=>{attempts++;return Response.json({id:'child-one',
+    filename:'proof.txt',content_type:'text/plain',size:8,
+    download_url:'https://other.example.invalid/mail-one/attachments/child-one?signature=x'});},described);
+  await assert.rejects(blocked.host.downloadBinary(blocked.scope(),input));
+  assert.equal(attempts,1,'a foreign CDN is rejected before the second GET');
+  let rotatedState,rotatedGets=0;
+  const rotated=await fixture(async()=>{rotatedGets++;rotatedState.config.revision=2;
+    return Response.json({id:'child-one',filename:'proof.txt',content_type:'text/plain',size:8,
+      download_url:'https://cdn.example.invalid/mail-one/attachments/child-one?signature=x'});
+  },described);
+  rotatedState=rotated.state;
+  await assert.rejects(rotated.host.downloadBinary(rotated.scope(),input));
+  assert.equal(rotatedGets,1,'rotation after metadata refuses CDN egress');
 });
 
 test('remote auth and redirects are sanitized, and a revoked local grant hides even a completed response',async()=>{
@@ -215,4 +316,94 @@ test('successful command GET registers only host-private config and vault commit
   assert.deepEqual(ready.plans[1].input,{key:{id:ready.state.secret.id},required:true,
     where:{version:1,state:'active',binding_id:connectorId},fields:['id']});
   assert.deepEqual(ready.plans[1].fields,['id','version','state','binding_id']);
+});
+
+test('authenticated GET 404 carries the same private commit proofs while 429 does not',async()=>{
+  const missing=await fixture(async()=>new Response(null,{status:404}));
+  const missingGuards=[];
+  assert.deepEqual(await missing.port({registerCommitGuards:tokens=>missingGuards.push(tokens)})
+    .request({resource:'workflow',id:'gone'}),{kind:'error',code:'remote_not_found',status:404});
+  assert.equal(missingGuards.length,1);
+  assert.deepEqual(missingGuards[0],missing.plans);
+  assert.equal(missing.plans.length,2);
+  const limited=await fixture(async()=>new Response(null,{status:429}));
+  const limitedGuards=[];
+  assert.deepEqual(await limited.port({registerCommitGuards:tokens=>limitedGuards.push(tokens)})
+    .request({resource:'workflow',id:'later'}),{kind:'error',code:'remote_error',status:429});
+  assert.equal(limitedGuards.length,0);
+});
+
+test('a declared mutation sends only bounded fields with a claim-derived provider key',async()=>{
+  const writing={...descriptor,resources:[...descriptor.resources,
+    {id:'create',method:'POST',path:'/api/v1/items',params:[],
+      body:{encoding:'json',fields:[{name:'title',wireName:'title',kind:'string',required:true,maxBytes:40}]},
+      idempotencyHeader:'Idempotency-Key',successStatuses:[202]}]};
+  const sent=[];
+  const ready=await fixture(async(url,init)=>{sent.push({url:String(url),init});
+    return new Response(JSON.stringify({taskUid:19}),
+      {status:202,headers:{'content-type':'application/json'}});},writing);
+  const registered=[];
+  const result=await ready.port({registerCommitGuards:tokens=>registered.push(tokens)})
+    .mutate({resource:'create',fields:{title:'Bonjour'}});
+  assert.deepEqual(result,{kind:'ok',status:202,body:{taskUid:19}});
+  assert.equal(sent.length,1);
+  assert.equal(sent[0].url,'https://n8n.example.invalid/api/v1/items');
+  assert.equal(sent[0].init.headers.get('Idempotency-Key'),'creezio-claim-123');
+  assert.equal(sent[0].init.headers.get('Content-Type'),'application/json');
+  assert.equal(sent[0].init.body,JSON.stringify({title:'Bonjour'}));
+  assert.equal(registered.length,1);
+  assert.equal(registered[0].length,2);
+});
+
+test('mutation rejects undeclared fields before egress and never retries an unknown outcome',async()=>{
+  const writing={...descriptor,resources:[{id:'checkout',method:'POST',path:'/v1/checkout/sessions',
+    params:[],body:{encoding:'form',fields:[
+      {name:'price',wireName:'line_items[0][price]',kind:'string',required:true,maxBytes:128},
+      {name:'quantity',wireName:'line_items[0][quantity]',kind:'integer',required:true,maxBytes:4}],
+      fixed:[{name:'mode',value:'payment'}]},idempotencyHeader:'Idempotency-Key'}]};
+  let calls=0;
+  const ready=await fixture(async()=>{calls++;throw new Error('network lost');},writing);
+  const port=ready.port({registerCommitGuards:()=>{}});
+  assert.deepEqual(await port.mutate({resource:'checkout',fields:{price:'price_1',quantity:1,
+    secret:'free-form'}}),{kind:'error',code:'invalid_request'});
+  assert.equal(calls,0);
+  const second=ready.port({registerCommitGuards:()=>{}});
+  assert.deepEqual(await second.mutate({resource:'checkout',fields:{price:'price_1',quantity:1}}),
+    {kind:'error',code:'outcome_unknown'});
+  assert.deepEqual(await second.mutate({resource:'checkout',fields:{price:'price_1',quantity:1}}),
+    {kind:'error',code:'invalid_request'});
+  assert.equal(calls,1);
+});
+
+test('Meili document POST fixes primaryKey=id for ambiguous document fields',async()=>{
+  const meili={...descriptor,resources:[meiliConnectorDescriptor.resources.find(
+    item=>item.id==='document-upsert')]};
+  const sent=[];
+  const ready=await fixture(async(url,init)=>{sent.push({url:String(url),init});
+    return new Response(JSON.stringify({taskUid:7,status:'enqueued'}),
+      {status:202,headers:{'content-type':'application/json'}});},meili);
+  const documents=[{id:'p1',productId:'sku1',category_id:'c1',title:'Book'},
+    {id:'p2',productId:'sku2',category_id:'c2',title:'Desk'}];
+  assert.deepEqual(await ready.port({registerCommitGuards:()=>{}}).mutate({resource:'document-upsert',
+    id:'products',fields:{documents}}),
+    {kind:'ok',status:202,body:{taskUid:7,status:'enqueued'}});
+  assert.equal(sent.length,1);
+  assert.equal(sent[0].url,'https://n8n.example.invalid/indexes/products/documents?primaryKey=id');
+  assert.equal(sent[0].init.body,JSON.stringify(documents));
+});
+
+test('GET query fields are declared and bounded before network egress',async()=>{
+  const search={...descriptor,resources:[{id:'search',method:'GET',path:'/indexes/{id}/search',
+    params:['id','limit'],query:{fields:[
+      {name:'q',wireName:'q',kind:'string',required:true,maxBytes:64},
+      {name:'offset',wireName:'offset',kind:'integer',maxBytes:4}]}}]};
+  const sent=[];
+  const ready=await fixture(async(url)=>{sent.push(String(url));return new Response('{}',
+    {headers:{'content-type':'application/json'}});},search);
+  assert.deepEqual(await ready.port().request({resource:'search',id:'products',limit:8,
+    fields:{q:'lamp',offset:2}}),{kind:'ok',status:200,body:{}});
+  assert.equal(sent[0],'https://n8n.example.invalid/indexes/products/search?limit=8&q=lamp&offset=2');
+  assert.deepEqual(await ready.port().request({resource:'search',id:'products',
+    fields:{q:'lamp',arbitrary:'all'}}),{kind:'error',code:'invalid_request'});
+  assert.equal(sent.length,1);
 });

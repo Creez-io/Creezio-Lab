@@ -2,7 +2,7 @@ import {spawn} from 'node:child_process';
 import {readFileSync,lstatSync} from 'node:fs';
 import {createHash} from 'node:crypto';
 import path from 'node:path';
-import {validateCloudflareTarget,assertCloudflareBuiltConfiguration} from './config.mjs';
+import {validateCloudflareTarget,assertCloudflareBuiltConfiguration,cloudflareWorkerConfiguration} from './config.mjs';
 import {measureRuntimeArtifacts} from '../quality/runtime.mjs';
 import {sourceIdentity,sameSourceIdentity} from '../quality/evidence.mjs';
 import {cloudflareArtifactRoot} from './artifact-path.mjs';
@@ -16,10 +16,33 @@ const MAX_CONTENT=16*1024*1024;
 // existing 16 MiB per-file limit; bound this aggregate response separately.
 const MAX_VERSION_ENVELOPE=32*1024*1024;
 const sha=bytes=>createHash('sha256').update(bytes).digest('hex');
+const validationIssue=value=>{
+  if(/script startup exceeded cpu time limit/i.test(value))return 'startup_cpu_limit';
+  if(/script startup exceeded memory limit/i.test(value))return 'startup_memory_limit';
+  if(/\bSyntaxError\b/.test(value))return 'syntax_error';
+  if(/no registered event handlers|event handlers unsupported by the Workers runtime/i.test(value))
+    return 'unsupported_handler';
+  return 'unknown_validation';
+};
 export class CloudflarePublicationError extends Error {
-  constructor(code){super(`Cloudflare publication ${code}.`);this.code=code;}
+  constructor(code,diagnostic=null){super(`Cloudflare publication ${code}.`);
+    this.code=code;this.diagnostic=diagnostic;}
 }
 const fail=code=>{throw new CloudflarePublicationError(code);};
+/** Only these scalar diagnostics may cross the operator boundary. */
+export function publicationFailure(error){
+  const value=error instanceof CloudflarePublicationError?error.diagnostic:null;
+  if(!value||value.phase!=='wrangler'&&value.phase!=='post-upload'
+    ||!['spawn_error','exit_nonzero','output_limit','timeout','inspection_failed'].includes(value.reason))
+    return {phase:'unknown',reason:'unavailable',exitCode:null,apiCodes:[]};
+  const apiCodes=Array.isArray(value.apiCodes)?value.apiCodes.filter(code=>Number.isInteger(code)
+    &&code>=1000&&code<=999999).slice(0,4):[];
+  return {phase:value.phase,reason:value.reason,
+    exitCode:Number.isInteger(value.exitCode)&&value.exitCode>=0&&value.exitCode<=255?value.exitCode:null,
+    apiCodes,...(apiCodes.includes(10021)?{validationIssue:[
+      'startup_cpu_limit','startup_memory_limit','syntax_error','unsupported_handler','unknown_validation'
+    ].includes(value.validationIssue)?value.validationIssue:'unknown_validation'}:{})};
+}
 function file(root,relative,maxBytes){
   const target=path.resolve(root,relative);
   if(!target.startsWith(root+path.sep))fail('invalid_path');
@@ -46,13 +69,29 @@ export async function runCloudflareUpload({root,configPath,transferId,artifact,t
   for(const key of ['CLOUDFLARE_API_BASE_URL','CF_API_BASE_URL','CLOUDFLARE_API_KEY','CLOUDFLARE_EMAIL','CLOUDFLARE_API_TOKEN_FILE'])delete env[key];
   return new Promise((resolve,reject)=>{
     const child=spawnChild(process.execPath,args,{cwd:root,env,windowsHide:true,stdio:['ignore','pipe','pipe']});
-    let bytes=0,overflow=false;
+    let bytes=0,overflow=false,timedOut=false,stderrTail='',closed=false;
+    const apiCodes=new Set();
     // Wrangler diagnostics can include account configuration; only a bounded count crosses this interface.
     const consume=chunk=>{bytes=Math.min(bytes+chunk.length,2*1024*1024+1);if(bytes>2*1024*1024)overflow=true;};
-    child.stdout?.on('data',consume);child.stderr?.on('data',consume);
-    const timer=setTimeout(()=>{overflow=true;child.kill('SIGTERM');},15*60*1000);
-    child.once('error',()=>{clearTimeout(timer);reject(new CloudflarePublicationError('outcome_unknown'));});
-    child.once('close',code=>{clearTimeout(timer);code===0&&!overflow?resolve({acknowledged:true}):reject(new CloudflarePublicationError('outcome_unknown'));});
+    child.stdout?.on('data',consume);
+    child.stderr?.on('data',chunk=>{
+      consume(chunk);
+      // Parse Cloudflare's numeric `code: N` shape and immediately discard raw stderr.
+      stderrTail=(stderrTail+chunk.toString('utf8')).slice(-4096);
+      for(const match of stderrTail.matchAll(/\bcode\s*:\s*(\d{4,6})\b/gi)){
+        const code=Number(match[1]);if(code>=1000&&code<=999999&&apiCodes.size<4)apiCodes.add(code);
+      }
+    });
+    const diagnostic=(reason,code=null)=>({phase:'wrangler',reason,
+      exitCode:Number.isInteger(code)&&code>=0&&code<=255?code:null,apiCodes:[...apiCodes],
+      ...(apiCodes.has(10021)?{validationIssue:validationIssue(stderrTail)}:{})});
+    const timer=setTimeout(()=>{timedOut=true;child.kill('SIGTERM');},15*60*1000);
+    child.once('error',()=>{if(closed)return;closed=true;clearTimeout(timer);
+      reject(new CloudflarePublicationError('outcome_unknown',diagnostic('spawn_error')));});
+    child.once('close',code=>{if(closed)return;closed=true;clearTimeout(timer);
+      if(code===0&&!overflow&&!timedOut)resolve({acknowledged:true});
+      else reject(new CloudflarePublicationError('outcome_unknown',
+        diagnostic(timedOut?'timeout':overflow?'output_limit':'exit_nonzero',code)));});
   });
 }
 
@@ -101,13 +140,22 @@ function base64Bytes(value){
   return bytes;
 }
 function bindingsMatch(bindings,target,requireVault=false){
+  const expected=cloudflareWorkerConfiguration(target);
+  const resourceNames=new Set([...expected.d1_databases,...expected.r2_buckets].map(item=>item.binding));
+  const match=(name,predicate)=>bindings.filter(b=>b.name===name).length===1
+    &&predicate(bindings.find(b=>b.name===name));
   return Array.isArray(bindings)
-    &&bindings.some(b=>b.name==='DB'&&b.type==='d1'&&b.id===target.databaseId)
-    &&bindings.some(b=>b.name==='BUCKET'&&b.type==='r2_bucket'&&b.bucket_name===target.bucketName)
+    &&bindings.every(item=>!/^DB_RESOURCE_|^BUCKET_RESOURCE_/.test(item?.name)||resourceNames.has(item.name))
+    &&expected.d1_databases.every(item=>match(item.binding,b=>b.type==='d1'&&b.id===item.database_id))
+    &&expected.r2_buckets.every(item=>match(item.binding,b=>b.type==='r2_bucket'&&b.bucket_name===item.bucket_name))
     &&bindings.some(b=>b.name==='CREEZIO_RUNTIME_PROFILE'&&b.type==='plain_text'&&b.text==='cloudflare')
     &&bindings.some(b=>b.name==='CREEZIO_APP_ORIGIN'&&b.type==='plain_text'&&b.text===target.origin)
     &&bindings.some(b=>b.name==='CREEZIO_WIDGET_SANDBOX_ORIGIN'&&b.type==='plain_text'
       &&b.text===target.widgetSandboxOrigin)
+    &&(expected.vars.CREEZIO_STORAGE_ROUTES
+      ? match('CREEZIO_STORAGE_ROUTES',b=>b.type==='plain_text'
+        &&b.text===expected.vars.CREEZIO_STORAGE_ROUTES)
+      : bindings.every(b=>b.name!=='CREEZIO_STORAGE_ROUTES'))
     &&(!requireVault||bindings.filter(b=>b.name==='CREEZIO_VAULT_KEYRING').length===1
       &&bindings.find(b=>b.name==='CREEZIO_VAULT_KEYRING').type==='secret_text');
 }
@@ -271,6 +319,50 @@ export function createCloudflarePublisher({root,artifactRoot,target,token,contro
     return inspectCloudflareDelivery({artifactRoot,target,transferId,artifact,token,
       controlPlane,fetcher,requireVault:updateId!==null});
   }
+  function checkedArtifact(artifact){
+    const configPath=file(artifactRoot,'dist/server/wrangler.json',128*1024);
+    const build=JSON.parse(readFileSync(file(artifactRoot,'.quality/cloudflare-build.json',2*1024*1024),'utf8'));
+    assertCloudflareBuiltConfiguration(JSON.parse(readFileSync(configPath,'utf8')),target);
+    if(build.artifact?.digest!==artifact?.artifactDigest
+      ||build.compositionDigest!==artifact?.compositionDigest
+      ||measureRuntimeArtifacts(artifactRoot).digest!==artifact.artifactDigest)
+      fail('artifact_changed');
+    return {configPath,build};
+  }
+  function preservedArtifact({transferId,artifact,sourceFingerprint}){
+    if(updateId===null||transferId!==updateId||! /^[a-f0-9]{64}$/.test(sourceFingerprint??''))
+      fail('invalid_input');
+    const checked=checkedArtifact(artifact);
+    const receipt=JSON.parse(readFileSync(file(artifactRoot,'receipt.json',128*1024),'utf8'));
+    if(receipt?.selected?.updateId!==updateId
+      ||receipt.selected.sourceSha!==artifact.sourceSha
+      ||receipt.selected.sourceFingerprint!==sourceFingerprint
+      ||receipt.selected.compositionDigest!==artifact.compositionDigest
+      ||JSON.stringify(receipt.selected.target)!==JSON.stringify(target)
+      ||receipt.artifactDigest!==artifact.artifactDigest
+      ||checked.build.source?.dirty!==false
+      ||checked.build.source?.head!==artifact.sourceSha
+      ||checked.build.source?.sha256!==sourceFingerprint)
+      fail('artifact_changed');
+    return checked.configPath;
+  }
+  async function previous(expectedPreviousVersionId,expectedPreviousDeploymentId,requireLatest=false){
+    if(!VERSION.test(expectedPreviousVersionId??'')
+      ||typeof expectedPreviousDeploymentId!=='string'||!expectedPreviousDeploymentId)
+      fail('invalid_input');
+    const current=await inspectCurrent();
+    if(current.versionId!==expectedPreviousVersionId
+      ||current.deploymentId!==expectedPreviousDeploymentId)fail('deployment_changed');
+    if(requireLatest){
+      if(typeof controlPlane.latestVersion!=='function')fail('not_confirmed');
+      const latest=await controlPlane.latestVersion(target.workerName);
+      if(latest?.id!==expectedPreviousVersionId)fail('not_confirmed');
+    }
+  }
+  function postUpload(error){
+    return new CloudflarePublicationError('outcome_unknown',
+      {phase:'post-upload',reason:'inspection_failed',exitCode:null,apiCodes:[]});
+  }
   async function deliver({transferId,artifact,secretsPath,expectedPreviousVersionId,
     expectedPreviousDeploymentId}){
     if(updateId!==null){
@@ -280,18 +372,11 @@ export function createCloudflarePublisher({root,artifactRoot,target,token,contro
         fail('invalid_input');
     }else if(expectedPreviousVersionId!==undefined||expectedPreviousDeploymentId!==undefined)
       fail('invalid_input');
-    if(updateId!==null){
-      const current=await inspectCurrent();
-      if(current.versionId!==expectedPreviousVersionId
-        ||current.deploymentId!==expectedPreviousDeploymentId)fail('deployment_changed');
-    }
-    const configPath=file(artifactRoot,'dist/server/wrangler.json',128*1024);
-    const build=JSON.parse(readFileSync(file(artifactRoot,'.quality/cloudflare-build.json',2*1024*1024),'utf8'));
-    assertCloudflareBuiltConfiguration(JSON.parse(readFileSync(configPath,'utf8')),target);
+    if(updateId!==null)await previous(expectedPreviousVersionId,expectedPreviousDeploymentId);
+    const {configPath,build}=checkedArtifact(artifact);
     const source=sourceIdentity(root);
     if(source.dirty||!sameSourceIdentity(build.source,source)||source.head!==artifact.sourceSha
-      ||build.artifact?.digest!==artifact.artifactDigest||build.compositionDigest!==artifact.compositionDigest
-      ||measureRuntimeArtifacts(artifactRoot).digest!==artifact.artifactDigest)fail('artifact_changed');
+      )fail('artifact_changed');
     let secretsFile;
     if(secretsPath){
       secretsFile=file(root,secretsPath,8192);
@@ -301,14 +386,28 @@ export function createCloudflarePublisher({root,artifactRoot,target,token,contro
     }
     // Recheck after local validation, immediately before the single upload.
     // Cloudflare offers no conditional deploy primitive, so later races remain uncertain.
-    if(updateId!==null){
-      const current=await inspectCurrent();
-      if(current.versionId!==expectedPreviousVersionId
-        ||current.deploymentId!==expectedPreviousDeploymentId)fail('deployment_changed');
-    }
+    if(updateId!==null)await previous(expectedPreviousVersionId,expectedPreviousDeploymentId);
     await upload({root,configPath,transferId,artifact,token,accountId:target.accountId,secretsFile});
-    if(!sameSourceIdentity(source,sourceIdentity(root))||measureRuntimeArtifacts(artifactRoot).digest!==artifact.artifactDigest)fail('artifact_changed');
-    return inspect({transferId,artifact});
+    try{
+      if(!sameSourceIdentity(source,sourceIdentity(root)))fail('artifact_changed');
+      checkedArtifact(artifact);
+      return await inspect({transferId,artifact});
+    }catch(error){throw postUpload(error);}
   }
-  return Object.freeze({deliver,inspect,inspectCurrent});
+  /** Explicit recovery only: verify the old build receipt, never assert it came from this operator image. */
+  async function deliverPreservedUpdate({transferId,artifact,sourceFingerprint,
+    expectedPreviousVersionId,expectedPreviousDeploymentId}){
+    const configPath=preservedArtifact({transferId,artifact,sourceFingerprint});
+    await previous(expectedPreviousVersionId,expectedPreviousDeploymentId,true);
+    // The same evidence and remote baseline are checked again immediately before upload.
+    preservedArtifact({transferId,artifact,sourceFingerprint});
+    await previous(expectedPreviousVersionId,expectedPreviousDeploymentId,true);
+    await upload({root,configPath,transferId,artifact,token,accountId:target.accountId});
+    try{
+      preservedArtifact({transferId,artifact,sourceFingerprint});
+      return await inspect({transferId,artifact});
+    }catch(error){throw postUpload(error);}
+  }
+  return Object.freeze({deliver,deliverPreservedUpdate,
+    verifyPreservedUpdate:preservedArtifact,inspect,inspectCurrent});
 }

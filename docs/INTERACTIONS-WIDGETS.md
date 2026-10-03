@@ -1,6 +1,6 @@
 # Widgets multiples et modes d'interaction
 
-Contrat cible du 26 septembre 2026, complément du [contrat GPT](COMPATIBILITE-CHATGPT.md) et du [standard module](STANDARD-MODULE.md). Réalisation : [T-16](TODO.md#T-16), [US-16](USER-STORIES.md#US-16), exigences REQ-1604 à REQ-1607. Aucun hôte Creezio implémenté ni recette GPT acquise par ce document.
+Contrat cible du 26 septembre 2026, complément du [contrat GPT](COMPATIBILITE-CHATGPT.md) et du [standard module](STANDARD-MODULE.md). Réalisation : [T-16](TODO.md#T-16), [US-16](USER-STORIES.md#US-16), exigences REQ-1604 à REQ-1607. Les recettes acquises sont suivies séparément dans [T16](IMPLEMENTATION-T16.md) et [T38](IMPLEMENTATION-T38.md) ; ce document décrit les comportements attendus.
 
 ## Un module, plusieurs widgets, plusieurs actions
 
@@ -21,6 +21,14 @@ Exemple : un module commerce peut fournir une fiche produit, un ajout rapide au 
 Les méthodes partagées sont documentées par [OpenAI : UI MCP Apps](https://developers.openai.com/plugins/build/chatgpt-ui) ; les alias spécifiques figurent dans la [référence du pont ChatGPT](https://developers.openai.com/plugins/reference). Les noms `message/context/direct` sont le vocabulaire du contrat Creezio, pas trois nouvelles méthodes du protocole MCP. Les capacités et sémantiques effectivement annoncées par l'hôte doivent être qualifiées.
 
 Un accusé de réception du pont confirme au plus l'acceptation de la requête correspondante. Il ne prouve ni que le modèle a répondu, ni qu'une opération métier a réussi. « Contexte préparé », « message transmis », « recherche effectuée » et « commande confirmée » sont des résultats différents dans l'interface et dans les journaux.
+
+### Navigation vers un service externe
+
+L'ouverture d'une page externe utilise la capacité MCP Apps `openLinks` et `app.openLink({url})` lorsqu'elle est annoncée par l'hôte. C'est une capacité de navigation, pas un quatrième mode d'action métier. Le widget ne suppose ni fenêtres surgissantes, ni dialogues natifs autorisés dans son iframe. Une confirmation propre au widget se rend dans son interface ; l'hôte décide séparément d'ouvrir le lien et peut le refuser. Sans cette capacité, le widget rend le lien lisible sans prétendre l'avoir ouvert.
+
+Le raccord natif Creezio en qualification borne les URL HTTPS et propose l'ouverture dans l'interface de l'hôte, sous la session et l'instance courantes. Il conserve le sandbox et requiert un clic explicite ; il ne télécharge pas l'URL côté serveur. Une navigation Stripe ne confirme pas un achat : le module relit ensuite la session par son opération authentifiée. L'état de réalisation et les recettes de ce raccord figurent dans [T16](IMPLEMENTATION-T16.md) et [T27](IMPLEMENTATION-T27.md).
+
+Si le passage au clavier depuis l'iframe déclenche une relecture d'accès, l'hôte peut garder brièvement en mémoire la proposition de lien. Il ne la réaffiche qu'après une session et un catalogue frais avec le même principal, contexte, conversation, message et instance. Un nouveau geste explicite reste nécessaire pour ouvrir l'URL ; une révocation, un changement de portée ou la fermeture de la conversation annule la proposition. L'URL n'est pas conservée dans le stockage du navigateur.
 
 ## Choisir le mode selon la demande
 
@@ -46,6 +54,8 @@ Valider un panier ne se déduit jamais d'une sélection, d'un ajout de contexte 
 | Routage | Association vérifiée entre iframe/instance, conversation, requête/réponse et objets ; réponse tardive ne remplace pas un autre widget ou une révision plus récente. |
 
 Le SDK valide les déclarations avant composition. L'hôte filtre les contributions selon capacités et droits, puis le serveur recontrôle l'accès lors de l'exécution. Le contrat couvre plusieurs types du même module et plusieurs modules dans le même chat.
+
+Dans la candidate SDK 1.5, `widgetCalls` rattache un outil d'opération à plusieurs actions directes de widgets sans lui attribuer le rendu initial `widget`. Les lectures privées d'images utilisent l'opt-in `linkedRead.mcpImage` de la catégorie de fichiers et les mêmes preuves de lecture liée. Leur résultat `_meta` transitoire n'est ni un contexte pour le prochain tour, ni un état persistant, ni un résultat métier à envoyer au modèle. Voir [le contrat GPT](COMPATIBILITE-CHATGPT.md#lectures-privées-réservées-au-composant).
 
 ## Chat interne Creezio
 

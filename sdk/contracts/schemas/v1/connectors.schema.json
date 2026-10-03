@@ -48,6 +48,9 @@
               },
               "updatedAt": {
                 "$ref": "urn:creezio:contracts:v1:common#/$defs/id"
+              },
+              "connectionId": {
+                "$ref": "urn:creezio:contracts:v1:common#/$defs/id"
               }
             },
             "required": [
@@ -175,6 +178,43 @@
           "additionalProperties": false
         }
       },
+      "mutationSecretPrefix": {
+        "type": "string", "minLength": 1, "maxLength": 32,
+        "pattern": "^[A-Za-z0-9_-]+$"
+      },
+      "webhook": {
+        "type": "object",
+        "properties": {
+          "path": {"type":"string","pattern":"^/api/webhooks/[a-z][a-z0-9-]{0,63}$"},
+          "operationId": {"$ref":"urn:creezio:contracts:v1:common#/$defs/id"},
+          "scheme": {"enum":["stripe","standard","resend"]},
+          "mapper": {
+            "type":"object",
+            "properties": {
+              "path":{"type":"string","pattern":"^module/[A-Za-z0-9._/-]+\\.ts$"},
+              "export":{"type":"string","pattern":"^[A-Za-z][A-Za-z0-9_]{0,127}$"}
+            },
+            "required":["path","export"],"additionalProperties":false
+          },
+          "fields": {
+            "type":"object",
+            "properties": {
+              "connectionId":{"$ref":"urn:creezio:contracts:v1:common#/$defs/id"},
+              "signingRef":{"$ref":"urn:creezio:contracts:v1:common#/$defs/id"},
+              "signingVersion":{"$ref":"urn:creezio:contracts:v1:common#/$defs/id"},
+              "previousRef":{"$ref":"urn:creezio:contracts:v1:common#/$defs/id"},
+              "previousVersion":{"$ref":"urn:creezio:contracts:v1:common#/$defs/id"},
+              "serviceTokenRef":{"$ref":"urn:creezio:contracts:v1:common#/$defs/id"},
+              "serviceTokenVersion":{"$ref":"urn:creezio:contracts:v1:common#/$defs/id"}
+            },
+            "required":["connectionId","signingRef","signingVersion","previousRef",
+              "previousVersion","serviceTokenRef","serviceTokenVersion"],
+            "additionalProperties":false
+          }
+        },
+        "required":["path","operationId","scheme","mapper","fields"],
+        "additionalProperties":false
+      },
       "resources": {
         "type": "array",
         "minItems": 1,
@@ -186,7 +226,7 @@
               "$ref": "urn:creezio:contracts:v1:common#/$defs/id"
             },
             "method": {
-              "const": "GET"
+              "enum": ["GET", "POST", "PUT", "PATCH", "DELETE"]
             },
             "path": {
               "type": "string",
@@ -211,6 +251,21 @@
               "properties": {
                 "cursor": {"type": "string", "pattern": "^[A-Za-z_][A-Za-z0-9_]{0,63}$", "not": {"pattern": "[^A-Za-z0-9_]"}},
                 "limit": {"type": "string", "pattern": "^[A-Za-z_][A-Za-z0-9_]{0,63}$", "not": {"pattern": "[^A-Za-z0-9_]"}},
+                "fields": {
+                  "type": "array", "maxItems": 16,
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "name": {"type": "string", "pattern": "^[A-Za-z][A-Za-z0-9_]{0,63}$"},
+                      "wireName": {"type": "string", "pattern": "^[A-Za-z_][A-Za-z0-9_]{0,63}$"},
+                      "kind": {"enum": ["string", "integer", "boolean"]},
+                      "required": {"type": "boolean"},
+                      "maxBytes": {"type": "integer", "minimum": 1, "maximum": 2048}
+                    },
+                    "required": ["name", "wireName", "kind", "maxBytes"],
+                    "additionalProperties": false
+                  }
+                },
                 "fixed": {
                   "type": "array",
                   "maxItems": 8,
@@ -226,6 +281,64 @@
                 }
               },
               "additionalProperties": false
+            },
+            "body": {
+              "type": "object",
+              "properties": {
+                "encoding": {"enum": ["form", "json", "json-root"]},
+                "fields": {
+                  "type": "array", "minItems": 1, "maxItems": 32,
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "name": {"type": "string", "pattern": "^[A-Za-z][A-Za-z0-9_]{0,63}$"},
+                      "wireName": {"type": "string", "minLength": 1, "maxLength": 128,
+                        "pattern": "^[A-Za-z][A-Za-z0-9_\\[\\]]*$"},
+                      "kind": {"enum": ["string", "integer", "boolean", "json"]},
+                      "required": {"type": "boolean"},
+                      "maxBytes": {"type": "integer", "minimum": 1, "maximum": 65536}
+                    },
+                    "required": ["name", "wireName", "kind", "maxBytes"],
+                    "additionalProperties": false
+                  }
+                },
+                "fixed": {
+                  "type": "array", "maxItems": 8,
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "name": {"type": "string", "minLength": 1, "maxLength": 128,
+                        "pattern": "^[A-Za-z][A-Za-z0-9_\\[\\]]*$"},
+                      "value": {"type": "string", "minLength": 1, "maxLength": 256,
+                        "pattern": "^[ -~]+$"}
+                    },
+                    "required": ["name", "value"],
+                    "additionalProperties": false
+                  }
+                }
+              },
+              "required": ["encoding", "fields"],
+              "additionalProperties": false
+            },
+            "attachments": {
+              "type":"object",
+              "properties":{
+                "wireName":{"type":"string","pattern":"^[A-Za-z][A-Za-z0-9_]{0,63}$"},
+                "maxItems":{"type":"integer","minimum":1,"maximum":50},
+                "maxBytes":{"type":"integer","minimum":1,"maximum":10485760}
+              },
+              "required":["wireName","maxItems","maxBytes"],
+              "additionalProperties":false
+            },
+            "idempotencyHeader": {
+              "type": "string", "pattern": "^[A-Za-z][A-Za-z0-9-]{0,63}$"
+            },
+            "successStatuses": {
+              "type": "array", "minItems": 1, "maxItems": 4, "uniqueItems": true,
+              "items": {"type": "integer", "minimum": 200, "maximum": 299}
+            },
+            "responseBody": {
+              "enum": ["json", "none"]
             }
           },
           "required": [
@@ -235,6 +348,37 @@
             "params"
           ],
           "additionalProperties": false
+        }
+      },
+      "binaryDownloads": {
+        "type": "array", "maxItems": 4,
+        "items": {
+          "type": "object",
+          "properties": {
+            "id": {"$ref": "urn:creezio:contracts:v1:common#/$defs/id"},
+            "proofOperationId": {"$ref": "urn:creezio:contracts:v1:common#/$defs/id"},
+            "metadataPath": {"type":"string","minLength":1,"maxLength":512,
+              "pattern":"^/[A-Za-z0-9_/{}/-]+$"},
+            "cdnOrigin": {"type":"string","format":"uri","maxLength":2048},
+            "cdnPath": {"type":"string","minLength":1,"maxLength":512,
+              "pattern":"^/[A-Za-z0-9_/{}/-]+$"},
+            "maxBytes": {"type":"integer","minimum":1,"maximum":10485760},
+            "event": {
+              "type":"object",
+              "properties": {
+                "modelId":{"$ref":"urn:creezio:contracts:v1:common#/$defs/id"},
+                "indexId":{"$ref":"urn:creezio:contracts:v1:common#/$defs/id"},
+                "connectionField":{"$ref":"urn:creezio:contracts:v1:common#/$defs/id"},
+                "parentField":{"$ref":"urn:creezio:contracts:v1:common#/$defs/id"},
+                "typeField":{"$ref":"urn:creezio:contracts:v1:common#/$defs/id"},
+                "typeValue":{"$ref":"urn:creezio:contracts:v1:common#/$defs/id"}
+              },
+              "required":["modelId","indexId","connectionField","parentField","typeField","typeValue"],
+              "additionalProperties":false
+            }
+          },
+          "required":["id","proofOperationId","metadataPath","cdnOrigin","cdnPath","maxBytes","event"],
+          "additionalProperties":false
         }
       }
     },

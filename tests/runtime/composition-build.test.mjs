@@ -37,6 +37,10 @@ function fixture(t, witness = true) {
   const composition = read(path.join(repository, compositionSource));
   const lock = read(path.join(repository, lockSource));
   if (witness === 'access') {
+    composition.sdk.version = '1.9.0';
+    lock.sdkVersion = composition.sdk.version;
+  }
+  if (witness === 'access') {
     // This fixture specifically qualifies Access alone, independently of other native modules.
     composition.modules = composition.modules.filter(item => item.moduleId === 'creezio.access');
     lock.modules = lock.modules.filter(item => item.moduleId === 'creezio.access');
@@ -53,11 +57,14 @@ function fixture(t, witness = true) {
   const modulePath = witness === true ? witnessPath : accessPath;
   const module = witness ? read(path.join(root, modulePath, 'module/manifest.json')) : undefined;
   const save = () => {
-    if (module) { write(path.join(root, modulePath, 'module/manifest.json'), module); lock.modules[0].contractIntegrity = contractIntegrity(module); }
+    if (module) { write(path.join(root, modulePath, 'module/manifest.json'), module);
+      lock.modules[0].source = module.identity.source;
+      lock.modules[0].contractIntegrity = contractIntegrity(module); }
     lock.compositionIntegrity = contractIntegrity(composition);
     write(path.join(root, 'configuration/composition.json'), composition);
     write(path.join(root, 'configuration/composition.lock.json'), lock);
   };
+  save();
   return { root, composition, lock, module, save };
 }
 function secondWitness(f) {
@@ -124,12 +131,21 @@ test('default native access composition enables native audiences and the declare
   const f=fixture(t,'access'), result=await composeRuntime({root:f.root});
   assert.equal(result.moduleCount,1);assert.equal(result.viewCount,1);
   assert.deepEqual(f.composition.modules.map(module=>module.moduleId),['creezio.access']);
-  assert.equal(f.module.contracts.operations.length,10);
+  assert.deepEqual(f.module.contracts.operations.map(operation=>operation.id),[
+    'policy.read','permissions.list','principals.list','sessions.list','audit.list','audit.detail',
+    'policy.apply-delta','principals.set-human-status','principals.revoke-sessions','sessions.revoke',
+    'service.create','service.status','service.token.issue','service.token.revoke','service.token.read']);
   assert.ok(f.module.contracts.api.every(api=>api.audience==='admin'
-    && JSON.stringify(api.auth)==='["session","oauth"]'));
+    && JSON.stringify(api.auth)===(api.operation.id==='service.token.issue'
+      ?'["session"]':'["session","oauth"]')));
   const registry=await import(pathToFileURL(generated(f.root,'server.ts')).href);
   assert.deepEqual(registry.nativeAccess,{admin:true,app:true});assert.ok(Object.isFrozen(registry.nativeAccess));
-  assert.equal(registry.mcpCatalog.tools.length,10);
+  assert.deepEqual(registry.mcpCatalog.tools.map(tool=>tool.name).sort(),
+    f.module.contracts.mcp.tools.map(tool=>tool.name).sort());
+  assert.deepEqual(registry.mcpCatalog.tools.filter(tool=>tool.name.startsWith('access_service_'))
+    .map(tool=>tool.name).sort(),['access_service_create','access_service_status',
+      'access_service_token_read','access_service_token_revoke']);
+  assert.ok(!registry.mcpCatalog.tools.some(tool=>tool.name==='access_service_token_issue'));
   assert.ok(registry.mcpCatalog.tools.every(tool=>tool.audience==='admin'
     && JSON.stringify(tool.auth)==='["oauth"]'));
   assert.equal(registry.permissionTitles['creezio.access:manage'],

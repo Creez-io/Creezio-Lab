@@ -16,6 +16,7 @@ export interface DeliveryUpdatePersistence {
 }
 export interface DeliveryUpdateSnapshot {
   readonly authorized: boolean;
+  readonly rejectAvailable?: boolean;
   readonly identityVersion: number;
   readonly busy: boolean;
   readonly connection: DeliveryConnection;
@@ -33,6 +34,8 @@ export interface DeliveryUpdateController {
   start(): Promise<DeliveryResult<DeliveryUpdateStatus>>;
   status(): Promise<DeliveryResult<DeliveryUpdateStatus>>;
   reconcile(): Promise<DeliveryResult<DeliveryUpdateStatus>>;
+  retry(): Promise<DeliveryResult<DeliveryUpdateStatus>>;
+  reject(): Promise<DeliveryResult<DeliveryUpdateStatus>>;
   dispose(): void;
 }
 const fail = <T>(code: string): DeliveryResult<T> => ({ok: false, code});
@@ -71,7 +74,8 @@ export function createDeliveryUpdateController(options: {access: AccessControlle
   const observers = new Set<() => void>();
   let snapshot: DeliveryUpdateSnapshot;
   function publish() {
-    snapshot = Object.freeze({authorized: !disposed && owner !== null, identityVersion, busy,
+    snapshot = Object.freeze({authorized: !disposed && owner !== null,
+      rejectAvailable: typeof transport.rejectUpdate === 'function', identityVersion, busy,
       connection, inspection, prepared, update, saved: pending, error});
     for (const listener of [...observers]) { try {listener();} catch { /* subscriber isolation */ } }
   }
@@ -124,6 +128,8 @@ export function createDeliveryUpdateController(options: {access: AccessControlle
     }
     if (value.phase === 'prepared' && value.summary) prepared = {kind: 'update', updateId,
       planDigest: value.planDigest, summary: value.summary};
+    if (value.phase === 'rejected' && inspection)
+      inspection = {...inspection, activeUpdateId: null};
     update = value;
   }
   return Object.freeze({
@@ -136,7 +142,8 @@ export function createDeliveryUpdateController(options: {access: AccessControlle
     }),
     prepare: () => {
       if (inspection?.readiness !== 'ready' || inspection.activeUpdateId
-        || pending && update?.phase !== 'delivered') return Promise.resolve(fail<DeliveryUpdatePrepared>('update_not_ready'));
+        || pending && !['delivered','rejected'].includes(update?.phase ?? ''))
+        return Promise.resolve(fail<DeliveryUpdatePrepared>('update_not_ready'));
       return execute(() => transport.prepareUpdate(), value => {
         if (!owner || value.kind !== 'update' || !id(value.updateId) || !digest(value.planDigest))
           throw new UpdateStateError('invalid_response');
@@ -167,9 +174,33 @@ export function createDeliveryUpdateController(options: {access: AccessControlle
     },
     reconcile: () => {
       const current = pending;
-      return current?.started && update?.phase !== 'delivered'
+      return current?.started && update?.phase !== 'delivered' && update?.phase !== 'rejected'
         ? execute(() => transport.reconcileUpdate({updateId: current.updateId,
           planDigest: current.planDigest}), value => exactUpdate(value, current.updateId))
+        : Promise.resolve(fail<DeliveryUpdateStatus>('update_not_ready'));
+    },
+    retry: () => {
+      const current = pending;
+      return current?.started && update?.phase === 'delivery-unknown'
+        && update.retryEligible === true && !update.diagnostic?.apiCodes.includes(10021)
+        ? execute(() => transport.retryUpdate({updateId: current.updateId,
+          planDigest: current.planDigest}), value => exactUpdate(value, current.updateId))
+        : Promise.resolve(fail<DeliveryUpdateStatus>('update_not_ready'));
+    },
+    reject: () => {
+      const rejectUpdate = transport.rejectUpdate;
+      if (typeof rejectUpdate !== 'function')
+        return Promise.resolve(fail<DeliveryUpdateStatus>('service_unavailable'));
+      const current = pending;
+      return current?.started && update?.phase === 'delivery-unknown'
+        && update.diagnostic?.apiCodes.includes(10021)
+        ? execute(() => rejectUpdate.call(transport, {updateId: current.updateId,
+          planDigest: current.planDigest}), value => {
+            if (value.phase !== 'rejected' || value.registryStatus !== 'pending'
+              || value.finalUrl !== null || value.retryEligible !== false)
+              throw new UpdateStateError('invalid_response');
+            exactUpdate(value, current.updateId);
+          })
         : Promise.resolve(fail<DeliveryUpdateStatus>('update_not_ready'));
     },
     dispose() {if (disposed) return; disposed = true; generation++; unsubscribe(); observers.clear();},

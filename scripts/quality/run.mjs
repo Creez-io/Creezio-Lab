@@ -3,9 +3,10 @@ import { createHash } from 'node:crypto';
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { inspectTap, tapFailureExcerpt, sourceIdentity, sameSourceIdentity, collectRequiredTests } from './evidence.mjs';
+import { auditedParallelTests, inspectTap, inspectTapPhases, partitionRequiredTests, remainingTestBudgetMs,
+  tapFailureExcerpt, slowestTapSubtests, sourceIdentity, sameSourceIdentity, collectRequiredTests } from './evidence.mjs';
 import { validateDocs } from './docs.mjs';
-import { measureRuntimeArtifacts } from './runtime.mjs';
+import { assertArtifactBudgets, measureRuntimeArtifacts } from './runtime.mjs';
 import { pins } from '../lab/bootstrap-public-packages.mjs';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
@@ -15,6 +16,7 @@ mkdirSync(dirname(evidencePath), { recursive: true });
 const write = value => writeFileSync(evidencePath, JSON.stringify(value, null, 2) + '\n');
 const profile = 't32-cloudflare';
 write({ schemaVersion: 1, profile, started, state: 'running', success: false, mergeReady: false });
+let earlyArtifactFailure = null;
 try {
 const source = sourceIdentity(root);
 const docs = await validateDocs(root);
@@ -47,38 +49,83 @@ execute('catalog-models', ['scripts/data/prepare-native-module.mjs', 'catalog', 
 execute('n8n-models', ['scripts/data/prepare-native-module.mjs', 'n8n', '--family=connectors']);
 execute('stripe-models', ['scripts/data/prepare-native-module.mjs', 'stripe', '--family=connectors']);
 execute('meili-models', ['scripts/data/prepare-native-module.mjs', 'meili', '--family=connectors']);
+for (const name of ['granola','resend','hermes']) {
+  execute(`${name}-models`, ['scripts/data/prepare-native-module.mjs', name, '--family=connectors']);
+}
 // Lab validates module archives against the immutable public SDK selected by
 // its npm lock. It never packs the local SDK workspace in place of that SDK.
 const sdkSpec=JSON.parse(readFileSync(resolve(root,'package.json'),'utf8')).devDependencies?.['@creezio/sdk'];
-const sdkPin=pins[11];
+const sdkPin=pins[12];
 if(sdkSpec!==`${sdkPin[1]}${sdkPin[0]}`)
   throw new Error('Lab public SDK pin differs from the qualified archive.');
 const sdkArchive=resolve(root,'.creezio','packages',sdkPin[0]);
 const sdkSha=createHash('sha256').update(readFileSync(sdkArchive)).digest('hex');
-if(sdkSha!=='3196390908a13cf32290f100584a3edb20931c8b3f56c37c6fab131c3fe4b37d')
+if(sdkSha!=='b10cc8ca47bad85d3f22124e0b3da214cea15610330fc650a8c107cba189eb2a')
   throw new Error('Lab public SDK archive integrity differs.');
 execute('module-archive-suites',['scripts/modules/validate-archives.mjs','--sdk-archive',sdkArchive,
-  '--sdk-sha256',sdkSha,'extensions/native/support','extensions/native/pages-navigation',
+  '--sdk-sha256',sdkSha,'extensions/native/delivery','extensions/native/messaging',
+  'extensions/native/support','extensions/native/pages-navigation',
   'extensions/native/analytics','extensions/common/catalog','extensions/connectors/n8n',
-  'extensions/connectors/stripe','extensions/connectors/meili'],180_000);
+  'extensions/connectors/stripe','extensions/connectors/meili','extensions/connectors/granola',
+  'extensions/connectors/resend','extensions/connectors/hermes'],180_000);
 execute('delivery-suites', ['extensions/native/delivery/gate.mjs']);
 execute('widgets-witness-suites', ['extensions/widgets-witness/gate.mjs']);
 execute('theme-standard-suites', ['themes/standard/gate.mjs']);
 execute('theme-chatgpt-suites', ['themes/chatgpt-like/gate.mjs']);
 execute('typecheck', ['node_modules/typescript/bin/tsc', '--noEmit']);
 execute('build', ['scripts/run-framework.mjs', 'build']);
-// T27's full suite passed 1,246 tests in 483s; another runner stopped at the 600s
-// ceiling after reporting its final test. Leave bounded room for host variance;
-// individual test deadlines and complete TAP counters remain mandatory.
-// This harness deadline does not change any product deadline or permit an incomplete TAP result.
+// Refuse an oversized build before the long aggregate. The runtime witness below
+// still checks these same limits with its graph and timing evidence.
+const artifactStarted = performance.now();
+const builtArtifact = measureRuntimeArtifacts(root);
+earlyArtifactFailure = { source, results: { docs, commands, artifact: {
+  digest: builtArtifact.digest, worker: builtArtifact.worker, assets: builtArtifact.assets },
+  tests: { state: 'not_started', requiredFiles: tests, executed: 0 },
+  runtimeEvidenceCurrent: false } };
+try {
+  assertArtifactBudgets(builtArtifact);
+  commands.push({ label: 'artifact-budgets', command: ['internal', 'assertArtifactBudgets'],
+    exitCode: 0, durationMs: Math.round(performance.now() - artifactStarted) });
+} catch (error) {
+  commands.push({ label: 'artifact-budgets', command: ['internal', 'assertArtifactBudgets'],
+    exitCode: 1, durationMs: Math.round(performance.now() - artifactStarted) });
+  throw error;
+}
+earlyArtifactFailure = null;
+// Only these audited files use test concurrency 2. All other and newly added
+// files stay serial. Both phases share the original 900s aggregate deadline.
+const partition = partitionRequiredTests(tests, auditedParallelTests);
 const testStarted = performance.now();
-const result = spawnSync(process.execPath, ['--test', '--test-concurrency=1', '--test-reporter=tap', ...tests],
-  { cwd: root, encoding: 'utf8', timeout: 900_000, maxBuffer: 8 * 1024 * 1024 });
+const deadline = testStarted + 900_000;
+const phaseResults = [];
+let phaseNotStarted = null;
+for (const [name, files, concurrency] of [
+  ['parallel', partition.parallel, 2], ['serial', partition.serial, 1],
+]) {
+  const remaining = remainingTestBudgetMs(deadline, performance.now());
+  if (remaining === 0) { phaseNotStarted = name; break; }
+  const phaseStarted = performance.now();
+  const result = spawnSync(process.execPath,
+    ['--test', `--test-concurrency=${concurrency}`, '--test-reporter=tap', ...files],
+    { cwd: root, encoding: 'utf8', timeout: remaining, maxBuffer: 8 * 1024 * 1024 });
+  const tapFile = `.quality/tests-latest-${name}.tap`;
+  const stderrFile = `.quality/tests-latest-${name}.stderr.log`;
+  writeFileSync(resolve(root, tapFile), result.stdout ?? '');
+  writeFileSync(resolve(root, stderrFile), result.stderr ?? '');
+  const phase = { name, files, concurrency, exitCode: result.status,
+    durationMs: Math.round(performance.now() - phaseStarted),
+    timedOut: result.error?.code === 'ETIMEDOUT', tapFile, stderrFile,
+    tap: inspectTap(result.stdout ?? '', result.status), stdout: result.stdout ?? '',
+    stderr: result.stderr ?? '', error: result.error?.message ?? null };
+  phaseResults.push(phase);
+  if (!phase.tap.success) break;
+}
 const testDurationMs = Math.round(performance.now() - testStarted);
-// Preserve failing diagnostics before a bounded console tail hides early failures.
-writeFileSync(resolve(root, '.quality/tests-latest.tap'), result.stdout ?? '');
-writeFileSync(resolve(root, '.quality/tests-latest.stderr.log'), result.stderr ?? '');
-const tap = inspectTap(result.stdout ?? '', result.status);
+const tap = inspectTapPhases(phaseResults, tests);
+const slowestSubtests = phaseResults.flatMap(phase => slowestTapSubtests(phase.stdout)
+  .map(row => ({ ...row, phase: phase.name })))
+  .sort((a, b) => b.durationMs - a.durationMs).slice(0, 12);
+const phaseReports = phaseResults.map(({ stdout, stderr, error, ...phase }) => phase);
 const unchanged = sameSourceIdentity(source, sourceIdentity(root));
 let runtime;
 try { runtime = JSON.parse(readFileSync(resolve(root, '.quality/runtime-latest.json'), 'utf8')); } catch { runtime = null; }
@@ -87,14 +134,16 @@ const runtimeCurrent = runtime?.status === 'passed' && Date.parse(runtime.starte
   && runtime.artifact?.digest === measureRuntimeArtifacts(root).digest;
 const success = docs.errors.length === 0 && tap.success && unchanged && runtimeCurrent;
 const report = { schemaVersion: 1, profile, started, finished: new Date().toISOString(),
-  source, results: { docs, commands, tests: { ...tap, files: tests, exitCode: result.status, durationMs: testDurationMs }, runtime,
+  source, results: { docs, commands, tests: { ...tap, files: tests, phases: phaseReports,
+    phaseNotStarted, durationMs: testDurationMs }, runtime,
     runtimeEvidenceCurrent: runtimeCurrent, sourceUnchanged: unchanged },
   success, state: success ? 'passed' : 'failed', mergeReady: false,
   limits: ['Native Access, OAuth and MCP transports are tested within the listed suites; the browser and ChatGPT recipes are recorded separately',
     'This aggregate does not certify all native modules, hosted CMS parity, provider onboarding or remote CI provenance'] };
 write(report);
 console.log(JSON.stringify({ success, mergeReady: false, source: source.sha256, docs: docs.metrics,
-  tests: tap, testDurationMs,
+  tests: tap, testDurationMs, slowestSubtests, phases: phaseReports.map(({ files, ...phase }) =>
+    ({ ...phase, fileCount: files.length })), phaseNotStarted,
   commands: commands.map(({label, exitCode, durationMs}) => ({label, exitCode, durationMs})),
   runtime: runtime ? {status: runtime.status, artifact: runtime.artifact ? {
     digest: runtime.artifact.digest, worker: runtime.artifact.worker, assets: runtime.artifact.assets
@@ -103,12 +152,19 @@ console.log(JSON.stringify({ success, mergeReady: false, source: source.sha256, 
 if (!success) {
   for (const error of docs.errors) console.error(JSON.stringify(error));
   if (!runtimeCurrent) console.error('Missing, failed, stale or changed runtime artifact evidence.');
-  if (!tap.success) console.error(tapFailureExcerpt(result.stdout ?? '') || (result.stdout ?? '').slice(-12000),
-    result.stderr ?? '', result.error?.message ?? '');
+  if (!tap.success) {
+    if (phaseNotStarted) console.error(`Test phase ${phaseNotStarted} not started: shared 900s budget exhausted.`);
+    for (const phase of phaseResults.filter(item => !item.tap.success)) {
+      console.error(`${phase.name} TAP incomplete: ${phase.tap.reason}`,
+        tapFailureExcerpt(phase.stdout) || phase.stdout.slice(-12000),
+        phase.stderr.slice(-6000), phase.error ?? '');
+    }
+  }
   process.exitCode = 1;
 }
 } catch (error) {
   write({ schemaVersion: 1, profile, started, finished: new Date().toISOString(),
+    ...(earlyArtifactFailure ?? {}),
     state: 'failed', success: false, mergeReady: false, error: error.message });
   console.error(error.message);
   process.exitCode = 1;

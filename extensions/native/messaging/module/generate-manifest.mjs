@@ -15,8 +15,13 @@ const model=(name,title,fields,primaryKey,indexes=[],relations=[])=>({id:name,ti
   permissions:[ref('permission','use')],deletion:{mode:'soft',requiresApproval:false},public:false});
 const boxLink={id:'box',fields:[...common,'box_id'],target:ref('model','box'),
   targetFields:[...common,'id'],onDelete:'restrict'};
+const resendRef=(kind,name)=>({moduleId:'creezio.resend',kind,id:name});
 const draftLink={id:'draft',fields:[...common,'box_id','draft_id'],target:ref('model','draft'),
   targetFields:[...common,'box_id','id'],onDelete:'restrict'};
+const messageLink={id:'message',fields:[...common,'box_id','message_id'],target:ref('model','message'),
+  targetFields:[...common,'box_id','id'],onDelete:'restrict'};
+const inboundSnapshotLink={id:'snapshot',fields:[...common,'box_id','snapshot_id'],
+  target:ref('model','inbound_snapshot'),targetFields:[...common,'box_id','id'],onDelete:'restrict'};
 const models=[
   model('box','Boîtes locales',[
     field('id','string',{constraints:S()}),field('name','string',{constraints:S(120)}),
@@ -44,6 +49,7 @@ const models=[
     field('to_addr','string',{constraints:S(2048,0)}),field('cc_addr','string',{constraints:S(2048,0)}),
     field('bcc_addr','string',{constraints:S(2048,0)}),field('subject','string',{constraints:S(240,0)}),
     field('text_body','string',{constraints:S(16000,0)}),field('html_body','string',{constraints:S(32000,0)}),
+    field('send_intent_id','string',{nullable:true,constraints:S()}),
     field('created_at','date-time'),field('updated_at','date-time'),field('revision','integer',{constraints:I(1)})],
     [...common,'box_id','id'],[{id:'recent-drafts',fields:[...common,'box_id','updated_at','id'],unique:false}],
     [boxLink]),
@@ -66,9 +72,52 @@ const models=[
     field('generation','string',{constraints:S()}),field('created_at','date-time')],
     [...common,'box_id','draft_id','file_id'],
     [{id:'by-draft',fields:[...common,'box_id','draft_id','created_at','file_id'],unique:false}],
-    [boxLink,draftLink])
+    [boxLink,draftLink]),
+  model('message_attachment','Pièces jointes figées des messages',[
+    field('box_id','string',{constraints:S()}),field('message_id','string',{constraints:S()}),
+    field('file_id','string',{constraints:S(67)}),field('filename','string',{constraints:S(255)}),
+    field('content_type','string',{constraints:S()}),field('byte_size','integer',{constraints:I()}),
+    field('digest','string',{constraints:{minLength:64,maxLength:64}}),field('intent_id','string',{constraints:S()}),
+    field('generation','string',{constraints:S()}),field('created_at','date-time')],
+    [...common,'box_id','message_id','file_id'],
+    [{id:'by-message',fields:[...common,'box_id','message_id','created_at','file_id'],unique:false}],
+    [boxLink,messageLink]),
+  model('inbound_snapshot','Courriel reçu figé avant import',[
+    field('box_id','string',{constraints:S()}),field('id','string',{constraints:S()}),
+    field('email_id','string',{constraints:S(128)}),field('box_address','string',{constraints:S(320)}),
+    field('box_revision','integer',{constraints:I(1)}),
+    field('connection_id','string',{constraints:S()}),field('config_revision','integer',{constraints:I(1)}),
+    field('from_addr','string',{constraints:S(320)}),field('to_addr','string',{constraints:S(2048)}),
+    field('subject','string',{constraints:S(240,0)}),field('text_body','string',{constraints:S(16000,0)}),
+    field('html_body','string',{constraints:S(32000,0)}),field('received_at','date-time'),
+    field('attachments','json'),field('deleted_at','date-time',{nullable:true}),field('snapshot_digest','string',
+      {constraints:{minLength:64,maxLength:64}}),field('created_at','date-time')],
+    [...common,'box_id','id'],[],[boxLink]),
+  model('inbound_stage_receipt','Reçus de staging des pièces entrantes',[
+    field('box_id','string',{constraints:S()}),field('snapshot_id','string',{constraints:S()}),
+    field('child_id','string',{constraints:S(128)}),field('file_id','string',{constraints:S(67)}),
+    field('filename','string',{constraints:S(255)}),field('content_type','string',{constraints:S()}),
+    field('byte_size','integer',{constraints:I()}),
+    field('digest','string',{constraints:{minLength:64,maxLength:64}}),
+    field('intent_id','string',{constraints:S()}),field('generation','string',{constraints:S()}),
+    field('created_at','date-time')],
+    [...common,'box_id','snapshot_id','file_id'],
+    [{id:'by-snapshot',fields:[...common,'box_id','snapshot_id','created_at','file_id'],unique:false},
+      {id:'child',fields:[...common,'box_id','snapshot_id','child_id'],unique:true}],
+    [boxLink,inboundSnapshotLink]),
+  model('send_snapshot','Intention d’envoi figée',[field('box_id','string',{constraints:S()}),
+    field('id','string',{constraints:S()}),field('draft_id','string',{constraints:S()}),
+    field('draft_revision','integer',{constraints:I(1)}),
+    field('from_addr','string',{constraints:S(320)}),field('to_addr','string',{constraints:S(2048)}),
+    field('cc_addr','string',{constraints:S(2048,0)}),field('bcc_addr','string',{constraints:S(2048,0)}),
+    field('subject','string',{constraints:S(240,0)}),field('text_body','string',{constraints:S(16000,0)}),
+    field('html_body','string',{constraints:S(32000,0)}),
+    field('config_revision','integer',{constraints:I(1)}),
+    field('payload_digest','string',{constraints:{minLength:64,maxLength:64}}),field('created_at','date-time')],
+    [...common,'box_id','id'],[],[boxLink])
 ];
-for(const name of ['draft','draft_attachment'])models.find(x=>x.id===name).deletion.mode='hard';
+for(const name of ['draft','draft_attachment','message','message_attachment'])
+  models.find(x=>x.id===name).deletion.mode='hard';
 models.find(x=>x.id==='file_metadata').fields=models.find(x=>x.id==='file_metadata').fields
   .filter(x=>x.id!=='owner_id');
 
@@ -79,7 +128,8 @@ const nullable=schema=>({anyOf:[schema,{type:'null'}]});
 const schemas=[],schema=(name,value)=>{schemas.push({id:name,schema:value});return {schemaId:name};};
 const box=obj({id:str(),name:str(120),address:str(320,0),kind:{const:'local'},revision:num(1)});
 const draft=obj({id:str(),boxId:str(),to:str(2048,0),cc:str(2048,0),bcc:str(2048,0),
-  subject:str(240,0),text:str(16000,0),html:str(32000,0),updatedAt:str(35),revision:num(1)});
+  subject:str(240,0),text:str(16000,0),html:str(32000,0),updatedAt:str(35),revision:num(1),
+  sendIntentId:nullable(str())});
 const message=obj({id:str(),boxId:str(),direction:{type:'string',enum:['inbound','outbound']},
   from:str(320,0),to:str(2048,0),cc:str(2048,0),subject:str(240,0),text:str(16000,0),
   html:str(32000,0),state:{type:'string',enum:['received','queued','sending','sent','delivered','bounced','failed','unknown']},
@@ -88,6 +138,14 @@ const message=obj({id:str(),boxId:str(),direction:{type:'string',enum:['inbound'
   receivedAt:nullable(str(35)),sentAt:nullable(str(35)),revision:num(1)});
 const attachment=obj({fileId:str(67),filename:str(255),contentType:str(),byteSize:num(),
   reference:obj({fileId:str(67),intentId:str(),generation:str(),digest:str(64)})});
+const inboundChild=obj({id:str(128),filename:str(255),contentType:str(),byteSize:num(0)});
+const inboundSnapshot=obj({id:str(),boxId:str(),emailId:str(128),from:str(320),
+  to:str(2048),subject:str(240,0),receivedAt:str(35),
+  attachments:{type:'array',items:inboundChild,maxItems:50},
+  stagedChildIds:{type:'array',items:str(128),maxItems:50},imported:{type:'boolean'}});
+const inboundSnapshotOutput=schema('inbound-snapshot-output',obj({snapshot:inboundSnapshot}));
+const inboundStageOutput=schema('inbound-stage-output',obj({childId:str(128),fileId:str(67),
+  staged:{const:true}}));
 const page=item=>obj({items:{type:'array',items:item,maxItems:50},nextCursor:nullable(str(2048))});
 const listInput=schema('box-list-input',obj({limit:num(1,50),cursor:str(2048)},['limit']));
 const boxPage=schema('box-page-output',page(box));
@@ -102,6 +160,18 @@ const messageOutput=schema('message-output',obj({message}));
 const messageUpdateInput=schema('message-update-input',obj({requestKey:str(),boxId:str(),messageId:str(),
   revision:num(1),folder:{type:'string',enum:['inbox','sent','outbox','archive','trash']},read:{type:'boolean'}},
   ['requestKey','boxId','messageId','revision']));
+const messageDeleteInput=schema('message-delete-input',obj({requestKey:str(),boxId:str(),messageId:str(),
+  revision:num(1)}));
+const messageDeleteOutput=schema('message-delete-output',obj({deleted:{type:'boolean'},
+  revision:nullable(num(1)),removed:num(0,13)}));
+const reconcileInput=schema('message-delivery-reconcile-input',obj({requestKey:str(),boxId:str(),
+  messageId:str(),revision:num(1)}));
+const importInput=schema('message-inbound-import-input',obj({requestKey:str(),boxId:str(),emailId:str(128)}));
+const inboundPrepareInput=schema('message-inbound-prepare-input',
+  obj({requestKey:str(),boxId:str(),emailId:str(128)}));
+const inboundStatusInput=schema('message-inbound-status-input',obj({boxId:str(),emailId:str(128)}));
+const inboundStageInput=schema('message-inbound-stage-input',
+  obj({requestKey:str(),boxId:str(),emailId:str(128),childId:str(128)}));
 const draftListInput=schema('draft-list-input',obj({boxId:str(),limit:num(1,50),cursor:str(2048),query:str(240)},['boxId','limit']));
 const draftPage=schema('draft-page-output',page(draft));
 const draftCreateInput=schema('draft-create-input',obj({requestKey:str(),boxId:str()}));
@@ -114,6 +184,8 @@ const deletedOutput=schema('deleted-output',obj({deleted:{const:true}}));
 const attachmentListInput=schema('attachment-list-input',obj({boxId:str(),draftId:str(),limit:num(1,50),
   cursor:str(2048)},['boxId','draftId','limit']));
 const attachmentPage=schema('attachment-page-output',page(attachment));
+const messageAttachmentListInput=schema('message-attachment-list-input',obj({boxId:str(),
+  messageId:str(),limit:num(1,50),cursor:str(2048)},['boxId','messageId','limit']));
 const staged=obj({fileId:str(67),intentId:str(),generation:str(),digest:str(64)});
 const attachmentLinkInput=schema('attachment-link-input',obj({requestKey:str(),boxId:str(),draftId:str(),
   revision:num(1),staged}));
@@ -122,9 +194,22 @@ const attachmentUnlinkInput=schema('attachment-unlink-input',obj({requestKey:str
   revision:num(1),fileId:str(67)}));
 const attachmentUnlinkOutput=schema('attachment-unlink-output',obj({draft,removed:{const:true}}));
 const empty=schema('empty-input',obj({}));
-const transportOutput=schema('transport-output',obj({state:{const:'unavailable'},send:{const:false},receive:{const:false}}));
+const transportOutput=schema('transport-output',obj({state:{type:'string',enum:['ready','missing','unavailable']},
+  send:{type:'boolean'},receive:{const:false},from:nullable(str(320))}));
 const sendInput=schema('message-send-input',obj({requestKey:str(),boxId:str(),draftId:str(),revision:num(1)}));
-const sendOutput=schema('message-send-output',obj({message}));
+const sendOutput=schema('message-send-output',obj({message,draft}));
+const deliveryPrepareInput=schema('message-delivery-prepare-input',obj({intentId:str(),boxId:str(),
+  snapshotDigest:str(64,64)}));
+const deliveryEnvelope=obj({from:str(320),to:{type:'array',items:str(320),minItems:1,maxItems:20},
+  cc:{type:'array',items:str(320),maxItems:20},bcc:{type:'array',items:str(320),maxItems:20},
+  subject:str(240,0),text:str(16000,0),html:str(32000,0),
+  attachments:{type:'array',maxItems:50,items:obj({fileId:str(67),intentId:str(),
+    generation:str(),digest:str(64,64),filename:str(255),contentType:str(),byteSize:num()})}});
+const deliveryPrepareOutput=schema('message-delivery-prepare-output',obj({intentId:str(),boxId:str(),
+  snapshotDigest:str(64,64),configRevision:num(1),envelope:deliveryEnvelope}));
+const deliveryReceipt=schema('message-delivery-receipt',{
+  oneOf:[obj({kind:{const:'accepted'},providerMessageId:str(256)}),
+    obj({kind:{enum:['rejected','unknown']}})]});
 const previewString=str(48,0),previewLimit=num(1,5);
 const boxPreview=obj({id:str(),nameExcerpt:previewString,nameHasMore:{type:'boolean'},
   addressExcerpt:previewString,addressHasMore:{type:'boolean'},revision:num(1)});
@@ -158,7 +243,8 @@ const pendingState=obj({sessionId:str(),audience:{type:'string',enum:['admin','a
   bindingId:str(257),requestKey:str(512),intent:str(64),targetId:str()},
   ['sessionId','audience','contextId','bindingId','requestKey']);
 const panelState=schema('messaging-panel-state',obj({sessionId:str(),audience:{type:'string',enum:['admin','app']},
-  contextId:str(),boxId:str(),draftId:str(),pending:pendingState},
+  contextId:str(),boxId:str(),draftId:str(),pending:pendingState,sendFollowup:pendingState,
+  inboundEmailId:str(256)},
   ['sessionId','audience','contextId']));
 
 const permission={id:'use',title:'Utiliser sa messagerie',audiences:['admin','app'],
@@ -173,12 +259,18 @@ function operation(name,title,kind,input,output,reads=[],writes=[],options={}){
   operations.push({id:name,title,kind,input,output,permissions:[ref('permission','use')],
     audiences:['admin','app'],actors:['user','delegated-user','machine'],context:'required',
     handler:{path:'module/operations.ts',export:options.exportName},
-    effects:{reads:reads.map(x=>ref('model',x)),writes:writes.map(x=>ref('model',x)),emits:[],calls:[],providers:[]},
+    effects:{reads:reads.map(x=>ref('model',x)),writes:writes.map(x=>ref('model',x)),emits:[],
+      calls:options.readiness?[resendRef('operation','delivery.readiness')]
+        :options.eventStatus?[resendRef('operation','event.status')]
+        :options.receivedRead?[resendRef('operation','received.read')]:[],
+      providers:options.provider?['resend.api.v1']:[]},
     errors,pagination:options.pagination??{mode:'none'},
     idempotency:command?{mode:'required',keyField:'requestKey',scope:'actor-context-operation',retentionSeconds:86400}:{mode:'none'},
     approval:{mode:'none'},concurrency:options.concurrency??{mode:'none'},
-    execution:{maxDurationMs:10000,maxItems:options.maxItems??100,resumable:false},
-    audit:{required:true,redactFields:['to','cc','bcc','subject','text','html','address']},public:false});
+    execution:{maxDurationMs:options.maxDurationMs??10000,maxItems:options.maxItems??100,resumable:false},
+    audit:{required:true,redactFields:['to','cc','bcc','subject','text','html','address']},
+    public:name==='message.read',...(options.readiness||options.eventStatus||options.receivedRead
+      ?{requiresModules:['creezio.resend']}: {})});
 }
 const pagination={mode:'cursor',cursorField:'cursor',limitField:'limit',maxItems:50};
 operation('box.list','Lister ses boîtes','query',listInput,boxPage,['box'],[],{exportName:'boxList',pagination,maxItems:50});
@@ -191,6 +283,30 @@ operation('message.preview.list','Aperçu des messages pour le chat','query',mes
 operation('message.read','Lire un message','query',messageReadInput,messageOutput,['box','message'],[],{exportName:'messageRead'});
 operation('message.update','Classer ou marquer un message','command',messageUpdateInput,messageOutput,
   ['box','message'],['message'],{exportName:'messageUpdate',concurrency:{mode:'object-version',versionField:'revision'}});
+operation('message.delete','Supprimer définitivement un message reçu dans la corbeille','command',
+  messageDeleteInput,messageDeleteOutput,['box','message','message_attachment','inbound_snapshot','send_snapshot'],
+  ['message','message_attachment','inbound_snapshot'],{exportName:'messageDelete'});
+operation('message.delivery.reconcile','Rapprocher un accusé Resend signé','command',reconcileInput,messageOutput,
+  ['box','message'],['message'],{exportName:'messageDeliveryReconcile',eventStatus:true});
+operation('message.inbound.prepare','Figer un courriel reçu dans une boîte choisie','command',
+  inboundPrepareInput,inboundSnapshotOutput,['box','message','inbound_snapshot','inbound_stage_receipt'],
+  ['inbound_snapshot'],{exportName:'messageInboundPrepare',receivedRead:true,maxDurationMs:30000});
+operation('message.inbound.status','Relire la préparation d’un courriel','query',
+  inboundStatusInput,inboundSnapshotOutput,['box','message','inbound_snapshot','inbound_stage_receipt'],
+  [],{exportName:'messageInboundStatus'});
+operation('message.inbound.attachment.stage','Stage une pièce reçue vérifiée','command',
+  inboundStageInput,inboundStageOutput,['box','message','inbound_snapshot','inbound_stage_receipt'],
+  ['inbound_stage_receipt'],{exportName:'messageInboundAttachmentStage',receivedRead:true,provider:true,
+    maxDurationMs:30000});
+operations.at(-1).effects.writes.push(ref('file','attachments'));
+operation('message.inbound.import','Importer le courriel et ses pièces en un seul commit','command',
+  importInput,messageOutput,['box','message','inbound_snapshot','inbound_stage_receipt'],
+  ['message','message_attachment'],{exportName:'messageInboundImport',receivedRead:true,
+    maxDurationMs:30000});
+operations.at(-1).effects.writes.push(ref('file','attachments'));
+operation('message.attachment.list','Lister les pièces privées d’un message','query',
+  messageAttachmentListInput,attachmentPage,['box','message','message_attachment'],[],
+  {exportName:'messageAttachmentList',pagination,maxItems:52});
 operation('draft.list','Lister les brouillons','query',draftListInput,draftPage,['box','draft'],[],{exportName:'draftList',pagination,maxItems:50});
 operation('draft.preview.list','Aperçu des brouillons pour le chat','query',draftPreviewInput,draftPreviewPage,
   ['box','draft'],[],{exportName:'draftPreviewList',pagination:{...pagination,maxItems:5},maxItems:6});
@@ -208,24 +324,32 @@ operations.at(-1).effects.writes.push(ref('file','attachments'));
 operation('attachment.unlink','Détacher une pièce jointe','command',attachmentUnlinkInput,attachmentUnlinkOutput,
   ['box','draft','draft_attachment'],['draft','draft_attachment'],
   {exportName:'attachmentUnlink'});
-operation('transport.status','Lire le statut du transport','query',empty,transportOutput,[],[],{exportName:'transportStatus'});
-operation('message.send','Envoyer un brouillon','command',sendInput,sendOutput,['box','draft','draft_attachment'],[],
-  {exportName:'messageSend',concurrency:{mode:'object-version',versionField:'revision'}});
+operation('transport.status','Lire le statut du transport','query',empty,transportOutput,[],[],
+  {exportName:'transportStatus',readiness:true});
+operation('message.send','Enregistrer une intention d’envoi','command',sendInput,sendOutput,
+  ['box','draft','draft_attachment'],['message','draft','send_snapshot','message_attachment'],
+  {exportName:'messageSend',concurrency:{mode:'object-version',versionField:'revision'},readiness:true,provider:true,
+    maxDurationMs:30000});
+operations.at(-1).effects.writes.push(ref('file','attachments'));
+operation('message.delivery.prepare','Préparer un envoi figé','query',deliveryPrepareInput,deliveryPrepareOutput,
+  ['box','message','send_snapshot','message_attachment'],[],{exportName:'messageDeliveryPrepare'});
 const category={id:'attachments',metadataModel:ref('model','file_metadata'),contextField:'context_id',ownerField:'file_owner',
   ownerScope:'principal',
   storageFields:{id:'file_id',objectKey:'object_key',digest:'digest',byteSize:'byte_size',contentType:'content_type',
     filename:'filename',version:'version',state:'state',intentId:'intent_id',generation:'generation'},
   mimeTypes:['text/plain','application/pdf','image/png','image/jpeg'],maxBytes:10*1024*1024,public:false,
-  permissions:[ref('permission','use')],attachment:{models:[ref('model','draft')],multiple:true},deletion:'restrict'};
+  permissions:[ref('permission','use')],attachment:{models:[ref('model','draft'),
+    ref('model','inbound_snapshot'),ref('model','message')],multiple:true},deletion:'restrict'};
 const api=[];
 for(const audience of ['admin','app'])for(const op of operations){
+  if(op.id==='message.delivery.prepare')continue;
   const command=op.kind==='command',properties=schemas.find(x=>x.id===op.input.schemaId).schema.properties;
   const parameters=command?[]:Object.entries(properties).filter(([,spec])=>['string','integer','boolean'].includes(spec.type))
     .map(([name])=>({name:name.replaceAll(/[A-Z]/g,c=>'_'+c.toLowerCase()),in:'query',inputField:name,
       required:schemas.find(x=>x.id===op.input.schemaId).schema.required.includes(name)}));
   api.push({id:`${audience}.${op.id}`,method:command?'POST':'GET',path:`/api/${audience}/messaging/${op.id.replaceAll('.','/')}`,
     operation:ref('operation',op.id),audience,auth:['session','oauth','api-token'],parameters,input:op.input,output:op.output,
-    rateLimit:{requests:60,windowSeconds:60}});
+    rateLimit:{requests:60,windowSeconds:60},...(op.requiresModules?{requiresModules:op.requiresModules}:{})});
 }
 const widgetState=schema('messaging-widget-state',obj({boxId:str(),selectedId:str(),cursor:str(2048)},[]));
 const widgetNames=['boxes','messages','drafts'];
@@ -259,51 +383,76 @@ m.identity={id,title:'Messagerie native',publisher:'creezio',origin:'https://git
   version:'0.0.0',source:{kind:'snapshot',revision:'t18-messaging-widgets-v1',
     integrity:`sha256-${createHash('sha256').update('t18-messaging-widgets-v1').digest('hex')}`},
   license:{expression:'NOASSERTION',file:'LICENSE'}};
-m.compatibility={core:'^0.0.0',sdk:'^1.2.0',requiredCapabilities:['runtime.worker','data.d1.shared','files.r2.shared'],
+m.compatibility={core:'^0.0.0',sdk:'^1.9.0',requiredCapabilities:['runtime.worker','data.d1.shared','files.r2.shared'],
   optionalCapabilities:[]};
 m.entrypoints={server:{path:'module/entry.server.ts',export:'messaging'},
   ui:{path:'ui/index.tsx',export:'MessagingView'},plugin:{manifest:'plugin/plugin.json',mcp:'plugin/mcp.json',
     contributions:{path:'plugin/contributions.ts',export:'contributions'}}};
 m.dependencies=[{moduleId:'creezio.access',origin:'https://github.com/creezio/Creezio-D1R2',versionRange:'^0.0.0',
-  optional:false,contracts:[],whenAbsent:'block',whenIncompatible:'block',autoInstall:false}];
+  optional:false,contracts:[],whenAbsent:'block',whenIncompatible:'block',autoInstall:false},
+  {moduleId:'creezio.resend',origin:m.identity.origin,versionRange:'^0.2.0',optional:true,
+    contracts:[{id:'delivery-readiness',versionRange:'^1.0.0'},
+      {id:'delivery-events',versionRange:'^1.0.0'},
+      {id:'received-email',versionRange:'^1.0.0'}],whenAbsent:'disable-contributions',
+    whenIncompatible:'block',autoInstall:false}];
 m.contracts={schemas,models,files:[category],events:[],settings:[],search:[],permissions:[permission],operations,api,
-  mcp:{tools:operations.map(op=>({id:op.id,name:`messaging_${op.id.replaceAll('.','_')}`,
+  deliveries:[{id:'message-send',trigger:'on-invoke',intentIdSource:'execution-id',
+    command:ref('operation','message.send'),
+    prepare:ref('operation','message.delivery.prepare'),
+    prepareInput:{intentId:'$intentId',boxId:'boxId',snapshotDigest:'snapshotDigest'},
+    matchFields:['boxId','snapshotDigest','configRevision'],envelopeField:'envelope',
+    provider:{publicContract:resendRef('publicContract','delivery-readiness'),
+      readiness:resendRef('operation','delivery.readiness'),connectorId:'resend.api.v1',resourceId:'email.send',
+      configRevisionField:'configRevision'},
+    projector:{path:'module/delivery.ts',export:'projectDeliveryReceipt'},
+    projectorInput:{boxId:'boxId',intentId:'$intentId',receipt:'$receipt'},
+    acceptance:{responseIdField:'id',receiptIdField:'providerMessageId'},
+    models:[ref('model','box'),ref('model','message'),ref('model','send_snapshot'),
+      ref('model','message_attachment')],
+    receipt:deliveryReceipt,requiresModules:['creezio.resend']}],
+  mcp:{tools:operations.filter(op=>op.id!=='message.delivery.prepare').map(op=>({id:op.id,name:`messaging_${op.id.replaceAll('.','_')}`,
     operation:ref('operation',op.id),audiences:['admin','app'],auth:['oauth','api-token'],input:op.input,output:op.output,
-    annotations:{readOnly:op.kind==='query',destructive:op.id==='draft.delete',idempotent:op.kind==='query',openWorld:op.id==='message.send'},
+    annotations:{readOnly:op.kind==='query',destructive:['draft.delete','message.delete'].includes(op.id),
+      idempotent:op.kind==='query',openWorld:op.id==='message.send'},
     ...({
       'box.preview.list':'boxes','message.preview.list':'messages','message.read':'messages',
       'draft.preview.list':'drafts','draft.read':'drafts'}[op.id]
       ?{widget:ref('widget',({
         'box.preview.list':'boxes','message.preview.list':'messages','message.read':'messages',
         'draft.preview.list':'drafts','draft.read':'drafts'})[op.id])}:{}),
-    textFallback:true})),resources:widgetNames.map(widgetResource),prompts:[],skills:[{id:'compose-message',path:skillPath,
-    audiences:['admin','app'],operations:['transport.status','box.list','box.create','draft.create','draft.save','attachment.link',
+    textFallback:true,...(op.requiresModules?{requiresModules:op.requiresModules}:{})})),resources:widgetNames.map(widgetResource),prompts:[],skills:[{id:'compose-message',path:skillPath,
+    audiences:['admin','app'],operations:['box.list','box.create','draft.create','draft.save','attachment.link',
       'box.preview.list','message.preview.list','draft.preview.list']
       .map(name=>ref('operation',name)),resources:widgetNames.map(name=>`${name}-ui`),integrity:skillIntegrity}]},
   ui:{views:[{id:'admin',title:'Messagerie',surfaces:['workspace'],route:'/admin/messaging',
     component:{path:'ui/index.tsx',export:'MessagingView'},permissions:[ref('permission','use')],
-    operations:operations.map(op=>ref('operation',op.id)),input:viewInput,
+    operations:operations.filter(op=>!op.requiresModules&&op.id!=='message.delivery.prepare').map(op=>ref('operation',op.id)),input:viewInput,
     panel:{identityFields:[],navigation:'sdk',retention:'preserve',inactiveEffects:'suspend',stateSchema:panelState}},
     {id:'front',title:'Messagerie',surfaces:['front'],route:'/messaging',
       component:{path:'ui/index.tsx',export:'MessagingView'},permissions:[ref('permission','use')],
-      operations:operations.map(op=>ref('operation',op.id)),input:viewInput,
+      operations:operations.filter(op=>!op.requiresModules&&op.id!=='message.delivery.prepare').map(op=>ref('operation',op.id)),input:viewInput,
       panel:{identityFields:[],navigation:'sdk',retention:'preserve',inactiveEffects:'suspend',stateSchema:panelState}}],
     navigation:[{id:'messaging-admin',title:'Messagerie',view:ref('view','admin'),permissions:[ref('permission','use')],surfaces:['workspace'],order:30},
       {id:'messaging-front',title:'Messagerie',view:ref('view','front'),permissions:[ref('permission','use')],surfaces:['front'],order:30}],
-    slots:[],front:{mode:'provided'},themes:[],styles:[]},widgets:widgetNames.map(widget),publicContracts:[]};
+    slots:[],front:{mode:'provided'},themes:[],styles:[]},widgets:widgetNames.map(widget),
+    publicContracts:[{id:'message-lookup',version:'1.0.0',models:[],
+      operations:[ref('operation','message.read')],events:[],
+      schemas:[{schemaId:'message-read-input'},{schemaId:'message-output'}]}]};
 m.documentation.versionBinding={moduleVersion:'0.0.0',sourceRevision:'t18-messaging-widgets-v1'};
 for(const suite of ['backend','ui','api-mcp','package','docs'])m.validation.suites[suite].tests=[`tests/${suite}/contract.test.mjs`];
 m.validation.suites.widgets.mode='required';m.validation.suites.widgets.tests=[
   'tests/widgets/contract.test.mjs','tests/widgets/runtime.test.mjs'];
+m.validation.suites.backend.tests.push('tests/backend/delivery.test.mjs');
 delete m.validation.suites.widgets.justification;
 m.packaging.runtime.files=['module/manifest.json','module/models.json','module/entry.server.ts','module/operations.ts',
-  'module/service.ts','ui/contracts.ts','ui/index.tsx','ui/presentation.tsx','ui/rich-editor.tsx',
+  'module/service.ts','module/delivery.ts','ui/contracts.ts','ui/index.tsx','ui/presentation.tsx','ui/rich-editor.tsx',
   'ui/widgets/runtime.ts',...widgetNames.flatMap(name=>[`ui/widgets/${name}.ts`,`ui/widgets/${name}.html`]),
   'README.md','prd.md','CHANGELOG.md','LICENSE','plugin/plugin.json',
   'plugin/mcp.json','plugin/contributions.ts',skillPath];
 m.packaging.validation.files=['AGENTS.md','FILES.md','interview.md','TODO.md','gate.mjs','module/generate-manifest.mjs',
   'ci/run-suite.mjs','tests/helpers.mjs',...['backend','ui','api-mcp','widgets','package','docs']
-    .flatMap(name=>[`ci/${name}.mjs`,`tests/${name}/contract.test.mjs`]),'tests/widgets/runtime.test.mjs'];
+    .flatMap(name=>[`ci/${name}.mjs`,`tests/${name}/contract.test.mjs`]),
+  'tests/backend/delivery.test.mjs','tests/widgets/runtime.test.mjs'];
 m.packaging.validationBinding={moduleId:id,moduleVersion:'0.0.0',sourceRevision:'t18-messaging-widgets-v1'};
 m.lifecycle.absent={};
 m.lifecycle.configuration='explicit-state';

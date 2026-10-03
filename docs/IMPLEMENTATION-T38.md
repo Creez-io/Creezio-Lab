@@ -1,5 +1,11 @@
 # T38 — Adoption amont et mise à jour du module métier
 
+## Candidat source du 3 octobre 2026 — Core `8756f008`
+
+La branche Lab `core/t38-core8756` adopte le commit Core exact `8756f0082c0048e771afd4f487afd0f2844b3ed2` (arbre `52229bc3b5dcbee45b379cc9b8a5f2473705827a`) depuis Lab main `7c6dc10eac62d6a7f7a2d441027f2e52a1c3e473`. Le SDK 1.9.0 provient de l'archive publique qualifiée `sdk-v1.9.0`, SHA-256 `b10cc8ca47bad85d3f22124e0b3da214cea15610330fc650a8c107cba189eb2a`. Le module achats reste à 0.1.3, sans substitution de candidate locale. Les douze verrous sont régénérés ; les compositions Lab actives gardent sept modules Docker et six Sites, l'identité `creezio.lab`, le thème et le front ChatGPT-like. Aucun nouveau module Core n'y est activé implicitement. Les étapes historiques ci-dessous se rapportent à leurs anciennes sources et SDK.
+
+Cette adoption est un candidat source sans commit, PR, installation sur hôte, migration ou publication. Le checkout Windows a moins de 20 Gio libres ; l'installation du SDK et le build volumineux attendent le profil CI/Linux. La mesure des budgets Worker et la recette applicative doivent être liées à l'artefact qui sera produit. Les suites ciblées et leurs limites sont consignées dans le rapport de livraison hors dépôt.
+
 ## Candidat Core suivant — 29 septembre 2026
 
 La branche Lab `core/t38-core-af60262` reprend, depuis la base Core `e2e5dc4` déjà intégrée, les quatre commits jusqu'à `af602626`. L'adoption reste locale : la nouvelle navigation Pages est présente dans le socle mais non sélectionnée par les compositions Lab ; le statut de retrait du contexte est corrigé dans l'hôte Conversations. Les verrous de tous les profils consommant Pages ou Conversations, y compris `composition.t30-demo.lock.json`, sont régénérés. `creezio.lab`, le front ChatGPT-like, SDK public 1.4.1, achats public 0.1.3 et la source Sites reconstructible restent inchangés. Les tests du candidat et sa revue précèdent toute PR, publication ou recette hébergée de cette révision. Le Site et le Worker Cloudflare Lab déjà publiés gardent leurs données et révisions en service.

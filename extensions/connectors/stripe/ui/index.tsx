@@ -7,19 +7,35 @@ import {createCommandJournal,readPendingCommand,type PendingCommand} from '@cree
 import {panelData,readPanel,retainedSessionId,scopeChange,sessionVerified,
   type StripeScope,type StripeTab} from './panel-state.ts';
 import {externalConfigurationChanged,latestConfig,mergeRuns,reconcileRuns,sameConfiguration,
+  offerPriceEligible,subscriptionLifecycleAction,
   type Collection,type Config,type Run} from './state.ts';
-import {formatStripeAmount} from './money.ts';
+import {formatStripeAmount,formatStripeFrequency} from './money.ts';
 import {Badge,Button,Card} from '@creezio/sdk/ui';
 
 type Customer={id:string;name:string|null;livemode:boolean};
 type Subscription={id:string;customer_id:string;status:string;currency:string|null;price_id:string|null;
   unit_amount_minor:number|null;interval:string|null;interval_count:number|null;quantity:number|null;
-  period_end_at:string|null;livemode:boolean};
+  period_end_at:string|null;cancel_at_period_end:boolean|null;revision:number;livemode:boolean};
+type CheckoutSession={id:string;url:string|null;mode:'payment'|'subscription';status:string;
+  paymentStatus:string;livemode:false};
+type StripeEvent={id:string;type:string;object_id:string;updated_at:string;livemode:false};
 type Invoice={id:string;customer_id:string|null;status:string|null;currency:string;
   amount_due_minor:number;period_start_at:string|null;period_end_at:string|null;livemode:boolean};
-type Page={items:(Customer|Subscription|Invoice)[];nextCursor:string|null};
-const collections:Collection[]=['customers','subscriptions','invoices'];
-const titles:Record<Collection,string>={customers:'Clients',subscriptions:'Abonnements',invoices:'Factures'};
+type Product={id:string;name:string;active:boolean;default_price_id:string|null;livemode:boolean};
+type Price={id:string;product_id:string;active:boolean;livemode:boolean;currency:string;
+  type:'one_time'|'recurring';billing_scheme:'per_unit'|'tiered';unit_amount_minor:number|null;
+  unit_amount_decimal:string|null;interval:string|null;interval_count:number|null;
+  usage_type:string|null;tiers_mode:string|null;custom_amount:boolean};
+type Offer={id:string;productId:string;priceId:string;name:string;mode:'payment'|'subscription';
+  enabled:boolean;unitAmountMinor:number;currency:string;interval:string|null;
+  intervalCount:number|null;revision:number};
+type ListCollection='customers'|'subscriptions'|'invoices'|'products'|'prices';
+type Page={items:(Customer|Subscription|Invoice|Product|Price)[];nextCursor:string|null};
+const collections:Collection[]=['customers','subscriptions','invoices','products','prices_active','prices_inactive'];
+const listCollections:ListCollection[]=['customers','subscriptions','invoices','products','prices'];
+const overviewCollections:ListCollection[]=['customers','subscriptions','invoices'];
+const titles:Record<Collection|string,string>={customers:'Clients',subscriptions:'Abonnements',invoices:'Factures',
+  products:'Produits',prices:'Prix',offers:'Offres',prices_active:'Prix actifs',prices_inactive:'Prix inactifs',checkout:'Checkout'};
 const SUB_STATUT_LABEL:Record<string,string>={active:'Actif',trialing:'Essai',past_due:'Impayé',
   canceled:'Résilié',unpaid:'Impayé',incomplete:'Incomplet'};
 const INVOICE_STATUT_LABEL:Record<string,string>={paid:'Payée',open:'En attente',payment_failed:'Échouée',
@@ -35,6 +51,16 @@ const output=(result:Awaited<ReturnType<WorkspaceViewProps['client']['invoke']>>
     ?result.execution.output as Record<string,unknown>:null;
 const date=(value:string|null|undefined)=>value?new Date(value).toLocaleDateString('fr-FR'):'—';
 const status=(value:string|null|undefined)=>value??'—';
+const priceAmount=(price:Price)=>{
+  if(price.billing_scheme==='tiered')return 'Tarif à paliers';
+  if(price.custom_amount)return 'Montant libre';
+  if(price.usage_type==='metered')return 'Tarif à l’usage';
+  if(price.unit_amount_decimal!==null&&price.unit_amount_decimal!==String(price.unit_amount_minor))
+    return `${price.unit_amount_decimal} ${price.currency} (unités mineures)`;
+  return formatStripeAmount(price.unit_amount_minor,price.currency);
+};
+const listForRun=(id:Collection):ListCollection=>
+  id==='prices_active'||id==='prices_inactive'?'prices':id;
 
 /** Original billing cards and tables, fed only by bounded local Stripe projections. */
 export function StripeAdminView(props:WorkspaceViewProps){
@@ -48,10 +74,21 @@ export function StripeAdminView(props:WorkspaceViewProps){
   const restored=verified?readPanel(props.navigation.readPanelState()?.data,scope):null;
   const [tab,setTab]=useState<StripeTab>(restored?.tab??'overview');
   const [config,setConfig]=useState<Config|null>(null),[apiKey,setApiKey]=useState('');
+  const [webhookSecret,setWebhookSecret]=useState('');
+  const [webhookServiceToken,setWebhookServiceToken]=useState('');
+  const [checkoutOrigin,setCheckoutOrigin]=useState(''),[checkoutPriceId,setCheckoutPriceId]=useState('');
+  const [checkoutAppReturnPath,setCheckoutAppReturnPath]=useState('/offers');
+  const [checkoutQuantity,setCheckoutQuantity]=useState(1),[checkoutCustomerId,setCheckoutCustomerId]=useState('');
+  const [checkoutSession,setCheckoutSession]=useState<CheckoutSession|null>(null),
+    [lookupSessionId,setLookupSessionId]=useState('');
+  const [events,setEvents]=useState<StripeEvent[]>([]),[eventCursor,setEventCursor]=useState<string|null>(null);
+  const [offers,setOffers]=useState<Offer[]>([]),[offerCursor,setOfferCursor]=useState<string|null>(null),
+    [offerPriceId,setOfferPriceId]=useState(''),[offersLoading,setOffersLoading]=useState(false);
   const [enabled,setEnabled]=useState(false),[enableRevision,setEnableRevision]=useState<number|null>(null);
-  const [runs,setRuns]=useState<Run[]>([]),[pages,setPages]=useState<Partial<Record<Collection,Page>>>({});
+  const [runs,setRuns]=useState<Run[]>([]),[pages,setPages]=useState<Partial<Record<ListCollection,Page>>>({});
   const [busy,setBusy]=useState(false),[checking,setChecking]=useState(false);
-  const [loading,setLoading]=useState<Record<Collection,boolean>>({customers:false,subscriptions:false,invoices:false});
+  const [loading,setLoading]=useState<Record<ListCollection,boolean>>({customers:false,subscriptions:false,
+    invoices:false,products:false,prices:false});
   const [showSync,setShowSync]=useState(false);
   const [notice,setNotice]=useState('');
   const journal=useRef<ReturnType<typeof createCommandJournal>|null>(verified?createCommandJournal(
@@ -60,7 +97,8 @@ export function StripeAdminView(props:WorkspaceViewProps){
   const journalScope=useRef({sessionId:verified?sessionId:'',audience:props.audience,contextId:props.contextId});
   const [pending,setPending]=useState<PendingCommand|null>(journal.current?.pending??null);
   const prior=useRef(scope),generation=useRef(0),
-    listSerial=useRef<Record<Collection,number>>({customers:0,subscriptions:0,invoices:0}),overviewSerial=useRef(0),
+    listSerial=useRef<Record<ListCollection,number>>({customers:0,subscriptions:0,invoices:0,
+      products:0,prices:0}),overviewSerial=useRef(0),
     inFlight=useRef(false),configVersion=useRef(0);
   const tabRef=useRef(tab);tabRef.current=tab;
   const last=useRef({active,sessionId,client:props.client,access:props.access,audience:props.audience,
@@ -73,7 +111,7 @@ export function StripeAdminView(props:WorkspaceViewProps){
   const current=(token:number)=>active&&generation.current===token&&
     props.access.getSnapshot().phase==='authenticated'&&!props.access.getSnapshot().pending&&
     props.access.getSnapshot().session?.id===sessionId;
-  const invalidateLists=()=>{for(const id of collections)listSerial.current[id]++;};
+  const invalidateLists=()=>{for(const id of listCollections)listSerial.current[id]++;};
   const persist=(value:PendingCommand|null,token:number)=>{
     if(!current(token))return false;
     const saved=props.navigation.savePanelState({activeSubview:tabRef.current,
@@ -110,13 +148,16 @@ export function StripeAdminView(props:WorkspaceViewProps){
     const rotated=!!next&&externalConfigurationChanged(configVersion.current,next);
     if(next&&next.revision>=configVersion.current){
       if(rotated){invalidateLists();setPages({});
-        if(tabRef.current==='overview')for(const id of collections)void loadPage(id,token);
-        else if(collections.includes(tabRef.current as Collection))void loadPage(tabRef.current as Collection,token);}
+        if(tabRef.current==='overview')for(const id of overviewCollections)void loadPage(id,token);
+        else if(listCollections.includes(tabRef.current as ListCollection))void loadPage(tabRef.current as ListCollection,token);}
       configVersion.current=next.revision;
-      setConfig(old=>latestConfig(old,next));if(enableRevision===null)setEnabled(next.enabled);}
+      setConfig(old=>latestConfig(old,next));if(enableRevision===null)setEnabled(next.enabled);
+      if(tabRef.current!=='settings'){
+        setCheckoutOrigin(next.checkoutReturnOrigin??'');
+        setCheckoutAppReturnPath(next.checkoutAppReturnPath??'/offers');}}
     setRuns(old=>reconcileRuns(old,Array.isArray(states?.states)?states.states as Run[]:[],rotated));
   };
-  const loadPage=async(collection:Collection,token:number,cursor:string|null=null,append=false)=>{
+  const loadPage=async(collection:ListCollection,token:number,cursor:string|null=null,append=false)=>{
     const serial=++listSerial.current[collection];
     setLoading(old=>({...old,[collection]:true}));
     const value=await read(`${collection.slice(0,-1)}.list`,{limit:25,...(cursor?{cursor}:{})},token);
@@ -130,16 +171,44 @@ export function StripeAdminView(props:WorkspaceViewProps){
     }
     setLoading(old=>({...old,[collection]:false}));
   };
+  const refreshSubscriptions=(token:number)=>{
+    setPages(previous=>({...previous,subscriptions:undefined}));
+    void loadPage('subscriptions',token);
+  };
+  const loadEvents=async(token:number,cursor:string|null=null,append=false)=>{
+    const value=await read('event.list',{limit:25,...(cursor?{cursor}:{})},token);
+    if(!current(token)||!value||!Array.isArray(value.items))return;
+    const rows=value.items as StripeEvent[];
+    setEvents(previous=>append?[...previous,...rows.filter(row=>!previous.some(old=>old.id===row.id))]:rows);
+    setEventCursor(typeof value.nextCursor==='string'?value.nextCursor:null);
+  };
+  const loadOffers=async(token:number,cursor:string|null=null,append=false)=>{
+    setOffersLoading(true);
+    const value=await read('offer.list',{limit:8,...(cursor?{cursor}:{})},token);
+    if(!current(token))return;
+    if(value&&Array.isArray(value.items)){
+      const rows=value.items as Offer[];
+      setOffers(previous=>append?[...previous,...rows.filter(row=>!previous.some(old=>old.id===row.id))]:rows);
+      setOfferCursor(typeof value.nextCursor==='string'?value.nextCursor:null);
+    }
+    setOffersLoading(false);
+  };
   useEffect(()=>{
     const phase=access.pending?'loading':access.phase;
     const transition=scopeChange(prior.current,scope,phase);
     if(transition.purge){overviewSerial.current++;configVersion.current=0;
-      setTab('overview');tabRef.current='overview';setConfig(null);setApiKey('');
+      setTab('overview');tabRef.current='overview';setConfig(null);setApiKey('');setWebhookSecret('');
+      setWebhookServiceToken('');
+      setCheckoutOrigin('');setCheckoutPriceId('');setCheckoutCustomerId('');
+      setCheckoutAppReturnPath('/offers');
+      setCheckoutSession(null);setLookupSessionId('');
+      setEvents([]);setEventCursor(null);
+      setOffers([]);setOfferCursor(null);setOfferPriceId('');setOffersLoading(false);
       setEnabled(false);setEnableRevision(null);setRuns([]);setPages({});setPending(null);setNotice('');
       setShowSync(false);invalidateLists();
       journal.current=null;journalScope.current={sessionId:'',audience:props.audience,contextId:props.contextId};}
     if(!transition.transient)prior.current=scope;
-    if(!active){setLoading({customers:false,subscriptions:false,invoices:false});
+    if(!active){setLoading({customers:false,subscriptions:false,invoices:false,products:false,prices:false});
       setBusy(false);setChecking(false);inFlight.current=false;return;}
     if(!journal.current||journalScope.current.sessionId!==sessionId||
       journalScope.current.audience!==props.audience||journalScope.current.contextId!==props.contextId){
@@ -153,14 +222,21 @@ export function StripeAdminView(props:WorkspaceViewProps){
     setPending(journal.current.pending);
     const token=generation.current;
     void loadOverview(token);
-    if(tabRef.current==='overview')for(const id of collections)void loadPage(id,token);
-    else if(collections.includes(tabRef.current as Collection))void loadPage(tabRef.current as Collection,token);
+    if(tabRef.current==='overview')for(const id of overviewCollections)void loadPage(id,token);
+    if(tabRef.current==='overview')void loadEvents(token);
+    else if(listCollections.includes(tabRef.current as ListCollection))void loadPage(tabRef.current as ListCollection,token);
+    else if(tabRef.current==='offers'){
+      void loadOffers(token);void loadPage('products',token);void loadPage('prices',token);}
   },[active,sessionId,access.phase,access.pending,props.client,props.access,props.audience,props.contextId,props.panelId]);
   const changeTab=(next:StripeTab)=>{
     setTab(next);tabRef.current=next;
     if(journal.current)persist(journal.current.pending,generation.current);
-    if(next==='overview')for(const id of collections)void loadPage(id,generation.current);
-    else if(collections.includes(next as Collection))void loadPage(next as Collection,generation.current);
+    if(next==='overview')for(const id of overviewCollections)void loadPage(id,generation.current);
+    if(next==='overview')void loadEvents(generation.current);
+    else if(listCollections.includes(next as ListCollection))void loadPage(next as ListCollection,generation.current);
+    else if(next==='offers'){
+      void loadOffers(generation.current);void loadPage('products',generation.current);
+      void loadPage('prices',generation.current);}
   };
   const mutate=async(operation:string,input:Record<string,unknown>)=>{
     const controller=journal.current,token=generation.current;
@@ -176,10 +252,18 @@ export function StripeAdminView(props:WorkspaceViewProps){
       overviewSerial.current++;
       if(value.config){const next=value.config as Config;configVersion.current=next.revision;
         setConfig(old=>latestConfig(old,next));setEnabled(next.enabled);
-        setEnableRevision(null);if(operation.startsWith('config.key.'))setApiKey('');}
+        setEnableRevision(null);setCheckoutOrigin(next.checkoutReturnOrigin??'');
+        setCheckoutAppReturnPath(next.checkoutAppReturnPath??'/offers');
+        if(operation.startsWith('config.key.')){setApiKey('');setWebhookSecret('');
+          setWebhookServiceToken('');}}
+      if(value.session)setCheckoutSession(value.session as CheckoutSession);
+      if(operation==='subscription.cancel.set'||operation==='subscription.cancel.schedule')
+        refreshSubscriptions(token);
+      if(operation==='offer.set')void loadOffers(token);
       if(operation.startsWith('config.key.')){invalidateLists();setRuns([]);setPages({});}
       if(value.state){const next=value.state as Run;setRuns(old=>mergeRuns(old,[next]));}
-      if(operation==='sync.page'&&value.state)void loadPage((value.state as Run).collection,token);
+      if(operation==='sync.page'&&value.state)
+        void loadPage(listForRun((value.state as Run).collection),token);
       if(operation.startsWith('sync.')||operation.startsWith('config.key.'))void loadOverview(token);
       setNotice(operation==='sync.page'?`Page enregistrée (${value.processed??0} objet(s)).`:'Modification confirmée.');
     }else setNotice(outcome.pending?'Résultat incertain. Vérifiez son statut avant toute nouvelle commande.':
@@ -197,10 +281,17 @@ export function StripeAdminView(props:WorkspaceViewProps){
     if(value){overviewSerial.current++;}
     if(value?.config){const next=value.config as Config;configVersion.current=next.revision;
       setConfig(old=>latestConfig(old,next));setEnabled(next.enabled);
-      setEnableRevision(null);setApiKey('');}
+      setEnableRevision(null);setCheckoutOrigin(next.checkoutReturnOrigin??'');
+      setCheckoutAppReturnPath(next.checkoutAppReturnPath??'/offers');
+      setApiKey('');setWebhookSecret('');setWebhookServiceToken('');}
+    if(value?.session)setCheckoutSession(value.session as CheckoutSession);
+    if((pending.intent==='subscription.cancel.set'||pending.intent==='subscription.cancel.schedule')&&value)
+      refreshSubscriptions(token);
+    if(pending.intent==='offer.set'&&value)void loadOffers(token);
     if(pending.intent?.startsWith('config.key.')&&value){invalidateLists();setRuns([]);setPages({});}
     if(value?.state){const next=value.state as Run;setRuns(old=>mergeRuns(old,[next]));}
-    if(pending.intent==='sync.page'&&value?.state)void loadPage((value.state as Run).collection,token);
+    if(pending.intent==='sync.page'&&value?.state)
+      void loadPage(listForRun((value.state as Run).collection),token);
     if((pending.intent?.startsWith('sync.')||pending.intent?.startsWith('config.key.'))&&value)
       void loadOverview(token);
     setNotice(value?'Modification confirmée.':result?.pending?'Résultat toujours incertain ; aucun nouvel envoi.':
@@ -212,6 +303,10 @@ export function StripeAdminView(props:WorkspaceViewProps){
   const customers=(pages.customers?.items??[]) as Customer[];
   const subscriptions=(pages.subscriptions?.items??[]) as Subscription[];
   const invoices=(pages.invoices?.items??[]) as Invoice[];
+  const products=(pages.products?.items??[]) as Product[];
+  const prices=(pages.prices?.items??[]) as Price[];
+  const eligiblePrices=prices.filter(price=>offerPriceEligible(price,products));
+  const offerPrice=eligiblePrices.find(price=>price.id===offerPriceId);
   const rows=[...customers.flatMap<{customer:Customer|null;subscription:Subscription|null}>(customer=>{
     const linked=subscriptions.filter(subscription=>subscription.customer_id===customer.id);
     return linked.length?linked.map(subscription=>({customer,subscription})):[{customer,subscription:null}];
@@ -224,7 +319,7 @@ export function StripeAdminView(props:WorkspaceViewProps){
       <p className="text-sm text-muted-foreground">Abonnements et factures Stripe.</p></div>
       <div className="flex items-center gap-2"><Button size="sm" onClick={()=>setShowSync(value=>!value)}>
         Resynchroniser Stripe</Button></div></div>
-    <nav className="flex flex-wrap gap-2" aria-label="Sections facturation">{(['overview',...collections,'settings'] as StripeTab[]).map(value=>
+    <nav className="flex flex-wrap gap-2" aria-label="Sections facturation">{(['overview',...listCollections,'offers','checkout','settings'] as StripeTab[]).map(value=>
       <Button key={value} type="button" size="sm" variant={tab===value?'default':'outline'}
         aria-current={tab===value?'page':undefined} onClick={()=>changeTab(value)}>
         {value==='overview'?'Vue générale':value==='settings'?'Connexion':titles[value]}</Button>)}</nav>
@@ -260,14 +355,22 @@ export function StripeAdminView(props:WorkspaceViewProps){
           <th className="py-2 pr-3">Client</th><th className="py-2 pr-3">Plan</th>
           <th className="py-2 pr-3">Montant</th><th className="py-2 pr-3">Statut</th>
           <th className="py-2">Prochaine échéance</th></tr></thead><tbody>
-          {rows.map(({customer,subscription},index)=><tr key={`${customer?.id??subscription?.customer_id}-${subscription?.id??index}`}
+          {rows.map(({customer,subscription},index)=>{
+            const lifecycle=subscription?subscriptionLifecycleAction(subscription):null;
+            return <tr key={`${customer?.id??subscription?.customer_id}-${subscription?.id??index}`}
             className="border-b last:border-0"><td className="py-2 pr-3"><div className="font-medium">{customer?.name||customer?.id||subscription?.customer_id}</div>
               <div className="text-xs text-muted-foreground">{customer?.id??'—'}</div></td>
             <td className="py-2 pr-3">{subscription?.price_id??'—'}</td>
             <td className="py-2 pr-3">{subscription?formatStripeAmount(subscription.unit_amount_minor,subscription.currency):'—'}</td>
             <td className="py-2 pr-3"><Badge variant={subVariant(subscription?.status??null)}>
-              {subscription?.status?SUB_STATUT_LABEL[subscription.status]||subscription.status:'Sans abonnement'}</Badge></td>
-            <td className="py-2">{date(subscription?.period_end_at)}</td></tr>)}</tbody></table></div>}
+              {subscription?.status?SUB_STATUT_LABEL[subscription.status]||subscription.status:'Sans abonnement'}</Badge>
+              {subscription?.cancel_at_period_end?<div className="text-xs">Arrêt prévu</div>:null}
+              {lifecycle?
+                <Button className="mt-1" size="sm" variant="outline" type="button"
+                  disabled={busy||!!pending||loading.subscriptions} onClick={()=>{
+                    if(window.confirm(lifecycle.confirmation))void mutate(lifecycle.operation,lifecycle.input);
+                  }}>{lifecycle.label}</Button>:null}</td>
+            <td className="py-2">{date(subscription?.period_end_at)}</td></tr>})}</tbody></table></div>}
       <div className="mt-3 flex gap-2">{(['customers','subscriptions'] as const).map(id=>pages[id]?.nextCursor?
         <Button key={id} size="sm" variant="outline" type="button" disabled={loading[id]}
           onClick={()=>void loadPage(id,generation.current,pages[id]!.nextCursor,true)}>Suite {titles[id].toLowerCase()}</Button>:null)}</div>
@@ -291,17 +394,156 @@ export function StripeAdminView(props:WorkspaceViewProps){
       {pages.invoices?.nextCursor?<Button className="mt-3" size="sm" variant="outline" type="button"
         disabled={loading.invoices} onClick={()=>void loadPage('invoices',generation.current,pages.invoices!.nextCursor,true)}>
         Suite factures</Button>:null}</Card>:null}
-    {tab==='overview'?<Card className="p-4"><h2 className="mb-3 text-base font-semibold">Événements Stripe reçus</h2>
-      <div className="text-sm text-muted-foreground">Aucun webhook n’est raccordé dans ce module.</div></Card>:null}
+    {tab==='products'?<Card className="p-4"><div className="mb-3 flex items-center justify-between gap-2">
+      <h2 className="text-base font-semibold">Produits</h2>
+      <Button size="sm" variant="outline" type="button" onClick={()=>void loadPage('products',generation.current)}>
+        Actualiser</Button></div>
+      {loading.products?<div className="text-sm text-muted-foreground">Chargement…</div>:null}
+      {products.length===0?<div className="text-sm text-muted-foreground">Aucun produit projeté.</div>:
+        <div className="overflow-x-auto"><table className="w-full text-sm"><thead><tr className="border-b text-left text-xs uppercase text-muted-foreground">
+          <th className="py-2 pr-3">Produit</th><th className="py-2 pr-3">État</th>
+          <th className="py-2">Prix par défaut</th></tr></thead><tbody>
+          {products.map(product=><tr key={product.id} className="border-b last:border-0">
+            <td className="py-2 pr-3"><div className="font-medium">{product.name}</div>
+              <div className="text-xs text-muted-foreground">{product.id}</div></td>
+            <td className="py-2 pr-3"><Badge variant={product.active?'default':'secondary'}>
+              {product.active?'Actif':'Inactif'}</Badge></td>
+            <td className="py-2 text-xs text-muted-foreground">{product.default_price_id??'—'}</td>
+          </tr>)}</tbody></table></div>}
+      {pages.products?.nextCursor?<Button className="mt-3" size="sm" variant="outline" type="button"
+        disabled={loading.products} onClick={()=>void loadPage('products',generation.current,pages.products!.nextCursor,true)}>
+        Suite produits</Button>:null}
+      <p className="mt-2 text-xs text-muted-foreground">Les produits affichés suivent les pages Stripe déjà lues.</p>
+    </Card>:null}
+    {tab==='prices'?<Card className="p-4"><div className="mb-3 flex items-center justify-between gap-2">
+      <h2 className="text-base font-semibold">Prix</h2>
+      <Button size="sm" variant="outline" type="button" onClick={()=>void loadPage('prices',generation.current)}>
+        Actualiser</Button></div>
+      {loading.prices?<div className="text-sm text-muted-foreground">Chargement…</div>:null}
+      {prices.length===0?<div className="text-sm text-muted-foreground">Aucun prix projeté.</div>:
+        <div className="overflow-x-auto"><table className="w-full text-sm"><thead><tr className="border-b text-left text-xs uppercase text-muted-foreground">
+          <th className="py-2 pr-3">Prix Stripe</th><th className="py-2 pr-3">Produit</th>
+          <th className="py-2 pr-3">Montant</th><th className="py-2 pr-3">Périodicité</th>
+          <th className="py-2">État</th></tr></thead><tbody>
+          {prices.map(price=><tr key={price.id} className="border-b last:border-0">
+            <td className="py-2 pr-3 text-xs">{price.id}</td>
+            <td className="py-2 pr-3 text-xs"><div>{price.product_id}</div>
+              <div className="text-muted-foreground">Nom non rapproché ; produit potentiellement non synchronisé.</div></td>
+            <td className="py-2 pr-3">{priceAmount(price)}</td>
+            <td className="py-2 pr-3">{formatStripeFrequency(price.type,price.interval,price.interval_count)}</td>
+            <td className="py-2"><Badge variant={price.active?'default':'secondary'}>
+              {price.active?'Actif':'Inactif'}</Badge></td></tr>)}</tbody></table></div>}
+      {pages.prices?.nextCursor?<Button className="mt-3" size="sm" variant="outline" type="button"
+        disabled={loading.prices} onClick={()=>void loadPage('prices',generation.current,pages.prices!.nextCursor,true)}>
+        Suite prix</Button>:null}
+      <p className="mt-2 text-xs text-muted-foreground">Prix actifs et inactifs ont deux parcours Stripe distincts ; cette liste peut rester partielle. Le produit indiqué est son identifiant Stripe, sans rapprochement supposé.</p>
+    </Card>:null}
+    {tab==='offers'?<Card className="p-4"><div className="mb-3 flex items-center justify-between gap-2">
+      <div><h2 className="text-base font-semibold">Offres d’achat test</h2>
+        <p className="text-sm text-muted-foreground">Chaque offre reprend un produit et un prix fixe actifs déjà projetés. Le serveur vérifie leur génération avant publication.</p></div>
+      <Button size="sm" variant="outline" type="button" disabled={offersLoading}
+        onClick={()=>void loadOffers(generation.current)}>Actualiser</Button></div>
+      <div className="flex flex-wrap items-end gap-2"><label className="grid gap-1 text-sm">Prix d’une nouvelle offre
+        <select className="rounded-md border px-3 py-2" value={offerPriceId}
+          onChange={event=>setOfferPriceId(event.target.value)} disabled={busy||!!pending}>
+          <option value="">Choisir un prix fixe actif</option>
+          {eligiblePrices.map(price=><option key={price.id} value={price.id}>
+            {price.product_id} · {formatStripeAmount(price.unit_amount_minor,price.currency)} · {formatStripeFrequency(price.type,price.interval,price.interval_count)}
+          </option>)}</select></label>
+        <Button size="sm" type="button" disabled={!offerPrice||busy||!!pending||!config?.enabled}
+          onClick={()=>{if(offerPrice&&window.confirm(`Publier une offre test pour le prix ${offerPrice.id} ?`))
+            void mutate('offer.set',{productId:offerPrice.product_id,priceId:offerPrice.id,enabled:true,revision:0});}}>
+          Publier l’offre</Button></div>
+      <p className="mt-2 text-xs text-muted-foreground">Un prix absent de cette page peut nécessiter la suite des projections. Aucun montant libre n’est accepté.</p>
+      <div className="mt-3 flex gap-2">{(['products','prices'] as const).map(id=>pages[id]?.nextCursor?
+        <Button key={id} size="sm" variant="outline" type="button" disabled={loading[id]}
+          onClick={()=>void loadPage(id,generation.current,pages[id]!.nextCursor,true)}>Suite {titles[id].toLowerCase()}</Button>:null)}</div>
+      {offersLoading?<p className="mt-3 text-sm">Chargement des offres…</p>:null}
+      <div className="mt-4 grid gap-3 sm:grid-cols-2">{offers.map(offer=><div key={offer.id}
+        className="rounded-md border p-3 text-sm"><div className="flex items-start justify-between gap-2">
+        <div><strong className="font-medium">{offer.name}</strong><p className="text-xs text-muted-foreground">{offer.id}</p></div>
+        <Badge variant={offer.enabled?'default':'secondary'}>{offer.enabled?'Publiée':'Suspendue'}</Badge></div>
+        <p className="mt-2">{formatStripeAmount(offer.unitAmountMinor,offer.currency)} · {formatStripeFrequency(
+          offer.mode==='payment'?'one_time':'recurring',offer.interval,offer.intervalCount)}</p>
+        <p className="text-xs text-muted-foreground">Produit {offer.productId} · prix {offer.priceId}</p>
+        <Button className="mt-3" size="sm" variant="outline" type="button"
+          disabled={busy||!!pending||offersLoading} onClick={()=>{
+            if(window.confirm(offer.enabled?`Suspendre l’offre ${offer.name} ?`:`Réactiver l’offre ${offer.name} ?`))
+              void mutate('offer.set',{offerId:offer.id,productId:offer.productId,priceId:offer.priceId,
+                enabled:!offer.enabled,revision:offer.revision});
+          }}>{offer.enabled?'Suspendre':'Réactiver'}</Button></div>)}</div>
+      {!offersLoading&&offers.length===0?<p className="mt-3 text-sm text-muted-foreground">Aucune offre configurée.</p>:null}
+      {offerCursor?<Button className="mt-3" size="sm" variant="outline" type="button" disabled={offersLoading}
+        onClick={()=>void loadOffers(generation.current,offerCursor,true)}>Suite offres</Button>:null}
+    </Card>:null}
+    {tab==='checkout'?<Card className="p-4"><h2 className="mb-3 text-base font-semibold">Checkout Stripe test</h2>
+      <p className="mb-3 text-sm text-muted-foreground">Choisissez un prix fixe actif déjà synchronisé. Le montant vient du prix Stripe, jamais de ce formulaire.</p>
+      <div className="grid gap-3 sm:grid-cols-3">
+        <label className="grid gap-1 text-sm">Identifiant du prix
+          <input className="rounded-md border px-3 py-2" value={checkoutPriceId} maxLength={128}
+            onChange={event=>setCheckoutPriceId(event.target.value)} disabled={busy||!!pending}/></label>
+        <label className="grid gap-1 text-sm">Quantité
+          <input className="rounded-md border px-3 py-2" type="number" min={1} max={100}
+            value={checkoutQuantity} onChange={event=>setCheckoutQuantity(Number(event.target.value))}
+            disabled={busy||!!pending}/></label>
+        <label className="grid gap-1 text-sm">Client Stripe existant (facultatif)
+          <input className="rounded-md border px-3 py-2" value={checkoutCustomerId} maxLength={128}
+            onChange={event=>setCheckoutCustomerId(event.target.value)} disabled={busy||!!pending}/></label>
+      </div>
+      <div className="mt-3 flex flex-wrap gap-2">{(['payment','subscription'] as const).map(mode=><Button
+        key={mode} size="sm" type="button" disabled={busy||!!pending||!config?.enabled||!config.checkoutReturnOrigin
+          ||!checkoutPriceId||!Number.isSafeInteger(checkoutQuantity)||checkoutQuantity<1||checkoutQuantity>100}
+        onClick={()=>void mutate(mode==='payment'?'checkout.payment.create':'checkout.subscription.create',
+          {priceId:checkoutPriceId,quantity:checkoutQuantity,
+            ...(checkoutCustomerId?{customerId:checkoutCustomerId}:{})})}>
+        {mode==='payment'?'Créer un paiement test':'Créer un abonnement test'}</Button>)}</div>
+      {checkoutSession?<div className="mt-4 text-sm"><p>Session {checkoutSession.id} · {checkoutSession.status} · {checkoutSession.paymentStatus}</p>
+        {checkoutSession.url?<a className="underline" href={checkoutSession.url} target="_blank" rel="noopener noreferrer">
+          Ouvrir Checkout Stripe</a>:null}</div>:null}
+      <div className="mt-4 flex flex-wrap items-end gap-2"><label className="grid gap-1 text-sm">Relire une session créée
+        <input className="rounded-md border px-3 py-2" value={lookupSessionId} maxLength={128}
+          onChange={event=>setLookupSessionId(event.target.value)}/></label>
+        <Button size="sm" type="button" variant="outline" disabled={!lookupSessionId||busy||!!pending}
+          onClick={()=>void read('checkout.read',{sessionId:lookupSessionId},generation.current)
+            .then(value=>{if(value?.session)setCheckoutSession(value.session as CheckoutSession);})}>
+          Relire</Button></div></Card>:null}
+    {tab==='overview'?<Card className="p-4"><div className="mb-3 flex items-center justify-between gap-2">
+      <h2 className="text-base font-semibold">Événements Stripe reçus</h2>
+      <Button size="sm" variant="outline" type="button" onClick={()=>void loadEvents(generation.current)}>
+        Actualiser</Button></div>
+      {events.length? <div className="overflow-x-auto"><table className="w-full text-sm"><thead><tr className="border-b text-left text-xs uppercase text-muted-foreground">
+        <th className="py-2 pr-3">Événement</th><th className="py-2 pr-3">Type</th>
+        <th className="py-2 pr-3">Objet</th><th className="py-2">Reçu</th></tr></thead><tbody>
+        {events.map(event=><tr key={event.id} className="border-b last:border-0">
+          <td className="py-2 pr-3">{event.id}</td><td className="py-2 pr-3">{event.type}</td>
+          <td className="py-2 pr-3">{event.object_id}</td><td className="py-2">{date(event.updated_at)}</td>
+        </tr>)}</tbody></table></div>:<div className="text-sm text-muted-foreground">Aucun événement signé reçu dans cette connexion.</div>}
+      {eventCursor?<Button className="mt-3" size="sm" variant="outline" type="button"
+        onClick={()=>void loadEvents(generation.current,eventCursor,true)}>Suite événements</Button>:null}
+    </Card>:null}
     {tab==='settings'?<Card className="p-4"><h2 className="mb-3 text-base font-semibold">Connexion Stripe</h2>
       <p className="mb-3 text-sm text-muted-foreground">La clé est conservée dans le coffre serveur.</p>
       <p className="mb-3 text-sm">État : {config?.hasKey?'Clé enregistrée':'Clé absente'} · {config?.enabled?'active':'suspendue'}</p>
+      <p className="mb-3 text-sm">Webhook : {config?.hasWebhookSecret?'secret enregistré':'secret absent'}</p>
+      <p className="mb-3 text-sm">Principal de service : {config?.hasWebhookService?'jeton scellé':'jeton absent'}</p>
+      <label className="mb-3 grid gap-1 text-sm">Origine HTTPS de retour Checkout
+        <input className="rounded-md border px-3 py-2" type="url" value={checkoutOrigin}
+          placeholder="https://app.example.com" maxLength={512} disabled={busy||!!pending}
+          onChange={event=>setCheckoutOrigin(event.target.value)}/></label>
+      <label className="mb-3 grid gap-1 text-sm">Page de retour des achats de l’app
+        <input className="rounded-md border px-3 py-2" type="text" value={checkoutAppReturnPath}
+          placeholder="/offers" maxLength={256} disabled={busy||!!pending}
+          onChange={event=>setCheckoutAppReturnPath(event.target.value)}/></label>
+      <p className="mb-3 text-xs text-muted-foreground">Chemin local du front, par exemple /offers. Le serveur construit l’URL de retour ; aucun lien n’est fourni par l’acheteur.</p>
       <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={enabled}
         disabled={busy||!!pending||!config?.hasKey} onChange={event=>{if(enableRevision===null)setEnableRevision(config?.revision??0);
           setEnabled(event.target.checked);}}/>Connexion active</label>
       <Button className="mt-2" size="sm" variant="outline" type="button"
-        disabled={busy||!!pending||enabled&&!config?.hasKey}
-        onClick={()=>void mutate('config.set',{enabled,revision:enableRevision??config?.revision??0})}>
+        disabled={busy||!!pending||enabled&&!config?.hasKey||
+          !!checkoutAppReturnPath&&!/^\/[A-Za-z0-9_-]+(?:\/[A-Za-z0-9_-]+)*$/u.test(checkoutAppReturnPath)}
+        onClick={()=>void mutate('config.set',{enabled,checkoutReturnOrigin:checkoutOrigin||null,
+          checkoutAppReturnPath:checkoutAppReturnPath||null,
+          revision:enableRevision??config?.revision??0})}>
         Enregistrer la configuration</Button>
       <div className="mt-4 flex flex-wrap items-end gap-2"><label className="grid gap-1 text-sm">Clé secrète Stripe
         <input className="rounded-md border px-3 py-2 text-sm" type="password" autoComplete="off" maxLength={4096}
@@ -312,6 +554,29 @@ export function StripeAdminView(props:WorkspaceViewProps){
           onClick={()=>void mutate('config.key.revoke',{revision:config!.revision})}>Révoquer la clé</Button></div>
       <Button className="mt-3" size="sm" variant="outline" type="button" disabled={!config?.enabled||busy||!!pending}
         onClick={()=>void read('connection.check',{},generation.current).then(value=>{
-          if(value?.reachable===true)setNotice('Connexion Stripe joignable.');})}>Vérifier la connexion</Button></Card>:null}
+          if(value?.reachable===true)setNotice('Connexion Stripe joignable.');})}>Vérifier la connexion</Button>
+      <div className="mt-4 flex flex-wrap items-end gap-2"><label className="grid gap-1 text-sm">Secret de signature webhook
+        <input className="rounded-md border px-3 py-2 text-sm" type="password" autoComplete="off"
+          maxLength={512} value={webhookSecret} disabled={busy||!!pending||!config?.enabled}
+          onChange={event=>setWebhookSecret(event.target.value)}/></label>
+        <Button size="sm" variant="outline" type="button" disabled={busy||!!pending||!config?.enabled
+          ||!webhookSecret.startsWith('whsec_')}
+          onClick={()=>void mutate('config.key.webhook.set',{webhookSecret,revision:config!.revision})}>
+          Enregistrer le secret</Button>
+        <Button size="sm" variant="outline" type="button" disabled={busy||!!pending||!config?.hasWebhookSecret}
+          onClick={()=>void mutate('config.key.webhook.revoke',{revision:config!.revision})}>
+          Révoquer le secret</Button></div>
+      <p className="mt-4 text-xs text-muted-foreground">Créez un principal de service et un jeton API natif limité à ce contexte, audience admin et seul droit creezio.stripe:webhook.receive, puis saisissez le jeton ici. Aucun principal n’est créé par un webhook.</p>
+      <div className="mt-2 flex flex-wrap items-end gap-2"><label className="grid gap-1 text-sm">Jeton API du service webhook
+        <input className="rounded-md border px-3 py-2 text-sm" type="password" autoComplete="off"
+          maxLength={256} value={webhookServiceToken} disabled={busy||!!pending||!config?.enabled}
+          onChange={event=>setWebhookServiceToken(event.target.value)}/></label>
+        <Button size="sm" variant="outline" type="button" disabled={busy||!!pending||!config?.enabled
+          ||!/^cz1a_[A-Za-z0-9_-]{43}$/u.test(webhookServiceToken)}
+          onClick={()=>void mutate('config.key.webhook.service.set',
+            {serviceToken:webhookServiceToken,revision:config!.revision})}>Sceller le jeton</Button>
+        <Button size="sm" variant="outline" type="button" disabled={busy||!!pending||!config?.hasWebhookService}
+          onClick={()=>void mutate('config.key.webhook.service.revoke',{revision:config!.revision})}>
+          Révoquer le jeton scellé</Button></div></Card>:null}
   </div>;
 }

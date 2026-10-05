@@ -37,7 +37,7 @@ function dispose(root,boundary=root){
   }
   rmdirSync(root);
 }
-function fixture({previous=false,unknown=false,qualification=false}={}){
+function fixture({previous=false,unknown=false,qualification=false,stageHosting}={}){
   const home=mkdtempSync(path.join(tmpdir(),'creezio-sites-source-'));
   const core=path.join(home,'core'),site=path.join(home,'descriptor'),stage=path.join(home,'stage');
   for(const root of [core,site,stage])mkdirSync(root);
@@ -54,13 +54,13 @@ function fixture({previous=false,unknown=false,qualification=false}={}){
   put(site,'db/creezio-schema-history.json',JSON.stringify({schemaVersion:1,applicationId:'app',
     compositionDigest,files:historyFiles})+'\n');
   put(core,'.gitignore','dist/\n.quality/\n');
-  const sdk=`${pins[12][1]}${pins[12][0]}`,purchase=`${pins[8][1]}${pins[8][0]}`;
+  const sdk=`${pins[13][1]}${pins[13][0]}`,purchase=`${pins[8][1]}${pins[8][0]}`;
   put(core,'package.json',JSON.stringify({name:'example',scripts:{build:'node build.js'},
     dependencies:{'@creezio/purchase-requests':purchase},devDependencies:{'@creezio/sdk':sdk}},null,2)+'\n');
   put(core,'package-lock.json',JSON.stringify({lockfileVersion:3,packages:{'':{
     dependencies:{'@creezio/purchase-requests':purchase},devDependencies:{'@creezio/sdk':sdk}},
     'node_modules/@creezio/purchase-requests':{version:'0.1.3',resolved:purchase},
-    'node_modules/@creezio/sdk':{version:'1.9.0',resolved:sdk}}},null,2)+'\n');
+    'node_modules/@creezio/sdk':{version:'1.10.0',resolved:sdk}}},null,2)+'\n');
   put(core,'scripts/lab/bootstrap-public-packages.mjs','export async function bootstrapPublicPackages() {}\n');
   put(core,'scripts/sites/build.mjs',"import {bootstrapPublicPackages} from '../lab/bootstrap-public-packages.mjs';\nawait bootstrapPublicPackages();\n");
   put(core,'configuration/composition.sites.json',JSON.stringify(nativeComposition)+'\n');
@@ -77,7 +77,7 @@ function fixture({previous=false,unknown=false,qualification=false}={}){
   const artifact=measureRuntimeArtifacts(core),source=sourceIdentity(core);
   put(core,'.quality/sites-build.json',JSON.stringify({projectId:'appgprj_test',source,
     compositionDigest,artifact,metadata})+'\n');
-  put(stage,'.openai/hosting.json',hosting);
+  put(stage,'.openai/hosting.json',stageHosting??hosting);
   if(previous){
     put(stage,'legacy.txt','retired source\n');
     put(stage,'package.json','{"scripts":{"build":"old"}}\n');
@@ -188,6 +188,67 @@ test('Sites source refuses stale plan and a changed hosting descriptor without s
     assert.throws(()=>prepareSitesSource(plan,f.planFile,f.receiptFile));
     assert.equal(git(f.stage,'status','--porcelain'),'');
     assert.equal(lstatSync(f.receiptFile,{throwIfNoEntry:false}),undefined);
+  }finally{dispose(f.home);}
+});
+test('Sites source accepts identical hosting JSON with whitespace or key order changes',()=>{
+  const hosting={project_id:'appgprj_test',d1:'DB',r2:'BUCKET'};
+  const representations=[JSON.stringify(hosting,null,2)+'\n',
+    JSON.stringify({r2:hosting.r2,project_id:hosting.project_id,d1:hosting.d1})+'\n'];
+  for(const stageHosting of representations){
+    const f=fixture({previous:true,stageHosting});
+    try{
+      execFileSync(process.execPath,[sourceCli,'plan','--core',f.core,'--site',f.site,
+        '--stage',f.stage,'--plan',f.planFile]);
+      const plan=JSON.parse(readFileSync(f.planFile,'utf8'));
+      const target=readFileSync(path.join(f.site,'.openai/hosting.json'));
+      const staged=readFileSync(path.join(f.stage,'.openai/hosting.json'));
+      assert.notEqual(hash(staged),hash(target));
+      assert.equal(plan.files.find(file=>file.path==='.openai/hosting.json').sha256,hash(target));
+      assert.equal(plan.projectId,hosting.project_id);
+      assert.equal(git(f.stage,'status','--porcelain'),'');
+      prepareSitesSource(plan,f.planFile,f.receiptFile);
+      assert.deepEqual(readFileSync(path.join(f.stage,'.openai/hosting.json')),target);
+      commit(f.stage,'equivalent hosting descriptor source');
+      assert.equal(verifySitesSource(f.planFile,f.receiptFile).projectId,hosting.project_id);
+    }finally{dispose(f.home);}
+  }
+});
+test('Sites source refuses changed hosting project, bindings, or object keys',()=>{
+  const cases=[
+    {project_id:'other',d1:'DB',r2:'BUCKET'},
+    {project_id:'appgprj_test',d1:'OTHER',r2:'BUCKET'},
+    {project_id:'appgprj_test',d1:'DB',r2:'OTHER'},
+    {project_id:'appgprj_test',d1:'DB',r2:'BUCKET',extra:true},
+    {project_id:'appgprj_test',d1:'DB'},
+  ];
+  const representations=[...cases.map(descriptor=>JSON.stringify(descriptor)+'\n'),
+    '{"project_id":"other","project_id":"appgprj_test","d1":"DB","r2":"BUCKET"}\n',
+    '{"project_id":"appgprj_test","project\\u005fid":"appgprj_test","d1":"DB","r2":"BUCKET"}\n'];
+  for(const stageHosting of representations){
+    const f=fixture({stageHosting});
+    try{
+      assert.throws(()=>planSitesSource({applicationRoot:f.core,siteRoot:f.site,
+        stageRoot:f.stage}),/another project or hosting manifest|duplicate keys/);
+      assert.equal(git(f.stage,'status','--porcelain'),'');
+      assert.equal(lstatSync(f.planFile,{throwIfNoEntry:false}),undefined);
+    }finally{dispose(f.home);}
+  }
+});
+test('Sites source retains byte checks for a previously attested hosting file',()=>{
+  const descriptor={project_id:'appgprj_test',d1:'DB',r2:'BUCKET'};
+  const f=fixture({stageHosting:JSON.stringify(descriptor,null,2)+'\n'});
+  try{
+    const original=readFileSync(path.join(f.stage,'.openai/hosting.json'));
+    put(f.stage,'sites-source-provenance.json',JSON.stringify({schemaVersion:1,
+      projectId:'appgprj_test',files:[{path:'.openai/hosting.json',bytes:original.length,
+        sha256:hash(original)}]})+'\n');
+    commit(f.stage,'attest staging descriptor');
+    assert.equal(planSitesSource({applicationRoot:f.core,siteRoot:f.site,
+      stageRoot:f.stage}).projectId,descriptor.project_id);
+    put(f.stage,'.openai/hosting.json',JSON.stringify(descriptor)+'\n');
+    commit(f.stage,'change attested descriptor bytes');
+    assert.throws(()=>planSitesSource({applicationRoot:f.core,siteRoot:f.site,
+      stageRoot:f.stage}),/Previous Sites source differs from its provenance/);
   }finally{dispose(f.home);}
 });
 test('Sites export seals only measured app artifacts and refuses a changed build',()=>{

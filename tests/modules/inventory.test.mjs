@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {createHash} from 'node:crypto';
-import {mkdtempSync,mkdirSync,writeFileSync,readFileSync,readdirSync,existsSync,unlinkSync,rmdirSync,lstatSync} from 'node:fs';
+import {mkdtempSync,mkdirSync,writeFileSync,readFileSync,readdirSync,existsSync,unlinkSync,rmdirSync,lstatSync,statSync} from 'node:fs';
 import {fileURLToPath} from 'node:url';
 import path from 'node:path';
 import {tmpdir} from 'node:os';
@@ -123,6 +123,25 @@ test('Node inventory binds an available module to exact runtime and validation b
   assert.deepEqual(readFileSync(f.runtimePath),before,'new candidate bytes keep the old version intact');
 });
 
+test('inspection computes absent cache paths without writing and preserves strict cache checks',t=>{
+  const f=localModule(t),validationPath=path.join(f.root,...f.node.validation.location.path.split('/'));
+  const input={root:f.root,allowedOrigins:[f.descriptor.identity.origin],
+    candidates:[{source:f.source,lockNode:f.node}],writeCache:false};
+  const before=statSync(f.runtimePath).mtimeMs;
+  assert.equal(compileModuleInventory(input).candidates.length,1);
+  assert.equal(statSync(f.runtimePath).mtimeMs,before);
+  const original=readFileSync(f.runtimePath);
+  writeFileSync(f.runtimePath,'corrupt');
+  assert.throws(()=>compileModuleInventory({...input,allowUncached:true}),{code:'cache_corrupt'});
+  writeFileSync(f.runtimePath,original);
+  unlinkSync(f.runtimePath);
+  unlinkSync(validationPath);
+  assert.throws(()=>compileModuleInventory(input),{code:'cache_missing'});
+  const inspected=compileModuleInventory({...input,allowUncached:true});
+  assert.equal(inspected.candidates[0].lockNode.runtime.location.path,f.node.runtime.location.path);
+  assert.equal(readdirSync(path.dirname(f.runtimePath)).length,0);
+});
+
 test('workspace archive packer refuses CRLF without normalizing source bytes',t=>{
   const f=localModule(t);
   const readme=path.join(f.moduleDirectory,'README.md');
@@ -217,6 +236,35 @@ test('local lock command writes verified bytes once and check mode refuses stale
   writeFileSync(path.join(f.moduleDirectory,'README.md'),'Changed bytes\n');
   assert.equal(runModuleLockCli(args,io),1);
   assert.equal(readFileSync(path.join(f.root,'composition.lock.json'),'utf8'),locked);
+});
+
+test('modules:lock preserves retired rights and refuses an unplanned module removal',t=>{
+  const f=localModule(t),composition=fixture('valid-composition');
+  f.write(path.join(f.root,'composition.json'),`${JSON.stringify(composition)}\n`);
+  const priorLock=fixture('valid-composition-lock');
+  priorLock.modules=[];
+  f.write(path.join(f.root,'composition.lock.json'),`${JSON.stringify(priorLock)}\n`);
+  f.write(path.join(f.root,'module-inventory.json'),JSON.stringify({schemaVersion:1,
+    allowedOrigins:[f.descriptor.identity.origin],available:[]}));
+  const args=['--root',f.root,'--composition','composition.json','--lock','composition.lock.json',
+    '--inventory','module-inventory.json'];
+  let errors='';
+  const io={stdout:{write:()=>{}},stderr:{write:value=>{errors+=value;}}};
+  assert.equal(runModuleLockCli([...args,'--write'],io),0,errors);
+  const lockPath=path.join(f.root,'composition.lock.json');
+  const lock=JSON.parse(readFileSync(lockPath,'utf8'));
+  lock.retiredModules=[{moduleId:'old.module',origin:'https://example.invalid/old/module',permissionIds:['read']}];
+  writeFileSync(lockPath,`${JSON.stringify(lock)}\n`);
+  errors='';
+  assert.equal(runModuleLockCli([...args,'--write'],io),0,errors);
+  assert.deepEqual(JSON.parse(readFileSync(lockPath,'utf8')).retiredModules,lock.retiredModules);
+  composition.modules=[];
+  for(const audience of ['admin','app'])composition.exposure[audience].moduleIds=[];
+  writeFileSync(path.join(f.root,'composition.json'),`${JSON.stringify(composition)}\n`);
+  errors='';
+  assert.equal(runModuleLockCli([...args,'--write'],io),1);
+  assert.match(errors,/Module removal requires an accepted T11 plan/);
+  assert.deepEqual(JSON.parse(readFileSync(lockPath,'utf8')).retiredModules,lock.retiredModules);
 });
 
 test('a selected package keeps its legacy receipt lock until canonical validation is explicitly chosen',t=>{

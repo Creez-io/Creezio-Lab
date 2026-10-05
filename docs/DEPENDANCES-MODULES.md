@@ -1,5 +1,7 @@
 # Dépendances entre modules
 
+Le parcours opérateur utilise [l'admission d'archives vérifiées](MODULES-ADMISSION-OPERATEUR.md) puis [l'application d'un plan accepté](MODULES-APPLY-OPERATEUR.md). Les dépendances de modules restent distinctes des bibliothèques npm : ces dernières demandent des archives explicitement approuvées si elles ne sont pas déjà compatibles dans le verrou. Le retrait d'un module conserve dans le verrou les droits historiques inactifs et leur origine, sans supprimer les données ni rendre invalides les autres droits des comptes. Cette histoire doit survivre au renouvellement du verrou et à la synchronisation des profils.
+
 Contrat commun aux modules natifs, communs, propres à une application et tiers. Un module peut dépendre d'un module de toute autre origine ; être livré avec Creezio ne dispense pas de déclarer cette relation. Une dépendance n'est ni une copie du module fournisseur ni un nouveau service à héberger. Ce contrat complète le [standard module](STANDARD-MODULE.md) et sa [distribution](EXTENSIONS-THEMES-ECOSYSTEME.md).
 
 ## Exemple et distinction des responsabilités
@@ -31,6 +33,10 @@ Une seule origine et une seule version effective par identifiant de module dans 
 Les modules natifs non désactivables sont identifiés par la politique du socle. Les natifs optionnels suivent le même graphe que les autres. Cette possibilité ne retire aucune des capacités natives demandées à la distribution de référence.
 
 ## Composition, résolution et verrou
+
+Une première installation externe identifie explicitement le module et son origine attendue dans `externalPackages`, en plus du nom de paquet, de la version et des trois fichiers runtime/validation/reçu avec leurs empreintes. Elle ne crée pas de version courante fictive pour passer par le parcours de mise à jour. Pour une mise à jour, le module et son origine doivent rester identiques et la version candidate doit être strictement supérieure. Les candidats restent des métadonnées tant qu'aucun plan n'a été accepté et appliqué.
+
+Un plan accepté peut être transmis à l'opérateur avec ses choix, sa révision et les empreintes de base, d'inventaire et de cible. Cet export ne contient ni code de module ni secret et ne constitue pas une autorisation serveur. L'opérateur doit retrouver les mêmes octets et résoudre de nouveau les mêmes choix avant de modifier le projet. L'application du plan au checkout ne vaut pas publication : seule la comparaison avec les empreintes du runtime livré permet sa confirmation native.
 
 La composition demandée distingue choix de l'application, activation et intégrations facultatives sélectionnées explicitement. La présence d'un fournisseur ne suffit pas à activer une intégration. Une intégration désactivée peut coexister avec une version incompatible du fournisseur ; ses références restent inaccessibles. Si elle est sélectionnée, une incompatibilité bloque son activation et la composition proposée, sans transformer la fonction en réussite factice. Le résolveur propose les dépendances transitives nécessaires depuis des origines autorisées. L'administrateur ou le mandat explicite de livraison accepte ce plan avant acquisition de nouveaux paquets, droits, configuration ou coût. Les métadonnées d'un tiers ne constituent jamais cette autorisation.
 

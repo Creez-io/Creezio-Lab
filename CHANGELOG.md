@@ -1,5 +1,9 @@
 # Changelog
 
+## Candidat source — cycle des extensions Core `93d0215` et SDK public 1.10.0 (T11/T38)
+
+La branche Lab reprend en source l'admission vérifiée d'un paquet externe, l'application sous journal d'un plan accepté et l'approbation explicite des archives npm nécessaires. Le verrou conserve l'origine et les droits retirés ; ces références historiques ne donnent ni opération ni nouvelle attribution. Les intégrations facultatives absentes et les modules désactivés gardent leurs limites de contribution, et les noms de paquets npm ne peuvent entrer en collision. Le module achats public reste épinglé à 0.1.3, avec l'identité `creezio.lab` et le front ChatGPT-like. Le SDK public 1.10.0 est sélectionné par son URL de release et son intégrité vérifiée ; les douze verrous Lab sont régénérés sans activer de nouveau module Core. Revue finale, CI Lab et mesures de runtime restent à produire avant livraison ; aucune donnée d'hôte n'est modifiée par ce candidat source.
+
 ## Candidat local — adoption Core `8756f008` et SDK public 1.9.0 (T38)
 
 Les sources Core jusqu'au commit exact sont reprises dans le fork Lab, avec le paquet SDK 1.9.0 de release publique vérifié et le module achats 0.1.3 inchangé. Les douze verrous de composition sont régénérés ; les deux profils actifs gardent `creezio.lab`, le front ChatGPT-like et leurs sélections Docker/Sites. Les modules nouveaux du Core restent hors des profils actifs. Les mesures du Worker, la CI avec installation SDK 1.9.0 et la recette hébergée doivent encore qualifier cette source ; aucun hôte ni donnée n'est modifié par ce candidat.

@@ -2,6 +2,9 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {namedModule,compositionCase} from '../contracts/helpers.mjs';
 import {contractIntegrity} from '../../sdk/contracts/validate.mjs';
+import Ajv2020 from 'ajv/dist/2020.js';
+import addFormats from 'ajv-formats';
+import {manifest} from '../../extensions/native/modules-settings/tests/helpers.mjs';
 import {catalogList,plansPreview,plansAccept,plansCancelPending,plansRead,journalList}
   from '../../extensions/native/modules-settings/module/service.ts';
 
@@ -65,8 +68,19 @@ test('module service derives catalog base from host and commits first plan as on
     else records[plan.model].set(value.id??value.revision,value);
   }
   const read=(await plansRead({planId:accepted.output.planId},context)).output;
+  const validateRead=addFormats(new Ajv2020({strict:true})).compile(
+    manifest.contracts.schemas.find(item=>item.id==='plans-read-output').schema);
+  assert.equal(validateRead(read),true,JSON.stringify(validateRead.errors));
   assert.equal(read.status,'accepted_pending_publication');
   assert.equal(read.events[0].revision,1);
+  assert.deepEqual(read.handoff,{
+    schemaVersion:1,status:'accepted_pending_publication',planId:accepted.output.planId,revision:1,
+    planDigest:preview.planDigest,inventoryDigest:intent.base.inventoryDigest,
+    baseCompositionDigest:intent.base.compositionDigest,baseLockDigest:intent.base.lockDigest,
+    targetCompositionDigest:preview.targetCompositionDigest,targetLockDigest:preview.targetLockDigest,
+    choices:intent,summary:read.plan.summary,
+    summaryDigest:accepted.plans[1].input.values.summary_digest});
+  assert.equal('choices' in read.plan,false,'the operator choices are confined to the pending handoff');
   const journal=(await journalList({limit:50},context)).output;
   assert.deepEqual(journal.items.map(item=>item.planId),[accepted.output.planId]);
   await assert.rejects(plansPreview({intent},context),{code:'conflict'},
@@ -77,6 +91,29 @@ test('module service derives catalog base from host and commits first plan as on
   assert.equal(cancelled.output.status,'cancelled');
   assert.deepEqual(cancelled.plans.map(plan=>`${plan.action}:${plan.model}`),
     ['patch:head','create:plan-outcomes']);
+  records['plan-outcomes'].set(cancelled.plans[1].input.values.revision,cancelled.plans[1].input.values);
+  const cancelledRead=(await plansRead({planId:accepted.output.planId},context)).output;
+  assert.equal(validateRead(cancelledRead),true,JSON.stringify(validateRead.errors));
+  assert.equal(cancelledRead.handoff,null,
+    'a cancelled plan cannot be exported as an actionable handoff');
+});
+
+test('removal preview and accepted journal disclose each retired permission before publication',async()=>{
+  const {context,intent}=fixture();
+  const descriptor=context.hostInventory.current.descriptors[0];
+  const removal={...intent,actions:[{kind:'remove',moduleId:descriptor.identity.id}]};
+  const preview=(await plansPreview({intent:removal},context)).output;
+  const expected=descriptor.contracts.permissions.map(permission=>({
+    moduleId:descriptor.identity.id,origin:descriptor.identity.origin,permissionId:permission.id}))
+    .sort((a,b)=>a.permissionId.localeCompare(b.permissionId));
+  assert.deepEqual(preview.retiredPermissions,expected);
+  const validatePreview=addFormats(new Ajv2020({strict:true})).compile(
+    manifest.contracts.schemas.find(item=>item.id==='plans-preview-output').schema);
+  assert.equal(validatePreview(preview),true,JSON.stringify(validatePreview.errors));
+  const accepted=await plansAccept({requestKey:'00000000-0000-4000-8000-000000000011',
+    expectedRevision:0,expectedPlanDigest:preview.planDigest,intent:removal},context);
+  assert.deepEqual(JSON.parse(accepted.plans.find(plan=>plan.model==='plans').input.values.summary_json)
+    .retiredPermissions,expected);
 });
 
 test('catalog separates available archives from Worker code and hides the exact current candidate',async()=>{

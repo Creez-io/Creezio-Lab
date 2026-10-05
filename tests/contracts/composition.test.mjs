@@ -16,6 +16,21 @@ function commerce() {
 const validate = value => validateComposition(value.composition, { modules: value.modules, lock: value.lock });
 const refresh = value => { value.lock = lockFor(value.composition, value.modules); return value; };
 
+test('lock binds retired rights to their original module origin without overlapping active definitions',()=>{
+  const value=compositionCase([namedModule('merchant.cart','merchant')]);
+  value.lock.retiredModules=[{moduleId:'vendor.removed',origin:'https://example.invalid/vendor/removed',
+    permissionIds:['read']}];
+  accepted(validate(value));
+  value.lock.retiredModules.push(structuredClone(value.lock.retiredModules[0]));
+  refused(validate(value),'duplicate.id');
+  value.lock.retiredModules.pop();
+  value.lock.retiredModules[0]={moduleId:value.modules[0].identity.id,
+    origin:value.modules[0].identity.origin,permissionIds:[value.modules[0].contracts.permissions[0].id]};
+  refused(validate(value),'lock.retired');
+  value.lock.retiredModules[0].origin='https://example.invalid/foreign/cart';
+  refused(validate(value),'lock.retired');
+});
+
 test('valid selected descriptors can exceed the single-document node budget together', () => {
   const value=compositionCase(Array.from({length:12},(_,index)=>
     namedModule(`vendor.descriptor-${index+1}`,'vendor')));
@@ -131,6 +146,7 @@ const cases = [
     value.composition.host.capabilities = value.composition.host.capabilities.filter(capability => capability !== 'files.r2.shared');
   }, 'host.capability'],
   ['SDK outside every selected module compatibility range', value => { value.composition.sdk.version = '2.0.0'; }, 'dependency.compatibility'],
+  ['core outside every selected module compatibility range', value => { value.composition.sdk.coreVersion = '2.0.0'; }, 'dependency.compatibility'],
 ];
 for (const [name, change, expected] of cases) test(`refuses ${name}`, () => {
   const value = commerce();
@@ -224,6 +240,24 @@ test('mutual optional declarations become a dependency cycle only when both inte
   value.composition.modules[0].integrations[0].enabled = true;
   accepted(validate(refresh(value)));
   value.composition.modules[1].integrations[0].enabled = true;
+  refused(validate(refresh(value)), 'dependency.cycle');
+});
+
+test('disabled modules may retain selected integrations without an effective dependency cycle', () => {
+  const cart = namedModule('merchant.cart', 'merchant');
+  const catalogue = namedModule('creezio.catalogue', 'creezio');
+  dependsOn(cart, catalogue, { optional: true, usesOperation: false });
+  dependsOn(catalogue, cart, { optional: true, usesOperation: false });
+  const value = compositionCase([cart, catalogue]);
+  for (const selection of value.composition.modules) {
+    selection.enabled = false;
+    selection.integrations[0].enabled = true;
+  }
+  value.composition.exposure.admin.moduleIds = [];
+  value.composition.exposure.app.moduleIds = [];
+  accepted(validate(refresh(value)));
+  value.composition.modules[0].enabled = true;
+  value.composition.modules[1].enabled = true;
   refused(validate(refresh(value)), 'dependency.cycle');
 });
 

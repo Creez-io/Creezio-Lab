@@ -1,5 +1,15 @@
 # T20 — CRM natif
 
+## Grandes pages dans les widgets du chat — candidat local du 3 octobre 2026
+
+Une page CRM conforme de 25 fiches avec notes peut dépasser 8 192 octets. Le pont du chat écartait alors le résultat **et** la carte, malgré le curseur du widget. Le correctif conserve la borne du contexte modèle : si la sortie complète dépasse cette borne, seule une ancre d'exécution avec empreinte est gardée jusqu'à la relecture de l'exécution, du schéma, des droits et du widget. Le modèle reçoit un marqueur de disponibilité seulement si le snapshot de la carte est ajouté dans le même commit ; sans carte admissible, le refus `tool_output_too_large` reste. Les sorties petites et l'API CRM ne changent pas. La pagination directe reste volontaire et remplace la page affichée sans accumulation. Tests locaux ciblés et revue/CI restent distincts de la recette hébergée.
+
+## Six widgets sur Original domix v7 — 3 octobre 2026
+
+Les cartes `company-list` et `prospect-detail` déjà qualifiées ont été complétées par `company-detail`, `contact-list`, `contact-detail` et `prospect-list` dans le même Original domix v7. Les quatre nouveaux résultats d'outil sont confirmés et liés à des lectures CRM ; après sélection persistée du fil puis rechargement, le navigateur vérifie le contenu des quatre iframes internes, pas seulement leurs enveloppes. Les témoins A restent entreprise révision 9, contact révision 6 et prospect révision 6 ; les témoins B sont préservés. Reçu de la dernière relecture hors dépôt : `CREEZIO-T20-ORIGINAL-WIDGETS-RELOADED-CONTENT-AFTER-SELECTION-WAIT.json` (SHA-256 `1a85845e3b1a188739a673e2bf44bf3a57a8b6566de59b7f4fde9e087bd610e6`). Le reçu antérieur des deux premières cartes conserve sa portée propre.
+
+Le prévol MCP hébergé reste limité à la découverte OAuth 200 et au refus anonyme 401. L'inventaire ciblé n'a trouvé aucun bearer déjà autorisé pour `/mcp/app` dans le contexte `t20-oct2-a` ; `tools/list`, les lectures CRM authentifiées, les ressources et les refus hors droit ou hors contexte restent **non exécutés**. Aucun jeton, droit ou compte n'a été créé pour ce contrôle. Reçu hors dépôt : `CREEZIO-T20-ORIGINAL-V7-EXTERNAL-MCP-ACCESS-CHECK-2026-10-03.json` (SHA-256 `1a5dc266618f1add11821a9da237385d821ed159ffcd23fbe71f748ec3ae2b0e`). Les six cartes du chat interne ne prouvent pas le client MCP externe.
+
 ## État récent sur Original domix — 2 octobre 2026
 
 Dans le contexte `t20-oct2-a`, les widgets natifs `company-list` et `prospect-detail` ont été affichés dans le chat Original, puis relus par leurs actions directes et après rechargement. Leurs sources sont les lectures `crm_company_search` et `crm_prospect_read` des fiches fictives existantes. Reçu hors dépôt : `CREEZIO-T20-ORIGINAL-WIDGETS-UI-READBACK-VERIFY.json` (SHA-256 `5fecaa8e22bb5d7dcd44a617a91e425a3a4f9c14622b54f1ee3beb3757ecb6e8`). Cette preuve concerne ces deux widgets dans le chat Original ; elle ne couvre pas les quatre autres widgets ni un client MCP externe.

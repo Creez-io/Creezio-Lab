@@ -23,16 +23,16 @@ test('public package bootstrap refuses an existing archive with changed bytes',a
   const fixture=temporaryDirectory(t,'creezio-public-packages-');
   const directory=path.join(fixture,'.creezio','packages');
   mkdirSync(directory,{recursive:true});
-  const bytes=readFileSync(path.join(source,pins[12][0]));
+  const bytes=readFileSync(path.join(source,pins[13][0]));
   bytes[0]^=1;
-  writeFileSync(path.join(directory,pins[12][0]),bytes);
-  await assert.rejects(bootstrapPublicPackages(fixture),/existing creezio-sdk-1\.9\.0\.tgz/);
+  writeFileSync(path.join(directory,pins[13][0]),bytes);
+  await assert.rejects(bootstrapPublicPackages(fixture),/existing creezio-sdk-1\.10\.0\.tgz/);
 });
 
 test('npm projects both public release packages selected by the lock',async()=>{
   const report=await verifyPublicPackageProjection(root);
   assert.deepEqual(report.packages,[
-    {name:'@creezio/sdk',version:'1.9.0'},
+    {name:'@creezio/sdk',version:'1.10.0'},
     {name:'@creezio/purchase-requests',version:'0.1.3'},
   ]);
 });
@@ -41,14 +41,14 @@ test('public source pins and lock use release URLs with archive integrity',t=>{
   const fixture=temporaryDirectory(t,'creezio-public-source-');
   const directory=path.join(fixture,'.creezio','packages');
   mkdirSync(directory,{recursive:true});
-  for(const index of [8,12])copyFileSync(path.join(source,pins[index][0]),path.join(directory,pins[index][0]));
+  for(const index of [8,13])copyFileSync(path.join(source,pins[index][0]),path.join(directory,pins[index][0]));
   const packageFile=path.join(fixture,'package.json'),lockFile=path.join(fixture,'package-lock.json');
   copyFileSync(path.join(root,'package.json'),packageFile);
   copyFileSync(path.join(root,'package-lock.json'),lockFile);
   assert.deepEqual(verifyPublicPackageSource(fixture).map(item=>item.name),
     ['@creezio/sdk','@creezio/purchase-requests']);
   const pkg=JSON.parse(readFileSync(packageFile,'utf8'));
-  pkg.devDependencies['@creezio/sdk']='file:.creezio/packages/creezio-sdk-1.9.0.tgz';
+  pkg.devDependencies['@creezio/sdk']='file:.creezio/packages/creezio-sdk-1.10.0.tgz';
   writeFileSync(packageFile,JSON.stringify(pkg));
   assert.throws(()=>verifyPublicPackageSource(fixture),/@creezio\/sdk lock/);
   copyFileSync(path.join(root,'package.json'),packageFile);

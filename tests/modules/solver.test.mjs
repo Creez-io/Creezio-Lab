@@ -85,6 +85,33 @@ test('disable and remove clear published exposure while retaining the selected v
   }
 });
 
+test('removal records exact retired rights and only the same origin can restore their definitions',()=>{
+  const {current,inventory,choices,cart}=fixture();
+  const removed=solveModulePlan(current,{...choices,actions:[{kind:'remove',moduleId:cart.identity.id}]},inventory);
+  assert.equal(removed.summary.status,'ready',JSON.stringify(removed.diagnostics));
+  assert.deepEqual(removed.next.lock.retiredModules,[{moduleId:cart.identity.id,origin:cart.identity.origin,
+    permissionIds:cart.contracts.permissions.map(item=>item.id).sort()}]);
+  const nextCurrent={composition:removed.next.composition,lock:removed.next.lock,
+    descriptors:[],revision:4};
+  const base={revision:4,compositionDigest:contractIntegrity(nextCurrent.composition),
+    lockDigest:contractIntegrity(nextCurrent.lock),inventoryDigest:inventory.digest};
+  const same=inventory.candidates.find(item=>item.moduleId===cart.identity.id);
+  const restored=solveModulePlan(nextCurrent,{schemaVersion:1,base,actions:[{kind:'add',moduleId:cart.identity.id,
+    candidateKey:same.candidateKey,audiences:['admin']}]},inventory);
+  assert.equal(restored.summary.status,'ready',JSON.stringify(restored.diagnostics));
+  assert.deepEqual(restored.next.lock.retiredModules,[{moduleId:cart.identity.id,origin:cart.identity.origin,
+    permissionIds:[]}]);
+  const foreign=namedModule(cart.identity.id,'other-publisher');
+  const foreignCase=compositionCase([foreign]);
+  const foreignCandidate=candidate(foreign,foreignCase.composition.modules[0],foreignCase.lock.modules[0]);
+  const foreignInventory={schemaVersion:1,candidates:[foreignCandidate],
+    digest:contractIntegrity({schemaVersion:1,candidates:[foreignCandidate]})};
+  const refused=solveModulePlan(nextCurrent,{schemaVersion:1,base:{...base,inventoryDigest:foreignInventory.digest},
+    actions:[{kind:'add',moduleId:cart.identity.id,candidateKey:foreignCandidate.candidateKey,audiences:[]}]},foreignInventory);
+  assert.equal(refused.next,null);
+  assert.equal(refused.diagnostics[0].code,'transition.origin');
+});
+
 test('add requires an explicit audience decision and keeps automatic dependencies headless',()=>{
   const {current,inventory,choices,stock}=fixture();
   const candidateKey=inventory.candidates.find(item=>item.moduleId===stock.identity.id).candidateKey;
@@ -101,6 +128,36 @@ test('add requires an explicit audience decision and keeps automatic dependencie
   assert.ok(!headless.next.composition.exposure.app.moduleIds.includes(stock.identity.id));
   assert.equal(solveModulePlan(current,{...choices,actions:[{...choices.actions[0],audiences:['app']}]},inventory)
     .diagnostics[0].code,'plan.invalid_choices');
+});
+
+test('plan refuses two module IDs assigned to the same installed package path',()=>{
+  const first=namedModule('shop.first','shop'),second=namedModule('shop.second','shop');
+  const proposed=compositionCase([first,second]);
+  const shared={kind:'package',name:'@shop/shared'};
+  const candidates=proposed.modules.map((module,index)=>candidate(module,
+    {...proposed.composition.modules[index],source:shared},proposed.lock.modules[index]));
+  const inventory={schemaVersion:1,candidates,
+    digest:contractIntegrity({schemaVersion:1,candidates})};
+  const empty=compositionCase([]),current={...empty,descriptors:[],revision:0};
+  const base={revision:0,compositionDigest:contractIntegrity(empty.composition),
+    lockDigest:contractIntegrity(empty.lock),inventoryDigest:inventory.digest};
+  const add=entry=>({kind:'add',moduleId:entry.moduleId,candidateKey:entry.candidateKey,audiences:[]});
+  const firstOnly=solveModulePlan(current,{schemaVersion:1,base,actions:[add(candidates[0])]},inventory);
+  assert.equal(firstOnly.summary.status,'ready',JSON.stringify(firstOnly.diagnostics));
+  const both=solveModulePlan(current,{schemaVersion:1,base,
+    actions:candidates.map(add)},inventory);
+  assert.equal(both.next,null);
+  assert.ok(both.diagnostics.some(item=>item.code==='composition.package-source'));
+  const selected=compositionCase([first]);
+  selected.composition.modules[0].source=shared;
+  selected.lock.compositionIntegrity=contractIntegrity(selected.composition);
+  const selectedCurrent={...selected,descriptors:[first],revision:0};
+  const selectedBase={revision:0,compositionDigest:contractIntegrity(selected.composition),
+    lockDigest:contractIntegrity(selected.lock),inventoryDigest:inventory.digest};
+  const colliding=solveModulePlan(selectedCurrent,{schemaVersion:1,base:selectedBase,
+    actions:[add(candidates[1])]},inventory);
+  assert.equal(colliding.next,null);
+  assert.ok(colliding.diagnostics.some(item=>item.code==='composition.package-source'));
 });
 
 test('enable restores exactly its chosen audiences',()=>{

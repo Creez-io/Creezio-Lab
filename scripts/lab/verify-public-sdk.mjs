@@ -15,8 +15,8 @@ export function verifyPublicPackageSource(root=defaultRoot){
   const pack=json(path.join(root,'package.json'));
   const lock=json(path.join(root,'package-lock.json'));
   const selected=[
-    {name:'@creezio/sdk',version:'1.9.0',file:pins[12][0],section:'devDependencies',
-      exports:['./delivery/context','./delivery/transport','./operations/command-journal',
+    {name:'@creezio/sdk',version:'1.10.0',file:pins[13][0],section:'devDependencies',
+      exports:['./contracts/node','./delivery/context','./delivery/transport','./operations/command-journal',
         './search/types','./workspace/navigation-catalog']},
     {name:'@creezio/purchase-requests',version:'0.1.3',file:pins[8][0],section:'dependencies',
       exports:['./dist/module/entry.server.js','./dist/ui/contributions.js']},

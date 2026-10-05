@@ -54,12 +54,12 @@ function fixture({previous=false,unknown=false,qualification=false,stageHosting}
   put(site,'db/creezio-schema-history.json',JSON.stringify({schemaVersion:1,applicationId:'app',
     compositionDigest,files:historyFiles})+'\n');
   put(core,'.gitignore','dist/\n.quality/\n');
-  const sdk=`${pins[13][1]}${pins[13][0]}`,purchase=`${pins[8][1]}${pins[8][0]}`;
+  const sdk=`${pins[13][1]}${pins[13][0]}`,purchase=`${pins[14][1]}${pins[14][0]}`;
   put(core,'package.json',JSON.stringify({name:'example',scripts:{build:'node build.js'},
     dependencies:{'@creezio/purchase-requests':purchase},devDependencies:{'@creezio/sdk':sdk}},null,2)+'\n');
   put(core,'package-lock.json',JSON.stringify({lockfileVersion:3,packages:{'':{
     dependencies:{'@creezio/purchase-requests':purchase},devDependencies:{'@creezio/sdk':sdk}},
-    'node_modules/@creezio/purchase-requests':{version:'0.1.3',resolved:purchase},
+    'node_modules/@creezio/purchase-requests':{version:'0.1.4',resolved:purchase},
     'node_modules/@creezio/sdk':{version:'1.10.0',resolved:sdk}}},null,2)+'\n');
   put(core,'scripts/lab/bootstrap-public-packages.mjs','export async function bootstrapPublicPackages() {}\n');
   put(core,'scripts/sites/build.mjs',"import {bootstrapPublicPackages} from '../lab/bootstrap-public-packages.mjs';\nawait bootstrapPublicPackages();\n");

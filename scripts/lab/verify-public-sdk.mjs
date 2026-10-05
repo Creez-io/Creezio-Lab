@@ -18,7 +18,7 @@ export function verifyPublicPackageSource(root=defaultRoot){
     {name:'@creezio/sdk',version:'1.10.0',file:pins[13][0],section:'devDependencies',
       exports:['./contracts/node','./delivery/context','./delivery/transport','./operations/command-journal',
         './search/types','./workspace/navigation-catalog']},
-    {name:'@creezio/purchase-requests',version:'0.1.3',file:pins[8][0],section:'dependencies',
+    {name:'@creezio/purchase-requests',version:'0.1.4',file:pins[14][0],section:'dependencies',
       exports:['./dist/module/entry.server.js','./dist/ui/contributions.js']},
   ];
   for(const item of selected){

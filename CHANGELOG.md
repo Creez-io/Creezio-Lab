@@ -1,5 +1,9 @@
 # Changelog
 
+## Candidat source — module achats public 0.1.4 (T11/T38)
+
+Depuis Lab main `33bdd1d8d038387ed6be5e021e38c67ab48544a6`, les trois compositions qui sélectionnent `creezio.purchase-requests` adoptent l'archive publique 0.1.4 issue de Starter main `7f1ca02f791343b4480651fb452040ccbc1ed391`. Les deux profils Lab actifs gardent `creezio.lab`, le front ChatGPT-like et leurs sélections Docker/Sites ; le SDK public 1.10.0 et les autres profils restent inchangés. Les anciennes archives 0.1.3 demeurent vérifiées. Le correctif Starter borne `attachment.list` à 50 éléments en tenant compte de la lecture de possession distincte ; l'entrée 51 reste refusée. Les trois verrous, la projection npm et la source Sites passent leurs contrôles locaux ciblés ; PR, CI obligatoire et recette sur les hôtes restent à qualifier. Aucune donnée d'hôte n'est modifiée par cette source.
+
 ## Candidat source — cycle des extensions Core `93d0215` et SDK public 1.10.0 (T11/T38)
 
 La branche Lab reprend en source l'admission vérifiée d'un paquet externe, l'application sous journal d'un plan accepté et l'approbation explicite des archives npm nécessaires. Le verrou conserve l'origine et les droits retirés ; ces références historiques ne donnent ni opération ni nouvelle attribution. Les intégrations facultatives absentes et les modules désactivés gardent leurs limites de contribution, et les noms de paquets npm ne peuvent entrer en collision. Le module achats public reste épinglé à 0.1.3, avec l'identité `creezio.lab` et le front ChatGPT-like. Le SDK public 1.10.0 est sélectionné par son URL de release et son intégrité vérifiée ; les douze verrous Lab sont régénérés sans activer de nouveau module Core. Revue finale, CI Lab et mesures de runtime restent à produire avant livraison ; aucune donnée d'hôte n'est modifiée par ce candidat source.

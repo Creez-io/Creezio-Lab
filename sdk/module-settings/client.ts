@@ -37,6 +37,10 @@ function diagnostic(value: unknown): value is ModuleDiagnostic {
     && (value.moduleId === null || id(value.moduleId)) && text(value.message, 4096)
     && value.message.length > 0;
 }
+function retiredPermission(value: unknown): boolean {
+  return row(value) && id(value.moduleId) && id(value.permissionId)
+    && text(value.origin,2048) && value.origin.startsWith('https://');
+}
 function item(value: unknown): value is ModuleCatalogItem {
   return row(value) && id(value.moduleId) && catalogTitle(value.title) && text(value.description, 4096)
     && nonempty(value.origin) && text(value.version, 128) && value.version.length > 0
@@ -79,6 +83,7 @@ function preview(value: unknown): value is ModulePlanPreview {
     && digest(value.targetLockDigest) && array(value.actions, 256) && value.actions.every(planAction)
     && array(value.diagnostics, 128) && value.diagnostics.every(diagnostic)
     && integer(value.disabledContributionCount)
+    && array(value.retiredPermissions,256) && value.retiredPermissions.every(retiredPermission)
     && typeof value.requiresPublication === 'boolean' && typeof value.baselineChanged === 'boolean';
 }
 function acceptance(value: unknown): value is ModulePlanAcceptance {
@@ -94,6 +99,8 @@ function summary(value: unknown): boolean {
     && array(value.changes, 32) && value.changes.every(change => row(change) && id(change.moduleId) && id(change.action))
     && array(value.dependencyOrder, 1000) && value.dependencyOrder.every(id)
     && integer(value.disabledContributionCount) && integer(value.diagnosticCount)
+    && (value.retiredPermissions===undefined || array(value.retiredPermissions,256)
+      && value.retiredPermissions.every(retiredPermission))
     && typeof value.detailsPaged === 'boolean';
 }
 function acceptedPlan(value: unknown): value is ModuleAcceptedPlan {
@@ -102,6 +109,27 @@ function acceptedPlan(value: unknown): value is ModuleAcceptedPlan {
     && digest(value.baseLockDigest) && digest(value.targetCompositionDigest) && digest(value.targetLockDigest)
     && summary(value.summary) && id(value.acceptedByPrincipalId) && integer(value.acceptedAtMs)
     && typeof value.requiresPublication === 'boolean';
+}
+function handoff(value: unknown): boolean {
+  if (!row(value) || value.schemaVersion !== 1 || value.status !== 'accepted_pending_publication'
+    || !id(value.planId) || !integer(value.revision) || value.revision < 1
+    || ![value.planDigest, value.inventoryDigest, value.baseCompositionDigest, value.baseLockDigest,
+      value.targetCompositionDigest, value.targetLockDigest, value.summaryDigest].every(digest)
+    || !summary(value.summary) || !row(value.choices) || value.choices.schemaVersion !== 1
+    || !row(value.choices.base) || value.choices.base.revision !== value.revision - 1
+    || value.choices.base.compositionDigest !== value.baseCompositionDigest
+    || value.choices.base.lockDigest !== value.baseLockDigest
+    || value.choices.base.inventoryDigest !== value.inventoryDigest
+    || !array(value.choices.actions, 32)) return false;
+  return value.choices.actions.every(action => row(action)
+    && ['add','update','enable','disable','remove','configure','integration'].includes(String(action.kind))
+    && id(action.moduleId) && (action.candidateKey === undefined || id(action.candidateKey))
+    && (action.dependencyId === undefined || id(action.dependencyId))
+    && (action.settingId === undefined || id(action.settingId))
+    && (action.valueRef === undefined || id(action.valueRef))
+    && (action.enabled === undefined || typeof action.enabled === 'boolean')
+    && (action.audiences === undefined || array(action.audiences, 2)
+      && action.audiences.every(audience => audience === 'admin' || audience === 'app')));
 }
 function journalEntry(value: unknown): value is ModuleJournalEntry {
   return row(value) && integer(value.revision) && value.revision > 0 && id(value.planId)
@@ -115,7 +143,17 @@ function journalEntry(value: unknown): value is ModuleJournalEntry {
 function planRead(value: unknown): value is ModulePlanRead {
   return row(value) && acceptedPlan(value.plan) && array(value.events, 50)
     && value.events.every(journalEntry) && ['accepted_pending_publication','effective','cancelled'].includes(String(value.status))
-    && typeof value.matchesRuntimeTarget === 'boolean';
+    && typeof value.matchesRuntimeTarget === 'boolean'
+    && (value.handoff === undefined ? true : value.status === 'accepted_pending_publication' ? handoff(value.handoff)
+      && (value.handoff as Record<string, unknown>).planId === value.plan.id
+      && (value.handoff as Record<string, unknown>).revision === value.plan.revision
+      && (value.handoff as Record<string, unknown>).planDigest === value.plan.planDigest
+      && (value.handoff as Record<string, unknown>).inventoryDigest === value.plan.inventoryDigest
+      && (value.handoff as Record<string, unknown>).baseCompositionDigest === value.plan.baseCompositionDigest
+      && (value.handoff as Record<string, unknown>).baseLockDigest === value.plan.baseLockDigest
+      && (value.handoff as Record<string, unknown>).targetCompositionDigest === value.plan.targetCompositionDigest
+      && (value.handoff as Record<string, unknown>).targetLockDigest === value.plan.targetLockDigest
+      : value.handoff === null);
 }
 function journalPage(value: unknown): value is ModuleJournalPage {
   return row(value) && array(value.items, 51) && value.items.every(journalEntry)

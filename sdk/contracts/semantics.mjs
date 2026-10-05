@@ -564,6 +564,35 @@ export function checkComposition(composition, modules, lock, report) {
   unique(composition.modules,'/modules',report,item => item.moduleId);
   unique(modules,'/descriptors',report,item => item.identity.id);
   unique(lock.modules,'/lock/modules',report,item => item.moduleId);
+  const retired=lock.retiredModules??[];
+  if (!Array.isArray(retired)) report('lock.retired','/lock/retiredModules','Retired module permissions must be a bounded list.');
+  else {
+    unique(retired,'/lock/retiredModules',report,item=>item.moduleId);
+    let permissionCount=0;
+    for(const [index,item] of retired.entries()){
+      if(!item || !Array.isArray(item.permissionIds)){
+        report('lock.retired',`/lock/retiredModules/${index}`,'Retired permission IDs are malformed.');
+        continue;
+      }
+      unique(item.permissionIds,`/lock/retiredModules/${index}/permissionIds`,report,id=>id);
+      permissionCount+=item.permissionIds.length;
+      const active=descriptors.get(item.moduleId);
+      if(active && (active.identity.origin!==item.origin
+        || item.permissionIds.some(id=>active.contracts.permissions.some(permission=>permission.id===id))))
+        report('lock.retired',`/lock/retiredModules/${index}`,
+          'A retired module must keep its original origin and cannot retire an active permission.');
+    }
+    if(permissionCount+modules.reduce((count,module)=>count+module.contracts.permissions.length,0)>1000)
+      report('lock.retired','/lock/retiredModules','Active and retired permissions exceed the authorization catalog limit.');
+  }
+  const packageOwners=new Map();
+  for(const [index,selection] of composition.modules.entries()){
+    if(selection.source.kind!=='package')continue;
+    const previous=packageOwners.get(selection.source.name);
+    if(previous!==undefined)report('composition.package-source',`/modules/${index}/source`,
+      `One installed package cannot supply both ${previous} and ${selection.moduleId}.`);
+    else packageOwners.set(selection.source.name,selection.moduleId);
+  }
   version(composition.sdk.version,'/sdk/version',report); version(composition.sdk.coreVersion,'/sdk/coreVersion',report);
   if (lock.applicationId !== composition.application.id || lock.sdkVersion !== composition.sdk.version || lock.coreVersion !== composition.sdk.coreVersion || !same(lock.policy,composition.sdk.policy)) report('lock.mismatch','/lock','Lock must match the application and SDK policy.');
   if (lock.compositionIntegrity !== contractIntegrity(composition)) report('lock.integrity','/lock/compositionIntegrity','Composition digest does not match its canonical contract.');
@@ -624,9 +653,10 @@ export function checkComposition(composition, modules, lock, report) {
   const active = new Set(), done = new Set();
   function visit(id, trail) {
     if (active.has(id)) { report('dependency.cycle','/modules',`Dependency cycle: ${[...trail,id].join(' -> ')}.`); return; }
-    if (done.has(id) || !descriptors.has(id)) return;
+    if (done.has(id) || !descriptors.has(id) || !selected.get(id)?.enabled) return;
     active.add(id); const chain=[...trail,id]; chains.push(chain);
-    for (const dep of descriptors.get(id).dependencies) if (selected.has(dep.moduleId) && (!dep.optional || selected.get(id)?.integrations.some(item=>item.moduleId===dep.moduleId&&item.enabled))) visit(dep.moduleId,chain);
+    for (const dep of descriptors.get(id).dependencies) if (selected.get(dep.moduleId)?.enabled
+      && (!dep.optional || selected.get(id)?.integrations.some(item=>item.moduleId===dep.moduleId&&item.enabled))) visit(dep.moduleId,chain);
     active.delete(id); done.add(id); dependencyOrder.push(id);
   }
   for (const id of selected.keys()) visit(id,[]);

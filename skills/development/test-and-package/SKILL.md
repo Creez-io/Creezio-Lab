@@ -15,6 +15,8 @@ Pour un webhook signé, prouver aussi le chemin positif avec le jeton machine li
 
 Après tout changement de modèle, d'opération ou de manifeste composé, régénérer les sorties/verrous affectés puis lancer avant push `node --test tests/data/composition-schema.test.mjs tests/runtime/composition-build.test.mjs`. Le premier détecte les écarts de schéma central et le second les sorties et bornes de composition ; les six suites du module ne les remplacent pas. Réutiliser ces deux tests existants, sans créer un second contrôleur.
 
+Lorsqu'un modèle natif, commun ou connecteur change, actualiser aussi son SQL versionné avec la commande `data:<module>` existante, puis vérifier sans écriture avec `node scripts/data/prepare-native-module.mjs <module> --family=<native|common|connectors>` selon sa famille. Relire le diff de `data/schema/<module>.sql` : les tests de composition calculent le schéma en mémoire et ne prouvent pas que cet artefact versionné est à jour. Cette génération de fichier ne modifie aucune base ; `check:data` reste le contrôle global existant.
+
 Si un modèle déjà distribué change, qualifier aussi la mise à jour depuis son ancien schéma avec des lignes existantes, par le moteur central et ses reçus. Une installation sur base vide ne couvre pas ce parcours. Vérifier la conservation des données, contraintes et index, le refus des changements non pris en charge et la reprise d'un accusé perdu. Réutiliser une fixture bornée du schéma précédent et les tests centraux existants ; ne pas ajouter de script de transformation au module ni contourner un refus d'inspection sur une base réelle.
 
 2. Réutiliser installations, espaces et builds. Exécuter les vérifications adaptées au changement ; ne pas refaire une recette coûteuse inchangée sans motif. Pour un changement documentaire, contrôler cohérence et liens sans prétendre valider le runtime.
@@ -33,7 +35,11 @@ Rattacher chaque recette au critère existant qu'elle vérifie et réutiliser le
 
 Le helper conserve l'étape atteinte, une erreur exploitable expurgée et les observations pertinentes avant son nettoyage, sans cookies, jetons, corps privés ni URL sensible. Un nom générique comme `Error` ne suffit pas. La collecte doit rester bornée et ne pas empêcher déconnexion ou fermeture. Un timeout n'établit pas à lui seul un défaut du produit : distinguer cause prouvée, test incorrect, environnement et cause inconnue.
 
+Pour reprendre une recette hébergée, calculer les empreintes depuis les octets des reçus et comparer hors réseau leurs identités et pins, sans retaper ces valeurs manuellement. Si un tour est encore en cours ou d'issue inconnue, le terminer ou réconcilier **ce même tour** avant d'envisager un nouveau. Pour une lecture de conversation après rechargement, confirmer que le fil attendu est sélectionné et chargé avant de recharger ; vérifier ensuite le contenu de l'iframe du widget, au-delà de son enveloppe. Une sélection ou une enveloppe seule ne prouve pas le rendu.
+
 Pour une interaction clavier dans un widget, observer le focus dans l'hôte et l'iframe ; l'envoi de Tab ne prouve pas que le focus en soit sorti. Utiliser un geste réel pour qualifier ce parcours, sans forcer le focus ni modifier le produit pour satisfaire un sélecteur non fondé. Une capture ou un appel API ne qualifie que ce qu'il observe.
+
+Pour une ouverture de lien, distinguer le `href` validé, l'URL observée dans la requête et l'URL finale du nouvel onglet. Une comparaison complète peut échouer sur un fragment ou une redirection sans invalider le geste clavier déjà observé. Conserver les empreintes et la portée exacte de chaque comparaison, sans afficher une URL sensible ; ne pas déduire l'égalité complète de la seule destination sans fragment. Si une assertion finale du helper échoue, garder son reçu d'échec et analyser les observations acquises avant de décider d'un nouvel essai.
 
 ## Finalisation d'une candidate avant push
 
@@ -42,3 +48,5 @@ Après la dernière édition d'un fichier déclaré dans le manifeste d'un modul
 ## Dépendances entre modules
 
 Appliquer le [contrat commun](../../../docs/DEPENDANCES-MODULES.md). Exercer dépendances requises et facultatives, versions/ports incompatibles, transitivité et cycles. Pour le packaging, utiliser les archives réelles des fournisseurs sans résolution cachée vers un checkout. Contrôler aussi les consommateurs après update/retrait, les contributions dans les six suites et les données conservées. La chaîne de plusieurs éditeurs et le scénario facultatif sont des critères du starter.
+
+Pour un nouveau paquet, utiliser l'[admission opérateur](../../../docs/MODULES-ADMISSION-OPERATEUR.md), puis le plan accepté et son [application](../../../docs/MODULES-APPLY-OPERATEUR.md). Admission, application au checkout et livraison sont trois étapes distinctes. Fournir les bibliothèques npm additionnelles par `--npm-archives` avec les intégrités approuvées ; ne pas compléter manuellement `node_modules` ou le verrou pour contourner un refus. Après retrait, préserver `retiredModules` dans tous les profils concernés et qualifier un compte ayant encore un ancien droit : l'administration restante fonctionne, le droit retiré n'autorise rien. Pour une intégration facultative, exercer une opération réelle avant et après activation du fournisseur ; compter les contributions seules ne prouve pas ce comportement.

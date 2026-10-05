@@ -1,5 +1,7 @@
 # PRD — Modules et configuration
 
+Le cycle couvre également un module externe encore inconnu du checkout : ses archives vérifiées entrent explicitement dans l'inventaire opérateur avant apparition dans le catalogue. Une installation ou une mise à jour conserve les dépendances et versions hors périmètre ; les nouvelles bibliothèques npm ont leur approbation d'archives distincte. L'aperçu d'un retrait ou d'une mise à jour présente les droits devenant inactifs. Le résultat publié doit conserver les données et les autres autorisations malgré les rôles, exceptions et jetons qui référencent encore ces droits. Une origine différente ne peut pas adopter cette identité historique.
+
 ## Besoin
 
 T-11, US-11, REQ-1101 à REQ-1106 : composer une application à partir de modules natifs, communs, métier ou tiers, avec graphe exact, contrats publics et changements explicites. L’administrateur voit ce qui est disponible, présent, actif, configuré et en attente de publication.
@@ -21,6 +23,8 @@ Les modèles privés head/plans/journal/plan-outcomes sont écrits via les plans
 ## Interface et publication
 
 Conserver les composants de liste/fiche Product Hub avec navigation SDK et états de panneau. Les docs de version installée sont distinctes des futurs PRD éditables et du Kanban métier T23. Le plan accepté reste en attente jusqu'à une confirmation administrative native qui vérifie ensemble les empreintes de composition et de verrou du Worker réellement exécuté. Une confirmation est enregistrée comme événement durable ; un changement ultérieur du runtime ne modifie pas ce statut historique. Si les empreintes ne correspondent pas, l'administrateur peut annuler le plan en attente avec un motif conservé. Chaque clôture incrémente la révision par CAS atomique ; un nouveau plan utilise la composition et le verrou courants et exige la reconnaissance d'une baseline divergente. Les plans antérieurs sans événement ne reçoivent pas de confirmation rétroactive automatique. Sites attend une publication demandée dans GPT ; Docker/Cloudflare utilisent leurs adaptateurs de livraison, sans architecture métier différente.
+
+Le plan en attente expose sous `manage` une transmission JSON versionnée contenant l'identité, les choix, le résumé et les empreintes déjà vérifiés du même plan. Le bouton de téléchargement reste dans un volet repliable du journal Product Hub ; une lecture ancienne sans cette capacité reste consultable mais ne propose pas d'export. L'opérateur contrôle la prévisualisation puis applique le plan dans le checkout de cette application, construit et publie par le canal autorisé. La transmission est absente après confirmation ou annulation ; elle ne contient ni descripteur brut, ni secret, ni code de module.
 
 ## Documentation installée
 

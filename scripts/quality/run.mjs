@@ -55,12 +55,12 @@ for (const name of ['granola','resend','hermes']) {
 // Lab validates module archives against the immutable public SDK selected by
 // its npm lock. It never packs the local SDK workspace in place of that SDK.
 const sdkSpec=JSON.parse(readFileSync(resolve(root,'package.json'),'utf8')).devDependencies?.['@creezio/sdk'];
-const sdkPin=pins[12];
+const sdkPin=pins[13];
 if(sdkSpec!==`${sdkPin[1]}${sdkPin[0]}`)
   throw new Error('Lab public SDK pin differs from the qualified archive.');
 const sdkArchive=resolve(root,'.creezio','packages',sdkPin[0]);
 const sdkSha=createHash('sha256').update(readFileSync(sdkArchive)).digest('hex');
-if(sdkSha!=='b10cc8ca47bad85d3f22124e0b3da214cea15610330fc650a8c107cba189eb2a')
+if(sdkSha!=='0f291897b1817da418be1f428ba0d9f20160f8e8d8fe47f4fe6c0fede70cc86f')
   throw new Error('Lab public SDK archive integrity differs.');
 execute('module-archive-suites',['scripts/modules/validate-archives.mjs','--sdk-archive',sdkArchive,
   '--sdk-sha256',sdkSha,'extensions/native/delivery','extensions/native/messaging',

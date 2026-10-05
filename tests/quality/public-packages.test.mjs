@@ -33,7 +33,7 @@ test('npm projects both public release packages selected by the lock',async()=>{
   const report=await verifyPublicPackageProjection(root);
   assert.deepEqual(report.packages,[
     {name:'@creezio/sdk',version:'1.10.0'},
-    {name:'@creezio/purchase-requests',version:'0.1.3'},
+    {name:'@creezio/purchase-requests',version:'0.1.4'},
   ]);
 });
 
@@ -41,7 +41,7 @@ test('public source pins and lock use release URLs with archive integrity',t=>{
   const fixture=temporaryDirectory(t,'creezio-public-source-');
   const directory=path.join(fixture,'.creezio','packages');
   mkdirSync(directory,{recursive:true});
-  for(const index of [8,13])copyFileSync(path.join(source,pins[index][0]),path.join(directory,pins[index][0]));
+  for(const index of [14,13])copyFileSync(path.join(source,pins[index][0]),path.join(directory,pins[index][0]));
   const packageFile=path.join(fixture,'package.json'),lockFile=path.join(fixture,'package-lock.json');
   copyFileSync(path.join(root,'package.json'),packageFile);
   copyFileSync(path.join(root,'package-lock.json'),lockFile);

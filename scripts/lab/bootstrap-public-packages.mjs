@@ -14,6 +14,7 @@ const sdk110='https://github.com/creezio/Creezio-D1R2/releases/download/sdk-v1.1
 const module='https://github.com/creezio/Creezio-Extension-Starter/releases/download/module-v0.1.0/';
 const candidate='https://github.com/creezio/Creezio-Extension-Starter/releases/download/module-v0.1.2/';
 const current='https://github.com/creezio/Creezio-Extension-Starter/releases/download/module-v0.1.3/';
+const current014='https://github.com/creezio/Creezio-Extension-Starter/releases/download/module-v0.1.4/';
 export const pins=[
   ['creezio-sdk-1.1.0.tgz',sdk,66315,'f874f0ed29a41ec45b8f686884b5e2260b9600d9045588174fff8a7fcdd5eeec'],
   ['creezio-purchase-requests-0.1.0.tgz',module,33672,'800c8e0e9eb61c3b8abeb04d98b4c6eea343bc4af9cc1cfe0be3f633dbafb85c'],
@@ -29,6 +30,9 @@ export const pins=[
   ['creezio-sdk-1.4.1.tgz',sdk141,73013,'3196390908a13cf32290f100584a3edb20931c8b3f56c37c6fab131c3fe4b37d'],
   ['creezio-sdk-1.9.0.tgz',sdk19,88108,'b10cc8ca47bad85d3f22124e0b3da214cea15610330fc650a8c107cba189eb2a'],
   ['creezio-sdk-1.10.0.tgz',sdk110,88805,'0f291897b1817da418be1f428ba0d9f20160f8e8d8fe47f4fe6c0fede70cc86f'],
+  ['creezio-purchase-requests-0.1.4.tgz',current014,38817,'26df9899e6271ba1ece530870156f6539591787790c521ea9b82850bfcc04800'],
+  ['creezio-purchase-requests-0.1.4-validation.tgz',current014,60240,'fca21f4092ff03cb8435c4020f8f16b64e96112ccfdff23ebea8e60ea4500863'],
+  ['manifest-0.1.4.json',current014,1198,'362e07040741f246e573a6554ab1b06c5b380a18c0c574e95b454dc0652441ec'],
 ];
 const fail=reason=>{throw new Error(`Public package bootstrap refused: ${reason}`);};
 const hash=bytes=>createHash('sha256').update(bytes).digest('hex');
@@ -98,6 +102,13 @@ if(installed.module?.id!=='creezio.purchase-requests'||installed.module.version!
   ||installed.module.source?.integrity!=='sha256-07d5d3b0a3d4a2b360adc7362224eeb18456cb9d50abcc1628d8f701a76f3780'
   ||installed.runtime?.integrity!==`sha256-${pins[8][3]}`
   ||installed.validation?.integrity!==`sha256-${pins[9][3]}`)fail('installed receipt identity');
+const latest=JSON.parse(readFileSync(path.join(directory,'manifest-0.1.4.json'),'utf8'));
+if(latest.module?.id!=='creezio.purchase-requests'||latest.module.version!=='0.1.4'
+  ||latest.module.source?.revision!=='7f1ca02f791343b4480651fb452040ccbc1ed391'
+  ||latest.module.source?.integrity!=='sha256-e28220694fd846e3a86261e475d5c72b0986c6085539f0d97b7fd950b024b61e'
+  ||latest.contractIntegrity!=='sha256-d3268ca8d4c1a112fd82861f8eb181e8b37f6ce6c09fc842fb8cb07e001e2225'
+  ||latest.runtime?.integrity!==`sha256-${pins[14][3]}`
+  ||latest.validation?.integrity!==`sha256-${pins[15][3]}`)fail('latest receipt identity');
 return {status:'verified',files:pins.map(([name])=>name)};
 }
 

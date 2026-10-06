@@ -1,14 +1,14 @@
 {
   "schemaVersion": "1.0.0",
-  "applicationId": "creezio.app",
-  "sdkVersion": "1.2.0",
+  "applicationId": "creezio.lab",
+  "sdkVersion": "1.10.0",
   "coreVersion": "0.0.0",
   "policy": {
     "id": "creezio.local-contracts",
     "version": "1.0.0",
     "integrity": "sha256-469b93af15a6dd7066e767f45af8587e613ee2f080d142ed076b00613acb5dfd"
   },
-  "compositionIntegrity": "sha256-09bf51ebd7343049c83cd3aecf7d41f114697a46f0ff98a6ab79c6580d2b2cdd",
+  "compositionIntegrity": "sha256-d8e50d00c3e7cfd0ed1786a947cee1cf7f3370215afcd16908e71f4b6e354417",
   "modules": [
     {
       "moduleId": "creezio.access",
@@ -130,27 +130,27 @@
       ]
     },
     {
-      "moduleId": "creezio.theme-chatgpt",
+      "moduleId": "creezio.theme-standard",
       "origin": "https://github.com/creezio/Creezio-D1R2",
-      "version": "0.0.1",
+      "version": "0.0.0",
       "source": {
         "kind": "snapshot",
-        "revision": "t0713-chatgpt-theme-v2",
+        "revision": "t13-standard-theme-v1",
         "integrity": "sha256-0000000000000000000000000000000000000000000000000000000000000000"
       },
-      "contractIntegrity": "sha256-a048d82255853fc717bc4fa8d0a134c46f1a8a2c2afed0f2c69535c28b3006fe",
+      "contractIntegrity": "sha256-0acf19d76fa5196ecc1856ceee6aab615914d11a0dbc61a0b2b970b0b44927ec",
       "runtime": {
-        "integrity": "sha256-f5d79fde8ff5cd51caf4aa6adc83edc4bc8314e08e9173db51e93bef2406d308",
+        "integrity": "sha256-fcef0b8711057bba45150aeb3701ccb52cf6b2a01cbf141facea04b64b5a1e37",
         "location": {
           "kind": "local",
-          "path": ".creezio/module-artifacts/creezio.theme-chatgpt/runtime-f5d79fde8ff5cd51caf4aa6adc83edc4bc8314e08e9173db51e93bef2406d308.tgz"
+          "path": ".creezio/module-artifacts/creezio.theme-standard/runtime-fcef0b8711057bba45150aeb3701ccb52cf6b2a01cbf141facea04b64b5a1e37.tgz"
         }
       },
       "validation": {
-        "integrity": "sha256-9b4fcff7385ee3e375c74b3290774b3f8902300e2ca5c1721720dfef3b2e6bfe",
+        "integrity": "sha256-d0e6676b0ec83e13357753afd208942c3672e83c57a8d867d320f574bb8cb4e7",
         "location": {
           "kind": "local",
-          "path": ".creezio/module-artifacts/creezio.theme-chatgpt/validation-9b4fcff7385ee3e375c74b3290774b3f8902300e2ca5c1721720dfef3b2e6bfe.tgz"
+          "path": ".creezio/module-artifacts/creezio.theme-standard/validation-d0e6676b0ec83e13357753afd208942c3672e83c57a8d867d320f574bb8cb4e7.tgz"
         }
       },
       "dependencies": []

@@ -1,5 +1,9 @@
 # Changelog
 
+## Préparation locale — qualification des deux thèmes dans Lab (T07/T13/T38)
+
+Un profil Sites standard distinct conserve `creezio.lab`, le SDK public et les achats 0.1.4 ; la source Sites l'accepte uniquement par `--composition`, tandis que ChatGPT-like reste le défaut. La candidate Core `d752cda` (PR #116) fournit 10 fichiers du thème ChatGPT-like 0.0.1 et le correctif du slot vide dans l'hôte ; les sept profils Lab qui sélectionnent le thème et leurs verrous, ainsi que le verrou standard, sont mis à jour localement. Les octets seront comparés au Core main final avant fusion ou livraison. Aucun build, hôte ou donnée n'est modifié par cette étape.
+
 ## Candidat source — module achats public 0.1.4 (T11/T38)
 
 Depuis Lab main `33bdd1d8d038387ed6be5e021e38c67ab48544a6`, les trois compositions qui sélectionnent `creezio.purchase-requests` adoptent l'archive publique 0.1.4 issue de Starter main `7f1ca02f791343b4480651fb452040ccbc1ed391`. Les deux profils Lab actifs gardent `creezio.lab`, le front ChatGPT-like et leurs sélections Docker/Sites ; le SDK public 1.10.0 et les autres profils restent inchangés. Les anciennes archives 0.1.3 demeurent vérifiées. Le correctif Starter borne `attachment.list` à 50 éléments en tenant compte de la lecture de possession distincte ; l'entrée 51 reste refusée. Les trois verrous, la projection npm et la source Sites passent leurs contrôles locaux ciblés ; PR, CI obligatoire et recette sur les hôtes restent à qualifier. Aucune donnée d'hôte n'est modifiée par cette source.

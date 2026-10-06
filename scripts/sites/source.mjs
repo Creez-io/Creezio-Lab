@@ -12,7 +12,8 @@ import {canonicalJson,contractIntegrity} from '../../sdk/contracts/validate.mjs'
 const here=fileURLToPath(new URL('../../',import.meta.url));
 const nativeComposition='configuration/composition.sites.json';
 const qualificationComposition='configuration/composition.sites-qualification.json';
-const allowedCompositions=[nativeComposition,qualificationComposition];
+const standardComposition='configuration/composition.sites-standard.json';
+const allowedCompositions=[nativeComposition,qualificationComposition,standardComposition];
 const sha=bytes=>createHash('sha256').update(bytes).digest('hex');
 const canonical=value=>JSON.stringify(value);
 const rootKey=value=>{

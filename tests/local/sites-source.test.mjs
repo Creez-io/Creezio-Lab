@@ -37,13 +37,14 @@ function dispose(root,boundary=root){
   }
   rmdirSync(root);
 }
-function fixture({previous=false,unknown=false,qualification=false,stageHosting}={}){
+function fixture({previous=false,unknown=false,qualification=false,standard=false,stageHosting}={}){
   const home=mkdtempSync(path.join(tmpdir(),'creezio-sites-source-'));
   const core=path.join(home,'core'),site=path.join(home,'descriptor'),stage=path.join(home,'stage');
   for(const root of [core,site,stage])mkdirSync(root);
   const hosting=JSON.stringify({project_id:'appgprj_test',d1:'DB',r2:'BUCKET'})+'\n';
   const nativeComposition={host:{profile:'sites'},modules:[]};
-  const selectedComposition=qualification?{...nativeComposition,modules:[{moduleId:'example.qualification'}]}:nativeComposition;
+  const selectedComposition=qualification||standard?{...nativeComposition,
+    modules:[{moduleId:standard?'example.standard':'example.qualification'}]}:nativeComposition;
   const compositionDigest=contractIntegrity(selectedComposition);
   put(site,'.openai/hosting.json',hosting);
   const historyFiles=['drizzle/0000_base.sql','drizzle/meta/0000_snapshot.json','drizzle/meta/_journal.json']
@@ -68,6 +69,10 @@ function fixture({previous=false,unknown=false,qualification=false,stageHosting}
   if(qualification){
     put(core,'configuration/composition.sites-qualification.json',JSON.stringify(selectedComposition)+'\n');
     put(core,'configuration/composition.sites-qualification.lock.json','{}\n');
+  }
+  if(standard){
+    put(core,'configuration/composition.sites-standard.json',JSON.stringify(selectedComposition)+'\n');
+    put(core,'configuration/composition.sites-standard.lock.json','{}\n');
   }
   put(core,'app.js','export default "source";\n');
   git(core,'init','-q');commit(core,'synthetic Core source');
@@ -158,6 +163,38 @@ test('Sites source selects the qualified profile only when it matches the built 
     const pkg=JSON.parse(readFileSync(path.join(f.stage,'package.json'),'utf8'));
     assert.match(pkg.scripts.build,/composition\.sites-qualification\.json/);
     assert.match(pkg.scripts.build,/composition\.sites-qualification\.lock\.json/);
+  }finally{dispose(f.home);}
+});
+test('Lab standard Sites profile preserves Lab and third-party selection while changing only the theme',()=>{
+  const root=fileURLToPath(new URL('../../',import.meta.url));
+  const original=JSON.parse(readFileSync(path.join(root,'configuration/composition.sites.json'),'utf8'));
+  const standard=JSON.parse(readFileSync(path.join(root,'configuration/composition.sites-standard.json'),'utf8'));
+  const expected=structuredClone(original);
+  const theme=expected.modules.find(item=>item.moduleId==='creezio.theme-chatgpt');
+  assert.ok(theme);theme.moduleId='creezio.theme-standard';theme.source.path='themes/standard';
+  theme.versionRange='^0.0.0';
+  expected.front.moduleId='creezio.theme-standard';expected.front.theme='standard';
+  expected.exposure.app.moduleIds=expected.exposure.app.moduleIds.map(id=>
+    id==='creezio.theme-chatgpt'?'creezio.theme-standard':id);
+  assert.deepEqual(standard,expected);
+  assert.equal(standard.application.id,'creezio.lab');
+  assert.equal(standard.modules.find(item=>item.moduleId==='creezio.purchase-requests')?.versionRange,'0.1.4');
+  assert.equal(standard.modules.some(item=>item.moduleId.startsWith('example.')),false);
+});
+test('Sites source selects the Lab standard profile explicitly without changing the default',()=>{
+  const f=fixture({standard:true});
+  try{
+    const compositionPath='configuration/composition.sites-standard.json';
+    assert.throws(()=>planSitesSource({applicationRoot:f.core,siteRoot:f.site,
+      stageRoot:f.stage}),/differs from the built profile/);
+    const plan=planSitesSource({applicationRoot:f.core,siteRoot:f.site,stageRoot:f.stage,compositionPath});
+    assert.equal(plan.compositionPath,compositionPath);
+    assert.equal(plan.files.some(file=>file.path===compositionPath),true);
+    writeFileSync(f.planFile,JSON.stringify(plan,null,2)+'\n',{flag:'wx'});
+    prepareSitesSource(plan,f.planFile,f.receiptFile);
+    const pkg=JSON.parse(readFileSync(path.join(f.stage,'package.json'),'utf8'));
+    assert.match(pkg.scripts.build,/composition\.sites-standard\.json/);
+    assert.match(pkg.scripts.build,/composition\.sites-standard\.lock\.json/);
   }finally{dispose(f.home);}
 });
 test('Sites source refuses unowned tracked staging files before writing',()=>{

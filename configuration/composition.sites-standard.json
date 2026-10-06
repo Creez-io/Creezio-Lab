@@ -77,12 +77,12 @@
       "integrations": []
     },
     {
-      "moduleId": "creezio.theme-chatgpt",
+      "moduleId": "creezio.theme-standard",
       "origin": "https://github.com/creezio/Creezio-D1R2",
-      "versionRange": "^0.0.1",
+      "versionRange": "^0.0.0",
       "source": {
         "kind": "workspace",
-        "path": "themes/chatgpt-like"
+        "path": "themes/standard"
       },
       "enabled": true,
       "configuration": [],
@@ -103,8 +103,8 @@
   ],
   "front": {
     "kind": "theme",
-    "moduleId": "creezio.theme-chatgpt",
-    "theme": "chatgpt-like"
+    "moduleId": "creezio.theme-standard",
+    "theme": "standard"
   },
   "exposure": {
     "admin": {
@@ -121,7 +121,7 @@
         "creezio.access",
         "creezio.conversations",
         "creezio.openai",
-        "creezio.theme-chatgpt",
+        "creezio.theme-standard",
         "creezio.purchase-requests"
       ]
     }
